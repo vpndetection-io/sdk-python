@@ -45,11 +45,10 @@ import os
 client = VPNDetection(os.environ["VPNDETECTION_API_KEY"])
 
 result = client.lookup("45.83.91.1")
-print(result.is_vpn)                    # True
-print(result.vpn.provider)              # 'mullvad'
-print(result.is_hosting)                # True
+print(result.is_vpn)          # True
+print(result.vpn.provider)    # 'mullvad'
+print(result.is_hosting)      # True
 print(result.hosting.provider)
-print(result.flagged("is_hosting"))     # True, and False rather than None on a plan without it
 ```
 
 ### Async
@@ -155,14 +154,26 @@ Note that `rate_limited` and `quota_exceeded` both arrive as HTTP 429 and are no
 
 ### Database downloads
 
-If your key carries the `db.download` scope, the licensed datasets are available through `client.database`:
+If your key carries the `db.download` scope, the licensed datasets are available through `client.database`. `list` answers dataset families, and the ids the other calls take come from each family's `versions`. There are three ways to get a database: the time-limited link, the bytes, or straight to a file, which streams so nothing bigger than a chunk is ever held in memory:
 
 ```python
 datasets = client.database.list()
+
 url = client.database.download_url("vpn_ip_extended_v1", "mmdb")
+raw = client.database.download_bytes("cdn_ip_v1", "csvgz")
+written = client.database.download("vpn_ip_extended_v1", "mmdb", "./vpn_ip_extended_v1.mmdb")
 ```
 
-`download_url` returns a time-limited link rather than the bytes, so you choose how to transfer a file that can run to gigabytes.
+`download_bytes` holds the whole file in memory, and the catalog runs from `cdn_ip_v1` at 10 KB to `resproxy_ip_90d_v1` at 1.79 GB, so use `download` for anything you have not measured.
+
+### Fields your plan does not include
+
+Only `ip` and `is_vpn` come back on every plan. The rest are `None` when your plan does not include them, which means "not in your plan" rather than "checked, and no".
+
+```python
+result.flagged("is_hosting")   # False rather than None on a plan without it
+result.is_hosting is None      # True when hosting is not in your plan
+```
 
 ## Other Libraries
 
