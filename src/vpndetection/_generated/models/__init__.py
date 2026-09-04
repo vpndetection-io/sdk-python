@@ -12,6 +12,7 @@ from .dataset_metadata_sample import DatasetMetadataSample
 from .dataset_metadata_sample_additional_property_item import (
     DatasetMetadataSampleAdditionalPropertyItem,
 )
+from .dataset_metadata_sample_size import DatasetMetadataSampleSize
 from .dataset_metadata_schema import DatasetMetadataSchema
 from .dataset_metadata_size import DatasetMetadataSize
 from .download import Download
@@ -41,6 +42,7 @@ __all__ = (
     "DatasetMetadataColumn",
     "DatasetMetadataSample",
     "DatasetMetadataSampleAdditionalPropertyItem",
+    "DatasetMetadataSampleSize",
     "DatasetMetadataSchema",
     "DatasetMetadataSize",
     "Download",

@@ -11,6 +11,7 @@ from ..types import UNSET, Unset
 
 if TYPE_CHECKING:
     from ..models.dataset_metadata_sample import DatasetMetadataSample
+    from ..models.dataset_metadata_sample_size import DatasetMetadataSampleSize
     from ..models.dataset_metadata_schema import DatasetMetadataSchema
     from ..models.dataset_metadata_size import DatasetMetadataSize
 
@@ -29,6 +30,9 @@ class DatasetMetadata:
         update_freq (str | Unset): How often a new build is published
         sample (DatasetMetadataSample | Unset): A few real rows, keyed by format
         size (DatasetMetadataSize | Unset): Bytes per format
+        sample_size (DatasetMetadataSampleSize | Unset): Bytes per format of the evaluation sample, where one is
+            published
+        sample_entries (int | Unset): Row count in the evaluation sample
     """
 
     id: str
@@ -38,6 +42,8 @@ class DatasetMetadata:
     update_freq: str | Unset = UNSET
     sample: DatasetMetadataSample | Unset = UNSET
     size: DatasetMetadataSize | Unset = UNSET
+    sample_size: DatasetMetadataSampleSize | Unset = UNSET
+    sample_entries: int | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -59,6 +65,12 @@ class DatasetMetadata:
         if not isinstance(self.size, Unset):
             size = self.size.to_dict()
 
+        sample_size: dict[str, Any] | Unset = UNSET
+        if not isinstance(self.sample_size, Unset):
+            sample_size = self.sample_size.to_dict()
+
+        sample_entries = self.sample_entries
+
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update(
@@ -75,12 +87,17 @@ class DatasetMetadata:
             field_dict["sample"] = sample
         if size is not UNSET:
             field_dict["size"] = size
+        if sample_size is not UNSET:
+            field_dict["sample_size"] = sample_size
+        if sample_entries is not UNSET:
+            field_dict["sample_entries"] = sample_entries
 
         return field_dict
 
     @classmethod
     def from_dict(cls, src_dict: Mapping[str, Any]) -> Self:
         from ..models.dataset_metadata_sample import DatasetMetadataSample
+        from ..models.dataset_metadata_sample_size import DatasetMetadataSampleSize
         from ..models.dataset_metadata_schema import DatasetMetadataSchema
         from ..models.dataset_metadata_size import DatasetMetadataSize
 
@@ -109,6 +126,15 @@ class DatasetMetadata:
         else:
             size = DatasetMetadataSize.from_dict(_size)
 
+        _sample_size = d.pop("sample_size", UNSET)
+        sample_size: DatasetMetadataSampleSize | Unset
+        if isinstance(_sample_size, Unset):
+            sample_size = UNSET
+        else:
+            sample_size = DatasetMetadataSampleSize.from_dict(_sample_size)
+
+        sample_entries = d.pop("sample_entries", UNSET)
+
         dataset_metadata = cls(
             id=id,
             updated=updated,
@@ -117,6 +143,8 @@ class DatasetMetadata:
             update_freq=update_freq,
             sample=sample,
             size=size,
+            sample_size=sample_size,
+            sample_entries=sample_entries,
         )
 
         dataset_metadata.additional_properties = d
