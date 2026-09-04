@@ -15,6 +15,7 @@ from ._generated.models.dataset_metadata import DatasetMetadata
 from ._generated.models.dataset_metadata_column import DatasetMetadataColumn
 from ._generated.models.download import Download
 from ._generated.models.licensed_dataset import LicensedDataset
+from ._generated.models.licensed_version import LicensedVersion
 from .aio import AsyncDatabaseApi, AsyncVPNDetection
 from .bogon import is_bogon
 from .client import DatabaseApi, VPNDetection
@@ -37,6 +38,7 @@ __all__ = [
     "Flag",
     "Format",
     "LicensedDataset",
+    "LicensedVersion",
     "ProxyDetail",
     "Result",
     "VPNDetection",

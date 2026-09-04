@@ -20,6 +20,9 @@ from .download_outcome import DownloadOutcome
 from .error import Error
 from .licensed_dataset import LicensedDataset
 from .licensed_dataset_redistribution import LicensedDatasetRedistribution
+from .licensed_dataset_standing import LicensedDatasetStanding
+from .licensed_version import LicensedVersion
+from .licensed_version_sample_formats_item import LicensedVersionSampleFormatsItem
 from .list_databases_response_200 import ListDatabasesResponse200
 from .list_downloads_response_200 import ListDownloadsResponse200
 from .lookup_error import LookupError_
@@ -46,6 +49,9 @@ __all__ = (
     "Error",
     "LicensedDataset",
     "LicensedDatasetRedistribution",
+    "LicensedDatasetStanding",
+    "LicensedVersion",
+    "LicensedVersionSampleFormatsItem",
     "ListDatabasesResponse200",
     "ListDownloadsResponse200",
     "LookupError_",

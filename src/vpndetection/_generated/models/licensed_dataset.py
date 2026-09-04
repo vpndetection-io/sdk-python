@@ -8,10 +8,11 @@ from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
 from ..models.licensed_dataset_redistribution import LicensedDatasetRedistribution
+from ..models.licensed_dataset_standing import LicensedDatasetStanding
 from ..types import UNSET, Unset
 
 if TYPE_CHECKING:
-    from ..models.dataset_format_size import DatasetFormatSize
+    from ..models.licensed_version import LicensedVersion
 
 
 T = TypeVar("T", bound="LicensedDataset")
@@ -19,32 +20,37 @@ T = TypeVar("T", bound="LicensedDataset")
 
 @_attrs_define
 class LicensedDataset:
-    """
-    Attributes:
-        id (str):
-        name (str):
-        redistribution (LicensedDatasetRedistribution): What your license permits you to do with the data
-        in_term (bool): False when the license has lapsed; downloads are refused
-        formats (list[DatasetFormatSize]):
-        summary (str | Unset):
-        retired (bool | Unset): Licensed but no longer published. Talk to us.
-        starts (datetime.datetime | Unset):
-        expires (datetime.datetime | None | Unset):
+    """One dataset FAMILY your organization is licensed for. A license covers
+    the family, while a download names a specific version, so the ids you
+    pass to the download and checksum endpoints come from `versions`.
+
+        Attributes:
+            base (str): The dataset family, e.g. `vpn_ip`. What the license is held against. Example: vpn_ip.
+            name (str):  Example: VPN IP.
+            redistribution (LicensedDatasetRedistribution): What your license permits you to do with the data.
+            in_term (bool): False when the license has lapsed; downloads are refused.
+            standing (LicensedDatasetStanding): `licensed` is a live grant, `expired` one whose term has ended, and
+                `unlicensed` a dataset published but never bought.
+            versions (list[LicensedVersion]): Every published version of this family. The `id` here is what the
+                download and checksum endpoints take.
+            summary (str | Unset):
+            starts (datetime.datetime | None | Unset):
+            expires (datetime.datetime | None | Unset): Null when the license does not expire.
     """
 
-    id: str
+    base: str
     name: str
     redistribution: LicensedDatasetRedistribution
     in_term: bool
-    formats: list[DatasetFormatSize]
+    standing: LicensedDatasetStanding
+    versions: list[LicensedVersion]
     summary: str | Unset = UNSET
-    retired: bool | Unset = UNSET
-    starts: datetime.datetime | Unset = UNSET
+    starts: datetime.datetime | None | Unset = UNSET
     expires: datetime.datetime | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        id = self.id
+        base = self.base
 
         name = self.name
 
@@ -52,18 +58,22 @@ class LicensedDataset:
 
         in_term = self.in_term
 
-        formats = []
-        for formats_item_data in self.formats:
-            formats_item = formats_item_data.to_dict()
-            formats.append(formats_item)
+        standing = self.standing.value
+
+        versions = []
+        for versions_item_data in self.versions:
+            versions_item = versions_item_data.to_dict()
+            versions.append(versions_item)
 
         summary = self.summary
 
-        retired = self.retired
-
-        starts: str | Unset = UNSET
-        if not isinstance(self.starts, Unset):
+        starts: None | str | Unset
+        if isinstance(self.starts, Unset):
+            starts = UNSET
+        elif isinstance(self.starts, datetime.datetime):
             starts = self.starts.isoformat()
+        else:
+            starts = self.starts
 
         expires: None | str | Unset
         if isinstance(self.expires, Unset):
@@ -77,17 +87,16 @@ class LicensedDataset:
         field_dict.update(self.additional_properties)
         field_dict.update(
             {
-                "id": id,
+                "base": base,
                 "name": name,
                 "redistribution": redistribution,
                 "in_term": in_term,
-                "formats": formats,
+                "standing": standing,
+                "versions": versions,
             }
         )
         if summary is not UNSET:
             field_dict["summary"] = summary
-        if retired is not UNSET:
-            field_dict["retired"] = retired
         if starts is not UNSET:
             field_dict["starts"] = starts
         if expires is not UNSET:
@@ -97,10 +106,10 @@ class LicensedDataset:
 
     @classmethod
     def from_dict(cls, src_dict: Mapping[str, Any]) -> Self:
-        from ..models.dataset_format_size import DatasetFormatSize
+        from ..models.licensed_version import LicensedVersion
 
         d = dict(src_dict)
-        id = d.pop("id")
+        base = d.pop("base")
 
         name = d.pop("name")
 
@@ -108,23 +117,33 @@ class LicensedDataset:
 
         in_term = d.pop("in_term")
 
-        formats = []
-        _formats = d.pop("formats")
-        for formats_item_data in _formats:
-            formats_item = DatasetFormatSize.from_dict(formats_item_data)
+        standing = LicensedDatasetStanding(d.pop("standing"))
 
-            formats.append(formats_item)
+        versions = []
+        _versions = d.pop("versions")
+        for versions_item_data in _versions:
+            versions_item = LicensedVersion.from_dict(versions_item_data)
+
+            versions.append(versions_item)
 
         summary = d.pop("summary", UNSET)
 
-        retired = d.pop("retired", UNSET)
+        def _parse_starts(data: object) -> datetime.datetime | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, str):
+                    raise TypeError()
+                starts_type_0 = datetime.datetime.fromisoformat(data)
 
-        _starts = d.pop("starts", UNSET)
-        starts: datetime.datetime | Unset
-        if isinstance(_starts, Unset):
-            starts = UNSET
-        else:
-            starts = datetime.datetime.fromisoformat(_starts)
+                return starts_type_0
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(datetime.datetime | None | Unset, data)
+
+        starts = _parse_starts(d.pop("starts", UNSET))
 
         def _parse_expires(data: object) -> datetime.datetime | None | Unset:
             if data is None:
@@ -144,13 +163,13 @@ class LicensedDataset:
         expires = _parse_expires(d.pop("expires", UNSET))
 
         licensed_dataset = cls(
-            id=id,
+            base=base,
             name=name,
             redistribution=redistribution,
             in_term=in_term,
-            formats=formats,
+            standing=standing,
+            versions=versions,
             summary=summary,
-            retired=retired,
             starts=starts,
             expires=expires,
         )
