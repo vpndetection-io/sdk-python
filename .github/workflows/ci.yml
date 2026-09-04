@@ -31,6 +31,9 @@ jobs:
           cache: pip
           cache-dependency-path: pyproject.toml
       - run: pip install -e ".[dev]"
-      - run: ruff check src tests
-      - run: ruff format --check src tests
+      - run: ruff check src tests integration
+      - run: ruff format --check src tests integration
       - run: mypy
+      # A second invocation, because the integration suite carries a conftest.py of its
+      # own and mypy cannot hold two modules of one name in one run.
+      - run: mypy integration

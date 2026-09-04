@@ -1,0 +1,5 @@
+# The PUBLISHED package, never this working tree. `scripts/run.py` reads the constraint
+# from here, resolves it against PyPI, and skips the whole run when nothing satisfies it.
+vpndetection>=1.0,<2
+
+pytest>=8.0

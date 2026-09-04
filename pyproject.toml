@@ -81,6 +81,8 @@ line-length = 100
 [tool.mypy]
 python_version = "3.11"
 strict = true
+# The integration suite is checked by a second invocation rather than listed here: it
+# carries a conftest.py of its own, and mypy cannot hold two modules of one name at once.
 files = ["src/vpndetection", "tests"]
 
 # Generated from spec/openapi.yaml. It is checked by being regenerated, not by mypy.

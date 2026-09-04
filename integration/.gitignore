@@ -1,0 +1,4 @@
+# Built fresh on every run, so the daily one keeps testing whatever is newest on PyPI
+# rather than whatever the first run happened to resolve.
+/.venv/
+/.pytest_cache/
