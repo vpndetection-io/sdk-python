@@ -3,10 +3,13 @@ unwrapping, the retry policy, and the per-instance cache."""
 
 from __future__ import annotations
 
+import contextlib
 import json
+import os
 import threading
-from collections.abc import Awaitable, Callable
-from typing import Any, TypeVar, cast
+from collections.abc import Awaitable, Callable, Iterator
+from pathlib import Path
+from typing import IO, Any, TypeVar, cast
 
 import httpx
 from cachetools import TTLCache
@@ -25,6 +28,10 @@ DEFAULT_CACHE_MAX_SIZE = 10_000
 DEFAULT_CACHE_TTL = 3600.0
 DEFAULT_TIMEOUT = 10.0
 DEFAULT_DOWNLOADS_LIMIT = 50
+
+# One chunk of a transfer, and therefore the ceiling on what a download of any size
+# costs in memory.
+TRANSFER_CHUNK_BYTES = 1 << 20
 
 _BACKOFF_BASE = 1.0
 
@@ -59,6 +66,100 @@ def build_client(
         timeout=httpx.Timeout(timeout),
         httpx_args=httpx_args,
     )
+
+
+def build_transfer_client(
+    timeout: float | None, transport: httpx.BaseTransport | None
+) -> httpx.Client:
+    """A SECOND client, holding no credential, for the object-storage leg of a download.
+
+    The API answers a download with a `302` to a presigned URL, and that URL authorizes
+    itself. Following the redirect on the API client would forward the key to a host
+    with no business holding it, so the second request is made from here instead, where
+    there is no `Authorization` header to send.
+
+    Only the connect phase keeps the client's timeout. That timeout is a sane bound on a
+    lookup and the wrong one on a body that routinely runs to gigabytes, which would
+    otherwise be cut off mid-transfer. Redirects ARE followed here, unlike on the API
+    client: object storage behind a CDN answers one, and there is no credential to leak
+    by going along with it.
+    """
+    return httpx.Client(
+        timeout=httpx.Timeout(None, connect=timeout),
+        transport=transport,
+        follow_redirects=True,
+    )
+
+
+def build_async_transfer_client(
+    timeout: float | None, transport: httpx.AsyncBaseTransport | None
+) -> httpx.AsyncClient:
+    """`build_transfer_client`, for asyncio."""
+    return httpx.AsyncClient(
+        timeout=httpx.Timeout(None, connect=timeout),
+        transport=transport,
+        follow_redirects=True,
+    )
+
+
+def storage_refusal(res: httpx.Response) -> VPNDetectionError:
+    """What object storage refusing a download link becomes.
+
+    The body is deliberately left unread: the status is what separates a lapsed link
+    from a refused one, and nothing bounds the size of an error page.
+    """
+    return error_from_response(
+        res.status_code,
+        res.headers,
+        {"error": f"object storage refused the download link with status {res.status_code}"},
+    )
+
+
+def assert_whole_transfer(res: httpx.Response, written: int) -> None:
+    """Check what arrived against what was promised.
+
+    A transfer that dies mid-body can reach a client as a plain end of stream, and a
+    short file that looks complete is worse than no file at all: the next run reads it
+    as a whole dataset.
+
+    Skipped when the body was decoded on the way in, because `Content-Length` then
+    describes the ENCODED bytes and disagreeing with it is correct rather than short.
+    A chunked response declares no length; httpx raises for itself when one of those is
+    cut off.
+    """
+    declared = res.headers.get("content-length")
+    encoding = res.headers.get("content-encoding", "identity").strip().lower()
+    if declared is None or encoding not in ("", "identity"):
+        return
+    try:
+        expected = int(declared)
+    except ValueError:
+        return
+    if expected != written:
+        raise VPNDetectionError(
+            "network",
+            f"the transfer ended after {written} of {expected} bytes",
+            res.status_code,
+        )
+
+
+@contextlib.contextmanager
+def part_file(destination: str | os.PathLike[str]) -> Iterator[IO[bytes]]:
+    """A download's bytes, landing beside `destination` and moved onto it at the end.
+
+    Two failures this prevents, and only the first is the obvious one. A transfer that
+    dies half way leaves no truncated file carrying the real name. And a refresh that
+    fails leaves yesterday's good copy untouched, which opening the destination itself
+    could not do: that truncates it before the first byte of the new one arrives.
+    """
+    partial = os.fspath(destination) + ".part"
+    try:
+        with open(partial, "wb") as sink:
+            yield sink
+        os.replace(partial, destination)
+    except BaseException:
+        Path(partial).unlink(missing_ok=True)
+        raise
 
 
 def send(call: Callable[[], Response[Any]]) -> Response[Any]:

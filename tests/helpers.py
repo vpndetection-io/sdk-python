@@ -56,6 +56,7 @@ class ClientAdapter:
         self.client: VPNDetection | AsyncVPNDetection = (
             VPNDetection(**options) if kind == "sync" else AsyncVPNDetection(**options)
         )
+        self.database = DatabaseAdapter(self.client)
 
     def is_bogon(self, ip: str) -> bool:
         return self.client.is_bogon(ip)
@@ -75,6 +76,33 @@ class ClientAdapter:
             self.client.close()
         else:
             asyncio.run(self.client.aclose())
+
+
+class DatabaseAdapter:
+    """The `database` surface of whichever client this run is exercising.
+
+    The download path is not one method shared by two clients: the async one writes each
+    chunk from a worker thread rather than blocking the event loop, so it is genuinely
+    different code and has to be asserted as such.
+    """
+
+    def __init__(self, client: VPNDetection | AsyncVPNDetection) -> None:
+        self._client = client
+
+    def download_url(self, dataset_id: str, format: str) -> str:
+        return self._call("download_url", dataset_id, format)  # type: ignore[no-any-return]
+
+    def download(self, dataset_id: str, format: str, path: Any) -> int:
+        return self._call("download", dataset_id, format, path)  # type: ignore[no-any-return]
+
+    def download_bytes(self, dataset_id: str, format: str) -> bytes:
+        return self._call("download_bytes", dataset_id, format)  # type: ignore[no-any-return]
+
+    def _call(self, name: str, *args: Any) -> Any:
+        method = getattr(self._client.database, name)
+        if isinstance(self._client, VPNDetection):
+            return method(*args)
+        return asyncio.run(method(*args))
 
 
 class Stub:

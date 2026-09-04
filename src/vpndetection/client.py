@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import builtins
+import os
 import time
 from collections.abc import Callable, Iterable
 from concurrent.futures import ThreadPoolExecutor
@@ -19,16 +20,21 @@ from ._core import (
     DEFAULT_DOWNLOADS_LIMIT,
     DEFAULT_RETRIES,
     DEFAULT_TIMEOUT,
+    TRANSFER_CHUNK_BYTES,
     Cache,
     as_error,
+    assert_whole_transfer,
     build_client,
+    build_transfer_client,
     checksums_of,
     datasets_of,
     downloads_of,
     parse_body,
+    part_file,
     redirect_location,
     retry_delay,
     send,
+    storage_refusal,
     unwrap,
 )
 from ._generated.api.database import (
@@ -84,6 +90,7 @@ class VPNDetection:
         transport: httpx.BaseTransport | None = None,
     ) -> None:
         self._client = build_client(api_key, base_url, timeout, transport)
+        self._transfer = build_transfer_client(timeout, transport)
         self._cache = Cache(cache_max_size, cache_ttl) if cache else None
         self._concurrency = concurrency
         self._retries = retries
@@ -150,6 +157,7 @@ class VPNDetection:
 
     def close(self) -> None:
         self._client.get_httpx_client().close()
+        self._transfer.close()
 
     def __enter__(self) -> Self:
         return self
@@ -252,6 +260,67 @@ class DatabaseApi:
                 )
             )
             return redirect_location(res)
+
+        return self._retrying(call)
+
+    def download(self, dataset_id: str, format: Format, path: str | os.PathLike[str]) -> int:
+        """Download one dataset file to `path`, and return the bytes written.
+
+        The bytes are streamed straight to disk, so nothing larger than a chunk is ever
+        held in memory whatever the dataset weighs. They land in a neighboring `.part`
+        file that is moved into place only once the whole transfer has arrived, so a
+        failure leaves neither a truncated file at `path` nor the `.part` behind, and an
+        existing copy at `path` survives a refresh that fails.
+
+        A failure DURING the transfer surfaces as it happened, an `httpx` error or an
+        `OSError`, rather than as this library's error type: a reset socket and a full
+        disk are different problems, and only one of them is ours.
+        """
+        res = self._open_transfer(dataset_id, format)
+        try:
+            written = 0
+            with part_file(path) as sink:
+                for chunk in res.iter_bytes(TRANSFER_CHUNK_BYTES):
+                    sink.write(chunk)
+                    written += len(chunk)
+                # Inside, so a short transfer fails before anything is moved into place.
+                assert_whole_transfer(res, written)
+            return written
+        finally:
+            res.close()
+
+    def download_bytes(self, dataset_id: str, format: Format) -> bytes:
+        """Download one dataset file and hand back its bytes.
+
+        **This holds the entire file in memory**, and the catalog spans five orders of
+        magnitude, from `cdn_ip_v1` at 10 KB to `resproxy_ip_90d_v1` at 1.79 GB. Reach
+        for it at the small end, where the bytes go straight into a parser, and use
+        `download` for anything you have not measured.
+        """
+        res = self._open_transfer(dataset_id, format)
+        try:
+            body = res.read()
+            assert_whole_transfer(res, len(body))
+            return body
+        finally:
+            res.close()
+
+    # Follows the 302 as a SECOND, unauthenticated request rather than by loosening the
+    # redirect guard: the presigned URL authorizes itself, so forwarding the API key
+    # would hand a credential to a host with no business holding it.
+    #
+    # Returns the response with its body still unread, so the caller decides whether a
+    # dataset is going to disk or into memory.
+    def _open_transfer(self, dataset_id: str, format: Format) -> httpx.Response:
+        url = self.download_url(dataset_id, format)
+        transfer = self._owner._transfer
+
+        def call() -> httpx.Response:
+            res = transfer.send(transfer.build_request("GET", url), stream=True)
+            if res.status_code != httpx.codes.OK:
+                res.close()
+                raise storage_refusal(res)
+            return res
 
         return self._retrying(call)
 

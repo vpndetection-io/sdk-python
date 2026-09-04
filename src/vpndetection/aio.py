@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import builtins
+import os
 from collections.abc import Awaitable, Callable, Iterable
 from types import TracebackType
 from typing import Self, TypeVar
@@ -23,16 +24,21 @@ from ._core import (
     DEFAULT_DOWNLOADS_LIMIT,
     DEFAULT_RETRIES,
     DEFAULT_TIMEOUT,
+    TRANSFER_CHUNK_BYTES,
     Cache,
     as_error,
+    assert_whole_transfer,
+    build_async_transfer_client,
     build_client,
     checksums_of,
     datasets_of,
     downloads_of,
     parse_body,
+    part_file,
     redirect_location,
     retry_delay,
     send_async,
+    storage_refusal,
     unwrap,
 )
 from ._generated.api.database import (
@@ -83,6 +89,7 @@ class AsyncVPNDetection:
         transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:
         self._client = build_client(api_key, base_url, timeout, transport)
+        self._transfer = build_async_transfer_client(timeout, transport)
         self._cache = Cache(cache_max_size, cache_ttl) if cache else None
         self._concurrency = concurrency
         self._retries = retries
@@ -154,6 +161,7 @@ class AsyncVPNDetection:
 
     async def aclose(self) -> None:
         await self._client.get_async_httpx_client().aclose()
+        await self._transfer.aclose()
 
     async def __aenter__(self) -> Self:
         return self
@@ -250,6 +258,72 @@ class AsyncDatabaseApi:
                 )
             )
             return redirect_location(res)
+
+        return await self._retrying(call)
+
+    async def download(self, dataset_id: str, format: Format, path: str | os.PathLike[str]) -> int:
+        """Download one dataset file to `path`, and return the bytes written.
+
+        The bytes are streamed straight to disk, so nothing larger than a chunk is ever
+        held in memory whatever the dataset weighs. They land in a neighboring `.part`
+        file that is moved into place only once the whole transfer has arrived, so a
+        failure leaves neither a truncated file at `path` nor the `.part` behind, and an
+        existing copy at `path` survives a refresh that fails.
+
+        A failure DURING the transfer surfaces as it happened, an `httpx` error or an
+        `OSError`, rather than as this library's error type: a reset socket and a full
+        disk are different problems, and only one of them is ours.
+
+        Each chunk is written from a worker thread. A gigabyte of blocking writes on the
+        event loop would stall every other task in the process for the length of the
+        transfer, which is the one thing an async caller cannot afford.
+        """
+        res = await self._open_transfer(dataset_id, format)
+        try:
+            loop = asyncio.get_running_loop()
+            written = 0
+            with part_file(path) as sink:
+                async for chunk in res.aiter_bytes(TRANSFER_CHUNK_BYTES):
+                    await loop.run_in_executor(None, sink.write, chunk)
+                    written += len(chunk)
+                # Inside, so a short transfer fails before anything is moved into place.
+                assert_whole_transfer(res, written)
+            return written
+        finally:
+            await res.aclose()
+
+    async def download_bytes(self, dataset_id: str, format: Format) -> bytes:
+        """Download one dataset file and hand back its bytes.
+
+        **This holds the entire file in memory**, and the catalog spans five orders of
+        magnitude, from `cdn_ip_v1` at 10 KB to `resproxy_ip_90d_v1` at 1.79 GB. Reach
+        for it at the small end, where the bytes go straight into a parser, and use
+        `download` for anything you have not measured.
+        """
+        res = await self._open_transfer(dataset_id, format)
+        try:
+            body = await res.aread()
+            assert_whole_transfer(res, len(body))
+            return body
+        finally:
+            await res.aclose()
+
+    # Follows the 302 as a SECOND, unauthenticated request rather than by loosening the
+    # redirect guard: the presigned URL authorizes itself, so forwarding the API key
+    # would hand a credential to a host with no business holding it.
+    #
+    # Returns the response with its body still unread, so the caller decides whether a
+    # dataset is going to disk or into memory.
+    async def _open_transfer(self, dataset_id: str, format: Format) -> httpx.Response:
+        url = await self.download_url(dataset_id, format)
+        transfer = self._owner._transfer
+
+        async def call() -> httpx.Response:
+            res = await transfer.send(transfer.build_request("GET", url), stream=True)
+            if res.status_code != httpx.codes.OK:
+                await res.aclose()
+                raise storage_refusal(res)
+            return res
 
         return await self._retrying(call)
 
