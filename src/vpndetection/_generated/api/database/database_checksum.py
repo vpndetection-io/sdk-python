@@ -91,7 +91,9 @@ def sync_detailed(
     id: str,
     format_: DatabaseChecksumFormat,
 ) -> Response[DatabaseChecksumResponse200 | Error]:
-    """Checksums for one published file, to verify a download
+    """Checksums
+
+     Checksums for one published file, so a download can be verified after it lands.
 
     Args:
         id (str):
@@ -123,7 +125,9 @@ def sync(
     id: str,
     format_: DatabaseChecksumFormat,
 ) -> DatabaseChecksumResponse200 | Error | None:
-    """Checksums for one published file, to verify a download
+    """Checksums
+
+     Checksums for one published file, so a download can be verified after it lands.
 
     Args:
         id (str):
@@ -150,7 +154,9 @@ async def asyncio_detailed(
     id: str,
     format_: DatabaseChecksumFormat,
 ) -> Response[DatabaseChecksumResponse200 | Error]:
-    """Checksums for one published file, to verify a download
+    """Checksums
+
+     Checksums for one published file, so a download can be verified after it lands.
 
     Args:
         id (str):
@@ -180,7 +186,9 @@ async def asyncio(
     id: str,
     format_: DatabaseChecksumFormat,
 ) -> DatabaseChecksumResponse200 | Error | None:
-    """Checksums for one published file, to verify a download
+    """Checksums
+
+     Checksums for one published file, so a download can be verified after it lands.
 
     Args:
         id (str):

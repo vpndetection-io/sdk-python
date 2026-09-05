@@ -65,7 +65,10 @@ def sync_detailed(
     client: AuthenticatedClient,
     limit: int | Unset = 50,
 ) -> Response[Error | ListDownloadsResponse200]:
-    """Your organization's recent download attempts, newest first
+    """History
+
+     Recent download attempts for this organization, newest first. Refusals are listed too, so a failed
+    transfer can be accounted for.
 
     Args:
         limit (int | Unset):  Default: 50.
@@ -94,7 +97,10 @@ def sync(
     client: AuthenticatedClient,
     limit: int | Unset = 50,
 ) -> Error | ListDownloadsResponse200 | None:
-    """Your organization's recent download attempts, newest first
+    """History
+
+     Recent download attempts for this organization, newest first. Refusals are listed too, so a failed
+    transfer can be accounted for.
 
     Args:
         limit (int | Unset):  Default: 50.
@@ -118,7 +124,10 @@ async def asyncio_detailed(
     client: AuthenticatedClient,
     limit: int | Unset = 50,
 ) -> Response[Error | ListDownloadsResponse200]:
-    """Your organization's recent download attempts, newest first
+    """History
+
+     Recent download attempts for this organization, newest first. Refusals are listed too, so a failed
+    transfer can be accounted for.
 
     Args:
         limit (int | Unset):  Default: 50.
@@ -145,7 +154,10 @@ async def asyncio(
     client: AuthenticatedClient,
     limit: int | Unset = 50,
 ) -> Error | ListDownloadsResponse200 | None:
-    """Your organization's recent download attempts, newest first
+    """History
+
+     Recent download attempts for this organization, newest first. Refusals are listed too, so a failed
+    transfer can be accounted for.
 
     Args:
         limit (int | Unset):  Default: 50.

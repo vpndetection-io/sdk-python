@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Self, TypeVar, cast
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
-from ..models.licensed_dataset_redistribution import LicensedDatasetRedistribution
+from ..models.licensed_dataset_license_type import LicensedDatasetLicenseType
 from ..models.licensed_dataset_standing import LicensedDatasetStanding
 from ..types import UNSET, Unset
 
@@ -27,7 +27,7 @@ class LicensedDataset:
         Attributes:
             base (str): The dataset family, e.g. `vpn_ip`. What the license is held against. Example: vpn_ip.
             name (str):  Example: VPN IP.
-            redistribution (LicensedDatasetRedistribution): What your license permits you to do with the data.
+            license_type (LicensedDatasetLicenseType): What your license permits you to do with the data.
             in_term (bool): False when the license has lapsed; downloads are refused.
             standing (LicensedDatasetStanding): `licensed` is a live grant, `expired` one whose term has ended, and
                 `unlicensed` a dataset published but never bought.
@@ -40,7 +40,7 @@ class LicensedDataset:
 
     base: str
     name: str
-    redistribution: LicensedDatasetRedistribution
+    license_type: LicensedDatasetLicenseType
     in_term: bool
     standing: LicensedDatasetStanding
     versions: list[LicensedVersion]
@@ -54,7 +54,7 @@ class LicensedDataset:
 
         name = self.name
 
-        redistribution = self.redistribution.value
+        license_type = self.license_type.value
 
         in_term = self.in_term
 
@@ -89,7 +89,7 @@ class LicensedDataset:
             {
                 "base": base,
                 "name": name,
-                "redistribution": redistribution,
+                "license_type": license_type,
                 "in_term": in_term,
                 "standing": standing,
                 "versions": versions,
@@ -113,7 +113,7 @@ class LicensedDataset:
 
         name = d.pop("name")
 
-        redistribution = LicensedDatasetRedistribution(d.pop("redistribution"))
+        license_type = LicensedDatasetLicenseType(d.pop("license_type"))
 
         in_term = d.pop("in_term")
 
@@ -165,7 +165,7 @@ class LicensedDataset:
         licensed_dataset = cls(
             base=base,
             name=name,
-            redistribution=redistribution,
+            license_type=license_type,
             in_term=in_term,
             standing=standing,
             versions=versions,

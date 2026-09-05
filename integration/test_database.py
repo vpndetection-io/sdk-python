@@ -22,7 +22,7 @@ from staging import Fact
 
 from vpndetection import DatasetMetadata, Format, LicensedDataset, VPNDetection, VPNDetectionError
 
-# The max organization licenses `cdn_ip` for redistribution, and at ~10 KB it is the only
+# The max organization licenses `cdn_ip` for license_type, and at ~10 KB it is the only
 # dataset small enough to move in CI.
 DATASET_ID = "cdn_ip_v1"
 FORMAT: Format = "csvgz"
@@ -52,8 +52,8 @@ def test_the_licensed_catalog_answers_the_schema_the_client_was_generated_from()
         assert dataset.standing in ("expired", "licensed", "unlicensed"), (
             f"{dataset.base} carries an undocumented standing {dataset.standing!r}"
         )
-        assert dataset.redistribution in ("evaluation", "internal", "redistribute"), (
-            f"{dataset.base} carries an undocumented right {dataset.redistribution!r}"
+        assert dataset.license_type in ("evaluation", "standard", "redistribute"), (
+            f"{dataset.base} carries an undocumented right {dataset.license_type!r}"
         )
         assert_no_undocumented_keys(dataset)
         # The point of the family shape: a license covers the family, and these are the

@@ -89,7 +89,10 @@ def sync_detailed(
     id: str,
     format_: DownloadDatabaseFormat,
 ) -> Response[Any | Error]:
-    """Redirect to a time-limited download URL for one dataset
+    """Download
+
+     Answers `302` with a time-limited URL pointing straight at object storage. Follow the redirect; the
+    link authorizes the START of a transfer, so one already running is not interrupted when it lapses.
 
     Args:
         id (str):
@@ -121,7 +124,10 @@ def sync(
     id: str,
     format_: DownloadDatabaseFormat,
 ) -> Any | Error | None:
-    """Redirect to a time-limited download URL for one dataset
+    """Download
+
+     Answers `302` with a time-limited URL pointing straight at object storage. Follow the redirect; the
+    link authorizes the START of a transfer, so one already running is not interrupted when it lapses.
 
     Args:
         id (str):
@@ -148,7 +154,10 @@ async def asyncio_detailed(
     id: str,
     format_: DownloadDatabaseFormat,
 ) -> Response[Any | Error]:
-    """Redirect to a time-limited download URL for one dataset
+    """Download
+
+     Answers `302` with a time-limited URL pointing straight at object storage. Follow the redirect; the
+    link authorizes the START of a transfer, so one already running is not interrupted when it lapses.
 
     Args:
         id (str):
@@ -178,7 +187,10 @@ async def asyncio(
     id: str,
     format_: DownloadDatabaseFormat,
 ) -> Any | Error | None:
-    """Redirect to a time-limited download URL for one dataset
+    """Download
+
+     Answers `302` with a time-limited URL pointing straight at object storage. Follow the redirect; the
+    link authorizes the START of a transfer, so one already running is not interrupted when it lapses.
 
     Args:
         id (str):

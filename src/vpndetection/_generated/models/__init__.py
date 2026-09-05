@@ -20,7 +20,7 @@ from .download_database_format import DownloadDatabaseFormat
 from .download_outcome import DownloadOutcome
 from .error import Error
 from .licensed_dataset import LicensedDataset
-from .licensed_dataset_redistribution import LicensedDatasetRedistribution
+from .licensed_dataset_license_type import LicensedDatasetLicenseType
 from .licensed_dataset_standing import LicensedDatasetStanding
 from .licensed_version import LicensedVersion
 from .licensed_version_sample_formats_item import LicensedVersionSampleFormatsItem
@@ -50,7 +50,7 @@ __all__ = (
     "DownloadOutcome",
     "Error",
     "LicensedDataset",
-    "LicensedDatasetRedistribution",
+    "LicensedDatasetLicenseType",
     "LicensedDatasetStanding",
     "LicensedVersion",
     "LicensedVersionSampleFormatsItem",

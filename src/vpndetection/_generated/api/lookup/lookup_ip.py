@@ -80,7 +80,7 @@ def sync_detailed(
     *,
     client: AuthenticatedClient,
 ) -> Response[LookupError_ | LookupResponse]:
-    """Classify one IP address
+    """Lookup
 
      Answers what is known about a single IPv4 or IPv6 address. Which fields
     come back is decided by the plan behind the presented key; with no key
@@ -113,7 +113,7 @@ def sync(
     *,
     client: AuthenticatedClient,
 ) -> LookupError_ | LookupResponse | None:
-    """Classify one IP address
+    """Lookup
 
      Answers what is known about a single IPv4 or IPv6 address. Which fields
     come back is decided by the plan behind the presented key; with no key
@@ -141,7 +141,7 @@ async def asyncio_detailed(
     *,
     client: AuthenticatedClient,
 ) -> Response[LookupError_ | LookupResponse]:
-    """Classify one IP address
+    """Lookup
 
      Answers what is known about a single IPv4 or IPv6 address. Which fields
     come back is decided by the plan behind the presented key; with no key
@@ -172,7 +172,7 @@ async def asyncio(
     *,
     client: AuthenticatedClient,
 ) -> LookupError_ | LookupResponse | None:
-    """Classify one IP address
+    """Lookup
 
      Answers what is known about a single IPv4 or IPv6 address. Which fields
     come back is decided by the plan behind the presented key; with no key

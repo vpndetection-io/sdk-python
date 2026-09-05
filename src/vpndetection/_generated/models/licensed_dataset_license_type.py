@@ -1,10 +1,10 @@
 from enum import StrEnum
 
 
-class LicensedDatasetRedistribution(StrEnum):
+class LicensedDatasetLicenseType(StrEnum):
     EVALUATION = "evaluation"
-    INTERNAL = "internal"
     REDISTRIBUTE = "redistribute"
+    STANDARD = "standard"
 
     def __str__(self) -> str:
         return str(self.value)

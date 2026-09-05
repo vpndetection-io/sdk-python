@@ -54,7 +54,10 @@ def sync_detailed(
     *,
     client: AuthenticatedClient,
 ) -> Response[Error | ListDatabasesResponse200]:
-    """The datasets your organization is licensed to download
+    """List
+
+     Every dataset this organization holds a licence for, with the term and the license_type right beside
+    each one.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -77,7 +80,10 @@ def sync(
     *,
     client: AuthenticatedClient,
 ) -> Error | ListDatabasesResponse200 | None:
-    """The datasets your organization is licensed to download
+    """List
+
+     Every dataset this organization holds a licence for, with the term and the license_type right beside
+    each one.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -96,7 +102,10 @@ async def asyncio_detailed(
     *,
     client: AuthenticatedClient,
 ) -> Response[Error | ListDatabasesResponse200]:
-    """The datasets your organization is licensed to download
+    """List
+
+     Every dataset this organization holds a licence for, with the term and the license_type right beside
+    each one.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -117,7 +126,10 @@ async def asyncio(
     *,
     client: AuthenticatedClient,
 ) -> Error | ListDatabasesResponse200 | None:
-    """The datasets your organization is licensed to download
+    """List
+
+     Every dataset this organization holds a licence for, with the term and the license_type right beside
+    each one.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
