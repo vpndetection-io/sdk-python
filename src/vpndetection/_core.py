@@ -169,10 +169,16 @@ def send(call: Callable[[], Response[Any]]) -> Response[Any]:
     429 or a 400 carrying an intermediary's HTML error page raises straight out of it.
     That is a failed request rather than a bug in the caller's code, so it becomes the
     one error type here.
+
+    `KeyError` is caught for the same reason and was missed at first: the generated
+    `from_dict` reads required properties by subscript, so a 200 whose body is valid
+    JSON but is MISSING a required key raises `KeyError` rather than `ValueError`, and
+    that reached a caller as a bare traceback instead of a typed error. Both are the
+    same fault - the API said something this client cannot read.
     """
     try:
         return call()
-    except ValueError as exc:
+    except (ValueError, KeyError) as exc:
         raise VPNDetectionError(
             "server_error", f"the API answered with a body this client could not read: {exc}"
         ) from exc
@@ -182,7 +188,7 @@ async def send_async(call: Callable[[], Awaitable[Response[Any]]]) -> Response[A
     """`send`, awaited."""
     try:
         return await call()
-    except ValueError as exc:
+    except (ValueError, KeyError) as exc:
         raise VPNDetectionError(
             "server_error", f"the API answered with a body this client could not read: {exc}"
         ) from exc

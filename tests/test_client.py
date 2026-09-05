@@ -139,3 +139,22 @@ def test_a_transport_failure_surfaces_as_a_network_error() -> None:
 
     assert caught.value.kind == "network"
     assert caught.value.retryable is True
+
+
+def test_a_200_missing_a_required_key_is_a_typed_error_not_a_traceback(
+    make_client: ClientFactory,
+) -> None:
+    """A healthy-looking 200 whose body omits a required property.
+
+    The generated `from_dict` reads required properties by subscript, so this raises
+    `KeyError`, not `ValueError`. Catching only the latter let it escape as a bare
+    traceback - a caller writing `except VPNDetectionError` saw nothing and crashed.
+    """
+    stub = Stub({"1.1.1.1": {"status": 200, "body": {"is_vpn": False}}})
+    client = make_client(transport=stub.transport, cache=False)
+
+    with pytest.raises(VPNDetectionError) as caught:
+        client.lookup("1.1.1.1")
+
+    assert caught.value.kind == "server_error"
+    assert "could not read" in str(caught.value)
