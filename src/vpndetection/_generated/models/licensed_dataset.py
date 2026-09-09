@@ -9,7 +9,6 @@ from attrs import field as _attrs_field
 
 from ..models.licensed_dataset_license_type import LicensedDatasetLicenseType
 from ..models.licensed_dataset_standing import LicensedDatasetStanding
-from ..types import UNSET, Unset
 
 if TYPE_CHECKING:
     from ..models.licensed_version import LicensedVersion
@@ -27,34 +26,34 @@ class LicensedDataset:
         Attributes:
             base (str): The dataset family, e.g. `vpn_ip`. What the license is held against. Example: vpn_ip.
             name (str):  Example: VPN IP.
+            summary (str):
             license_type (LicensedDatasetLicenseType): What your license permits you to do with the data.
+            starts (datetime.datetime | None):
+            expires (datetime.datetime | None): A hard stop. Null when the license has no end date, which is the normal case
+                for a rolling agreement, and when there is no license. A rolling license reports its turnover date in renews_at
+                instead.
+            renews_at (datetime.datetime | None): When a rolling license next renews. Null when the license has no defined
+                term, when expires sets a hard stop instead, and when there is no license.
+            notice_due_at (datetime.datetime | None): The last day notice of non-renewal can be given for the term ending at
+                renews_at. Null whenever renews_at is, and when the agreement records no notice period.
             in_term (bool): False when the license has lapsed; downloads are refused.
             standing (LicensedDatasetStanding): `licensed` is a live grant, `expired` one whose term has ended, and
                 `unlicensed` a dataset published but never bought.
             versions (list[LicensedVersion]): Every published version of this family. The `id` here is what the
                 download and checksum endpoints take.
-            summary (str | Unset):
-            starts (datetime.datetime | None | Unset):
-            expires (datetime.datetime | None | Unset): A hard stop. Null when the license has no end date, which is the
-                normal case for a rolling agreement, and when there is no license. A rolling license reports its turnover date
-                in renews_at instead.
-            renews_at (datetime.datetime | None | Unset): When a rolling license next renews. Null when the license has no
-                defined term, when expires sets a hard stop instead, and when there is no license.
-            notice_due_at (datetime.datetime | None | Unset): The last day notice of non-renewal can be given for the term
-                ending at renews_at. Null whenever renews_at is, and when the agreement records no notice period.
     """
 
     base: str
     name: str
+    summary: str
     license_type: LicensedDatasetLicenseType
+    starts: datetime.datetime | None
+    expires: datetime.datetime | None
+    renews_at: datetime.datetime | None
+    notice_due_at: datetime.datetime | None
     in_term: bool
     standing: LicensedDatasetStanding
     versions: list[LicensedVersion]
-    summary: str | Unset = UNSET
-    starts: datetime.datetime | None | Unset = UNSET
-    expires: datetime.datetime | None | Unset = UNSET
-    renews_at: datetime.datetime | None | Unset = UNSET
-    notice_due_at: datetime.datetime | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -62,7 +61,33 @@ class LicensedDataset:
 
         name = self.name
 
+        summary = self.summary
+
         license_type = self.license_type.value
+
+        starts: None | str
+        if isinstance(self.starts, datetime.datetime):
+            starts = self.starts.isoformat()
+        else:
+            starts = self.starts
+
+        expires: None | str
+        if isinstance(self.expires, datetime.datetime):
+            expires = self.expires.isoformat()
+        else:
+            expires = self.expires
+
+        renews_at: None | str
+        if isinstance(self.renews_at, datetime.datetime):
+            renews_at = self.renews_at.isoformat()
+        else:
+            renews_at = self.renews_at
+
+        notice_due_at: None | str
+        if isinstance(self.notice_due_at, datetime.datetime):
+            notice_due_at = self.notice_due_at.isoformat()
+        else:
+            notice_due_at = self.notice_due_at
 
         in_term = self.in_term
 
@@ -73,62 +98,23 @@ class LicensedDataset:
             versions_item = versions_item_data.to_dict()
             versions.append(versions_item)
 
-        summary = self.summary
-
-        starts: None | str | Unset
-        if isinstance(self.starts, Unset):
-            starts = UNSET
-        elif isinstance(self.starts, datetime.datetime):
-            starts = self.starts.isoformat()
-        else:
-            starts = self.starts
-
-        expires: None | str | Unset
-        if isinstance(self.expires, Unset):
-            expires = UNSET
-        elif isinstance(self.expires, datetime.datetime):
-            expires = self.expires.isoformat()
-        else:
-            expires = self.expires
-
-        renews_at: None | str | Unset
-        if isinstance(self.renews_at, Unset):
-            renews_at = UNSET
-        elif isinstance(self.renews_at, datetime.datetime):
-            renews_at = self.renews_at.isoformat()
-        else:
-            renews_at = self.renews_at
-
-        notice_due_at: None | str | Unset
-        if isinstance(self.notice_due_at, Unset):
-            notice_due_at = UNSET
-        elif isinstance(self.notice_due_at, datetime.datetime):
-            notice_due_at = self.notice_due_at.isoformat()
-        else:
-            notice_due_at = self.notice_due_at
-
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update(
             {
                 "base": base,
                 "name": name,
+                "summary": summary,
                 "license_type": license_type,
+                "starts": starts,
+                "expires": expires,
+                "renews_at": renews_at,
+                "notice_due_at": notice_due_at,
                 "in_term": in_term,
                 "standing": standing,
                 "versions": versions,
             }
         )
-        if summary is not UNSET:
-            field_dict["summary"] = summary
-        if starts is not UNSET:
-            field_dict["starts"] = starts
-        if expires is not UNSET:
-            field_dict["expires"] = expires
-        if renews_at is not UNSET:
-            field_dict["renews_at"] = renews_at
-        if notice_due_at is not UNSET:
-            field_dict["notice_due_at"] = notice_due_at
 
         return field_dict
 
@@ -141,7 +127,69 @@ class LicensedDataset:
 
         name = d.pop("name")
 
+        summary = d.pop("summary")
+
         license_type = LicensedDatasetLicenseType(d.pop("license_type"))
+
+        def _parse_starts(data: object) -> datetime.datetime | None:
+            if data is None:
+                return data
+            try:
+                if not isinstance(data, str):
+                    raise TypeError()
+                starts_type_0 = datetime.datetime.fromisoformat(data)
+
+                return starts_type_0
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(datetime.datetime | None, data)
+
+        starts = _parse_starts(d.pop("starts"))
+
+        def _parse_expires(data: object) -> datetime.datetime | None:
+            if data is None:
+                return data
+            try:
+                if not isinstance(data, str):
+                    raise TypeError()
+                expires_type_0 = datetime.datetime.fromisoformat(data)
+
+                return expires_type_0
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(datetime.datetime | None, data)
+
+        expires = _parse_expires(d.pop("expires"))
+
+        def _parse_renews_at(data: object) -> datetime.datetime | None:
+            if data is None:
+                return data
+            try:
+                if not isinstance(data, str):
+                    raise TypeError()
+                renews_at_type_0 = datetime.datetime.fromisoformat(data)
+
+                return renews_at_type_0
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(datetime.datetime | None, data)
+
+        renews_at = _parse_renews_at(d.pop("renews_at"))
+
+        def _parse_notice_due_at(data: object) -> datetime.datetime | None:
+            if data is None:
+                return data
+            try:
+                if not isinstance(data, str):
+                    raise TypeError()
+                notice_due_at_type_0 = datetime.datetime.fromisoformat(data)
+
+                return notice_due_at_type_0
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(datetime.datetime | None, data)
+
+        notice_due_at = _parse_notice_due_at(d.pop("notice_due_at"))
 
         in_term = d.pop("in_term")
 
@@ -154,88 +202,18 @@ class LicensedDataset:
 
             versions.append(versions_item)
 
-        summary = d.pop("summary", UNSET)
-
-        def _parse_starts(data: object) -> datetime.datetime | None | Unset:
-            if data is None:
-                return data
-            if isinstance(data, Unset):
-                return data
-            try:
-                if not isinstance(data, str):
-                    raise TypeError()
-                starts_type_0 = datetime.datetime.fromisoformat(data)
-
-                return starts_type_0
-            except (TypeError, ValueError, AttributeError, KeyError):
-                pass
-            return cast(datetime.datetime | None | Unset, data)
-
-        starts = _parse_starts(d.pop("starts", UNSET))
-
-        def _parse_expires(data: object) -> datetime.datetime | None | Unset:
-            if data is None:
-                return data
-            if isinstance(data, Unset):
-                return data
-            try:
-                if not isinstance(data, str):
-                    raise TypeError()
-                expires_type_0 = datetime.datetime.fromisoformat(data)
-
-                return expires_type_0
-            except (TypeError, ValueError, AttributeError, KeyError):
-                pass
-            return cast(datetime.datetime | None | Unset, data)
-
-        expires = _parse_expires(d.pop("expires", UNSET))
-
-        def _parse_renews_at(data: object) -> datetime.datetime | None | Unset:
-            if data is None:
-                return data
-            if isinstance(data, Unset):
-                return data
-            try:
-                if not isinstance(data, str):
-                    raise TypeError()
-                renews_at_type_0 = datetime.datetime.fromisoformat(data)
-
-                return renews_at_type_0
-            except (TypeError, ValueError, AttributeError, KeyError):
-                pass
-            return cast(datetime.datetime | None | Unset, data)
-
-        renews_at = _parse_renews_at(d.pop("renews_at", UNSET))
-
-        def _parse_notice_due_at(data: object) -> datetime.datetime | None | Unset:
-            if data is None:
-                return data
-            if isinstance(data, Unset):
-                return data
-            try:
-                if not isinstance(data, str):
-                    raise TypeError()
-                notice_due_at_type_0 = datetime.datetime.fromisoformat(data)
-
-                return notice_due_at_type_0
-            except (TypeError, ValueError, AttributeError, KeyError):
-                pass
-            return cast(datetime.datetime | None | Unset, data)
-
-        notice_due_at = _parse_notice_due_at(d.pop("notice_due_at", UNSET))
-
         licensed_dataset = cls(
             base=base,
             name=name,
-            license_type=license_type,
-            in_term=in_term,
-            standing=standing,
-            versions=versions,
             summary=summary,
+            license_type=license_type,
             starts=starts,
             expires=expires,
             renews_at=renews_at,
             notice_due_at=notice_due_at,
+            in_term=in_term,
+            standing=standing,
+            versions=versions,
         )
 
         licensed_dataset.additional_properties = d
