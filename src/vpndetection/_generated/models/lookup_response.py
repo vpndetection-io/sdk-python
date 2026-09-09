@@ -33,9 +33,9 @@ class LookupResponse:
             is_relay (bool | Unset): Whether the address is a privacy relay egress. Starter and above.
             is_tor (bool | Unset): Whether the address is a Tor node. Starter and above.
             is_cdn (bool | Unset): Whether the address belongs to a CDN. Starter and above.
-            is_resproxy (bool | Unset): Whether the address was seen in a residential proxy pool. Max only.
-            is_dcproxy (bool | Unset): Whether the address was seen in a datacenter proxy pool. Max only.
-            is_mobproxy (bool | Unset): Whether the address was seen in a mobile proxy pool. Max only.
+            is_resproxy (bool | Unset): Whether the address was seen in a residential proxy pool. Scale and above.
+            is_dcproxy (bool | Unset): Whether the address was seen in a datacenter proxy pool. Scale and above.
+            is_mobproxy (bool | Unset): Whether the address was seen in a mobile proxy pool. Scale and above.
             vpn (VpnDetail | Unset): What is known about the VPN attribution. Every key is present when the
                 object is populated, empty values included; the object is `{}` when
                 `is_vpn` is false. `confidence` and `method` are max only, so on a lower
