@@ -35,7 +35,13 @@ class LicensedDataset:
                 download and checksum endpoints take.
             summary (str | Unset):
             starts (datetime.datetime | None | Unset):
-            expires (datetime.datetime | None | Unset): Null when the license does not expire.
+            expires (datetime.datetime | None | Unset): A hard stop. Null when the license has no end date, which is the
+                normal case for a rolling agreement, and when there is no license. A rolling license reports its turnover date
+                in renews_at instead.
+            renews_at (datetime.datetime | None | Unset): When a rolling license next renews. Null when the license has no
+                defined term, when expires sets a hard stop instead, and when there is no license.
+            notice_due_at (datetime.datetime | None | Unset): The last day notice of non-renewal can be given for the term
+                ending at renews_at. Null whenever renews_at is, and when the agreement records no notice period.
     """
 
     base: str
@@ -47,6 +53,8 @@ class LicensedDataset:
     summary: str | Unset = UNSET
     starts: datetime.datetime | None | Unset = UNSET
     expires: datetime.datetime | None | Unset = UNSET
+    renews_at: datetime.datetime | None | Unset = UNSET
+    notice_due_at: datetime.datetime | None | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -83,6 +91,22 @@ class LicensedDataset:
         else:
             expires = self.expires
 
+        renews_at: None | str | Unset
+        if isinstance(self.renews_at, Unset):
+            renews_at = UNSET
+        elif isinstance(self.renews_at, datetime.datetime):
+            renews_at = self.renews_at.isoformat()
+        else:
+            renews_at = self.renews_at
+
+        notice_due_at: None | str | Unset
+        if isinstance(self.notice_due_at, Unset):
+            notice_due_at = UNSET
+        elif isinstance(self.notice_due_at, datetime.datetime):
+            notice_due_at = self.notice_due_at.isoformat()
+        else:
+            notice_due_at = self.notice_due_at
+
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update(
@@ -101,6 +125,10 @@ class LicensedDataset:
             field_dict["starts"] = starts
         if expires is not UNSET:
             field_dict["expires"] = expires
+        if renews_at is not UNSET:
+            field_dict["renews_at"] = renews_at
+        if notice_due_at is not UNSET:
+            field_dict["notice_due_at"] = notice_due_at
 
         return field_dict
 
@@ -162,6 +190,40 @@ class LicensedDataset:
 
         expires = _parse_expires(d.pop("expires", UNSET))
 
+        def _parse_renews_at(data: object) -> datetime.datetime | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, str):
+                    raise TypeError()
+                renews_at_type_0 = datetime.datetime.fromisoformat(data)
+
+                return renews_at_type_0
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(datetime.datetime | None | Unset, data)
+
+        renews_at = _parse_renews_at(d.pop("renews_at", UNSET))
+
+        def _parse_notice_due_at(data: object) -> datetime.datetime | None | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            try:
+                if not isinstance(data, str):
+                    raise TypeError()
+                notice_due_at_type_0 = datetime.datetime.fromisoformat(data)
+
+                return notice_due_at_type_0
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(datetime.datetime | None | Unset, data)
+
+        notice_due_at = _parse_notice_due_at(d.pop("notice_due_at", UNSET))
+
         licensed_dataset = cls(
             base=base,
             name=name,
@@ -172,6 +234,8 @@ class LicensedDataset:
             summary=summary,
             starts=starts,
             expires=expires,
+            renews_at=renews_at,
+            notice_due_at=notice_due_at,
         )
 
         licensed_dataset.additional_properties = d
