@@ -24,7 +24,16 @@ class VpnDetail:
             last_seen (datetime.date | Unset): The most recent date this address was observed as VPN infrastructure.
                 Example: 2026-09-02.
             confidence (str | Unset): How strongly the attribution is supported. Max only. Example: high.
-            method (str | Unset): How the address was attributed to the provider. Max only. Example: openvpn_cert.
+            method (str | Unset): The class of evidence the attribution rests on, one of four values.
+                Max only.
+
+                `scan` - we spoke the VPN protocol to the address ourselves and got a
+                valid server response. `scrape` - the operator published the address
+                through its own API, client or configuration. `registry` - public
+                registration or naming records attribute it to the operator.
+                `infer` - the address was extrapolated from confirmed neighbours in
+                the same block.
+                 Example: scan.
     """
 
     provider: str | Unset = UNSET

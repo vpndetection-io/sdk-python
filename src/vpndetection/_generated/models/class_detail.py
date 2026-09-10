@@ -19,7 +19,7 @@ class ClassDetail:
     when its flag is false.
 
         Attributes:
-            provider (str | Unset): The provider, or an empty string where the dataset has none. Example: M247.
+            provider (str | Unset): The provider, or an empty string where the dataset has none. Example: m247.
             confidence (str | Unset): How strongly the classification is supported. Example: high.
             last_seen (datetime.date | Unset): The most recent date this address was observed in this dataset. Example:
                 2026-09-02.
