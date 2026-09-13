@@ -20,7 +20,7 @@ import staging
 import tiers
 from staging import Fact
 
-from vpndetection import DatasetMetadata, Format, LicensedDataset, VPNDetection, VPNDetectionError
+from vpndetection import Database, DatabaseMetadata, Format, VPNDetection, VPNDetectionError
 
 # The max organization licenses `cdn_ip` for license_type, and at ~10 KB it is the only
 # dataset small enough to move in CI.
@@ -67,7 +67,7 @@ def test_the_licensed_catalog_answers_the_schema_the_client_was_generated_from()
     print(f"==> licensed: {', '.join(ids)}")
 
 
-def assert_no_undocumented_keys(dataset: LicensedDataset) -> None:
+def assert_no_undocumented_keys(dataset: Database) -> None:
     """The keys the payload carried that the client has no home for.
 
     A typed decode cannot show these: an undocumented field disappears silently. The
@@ -219,7 +219,7 @@ def transferred() -> Transfer:
     return _transfer
 
 
-def published_size(meta: DatasetMetadata) -> int:
+def published_size(meta: DatabaseMetadata) -> int:
     sizes = getattr(meta.size, "additional_properties", None)
     assert sizes, f"{DATASET_ID} publishes no size to check a transfer against"
     assert FORMAT in sizes, f"{DATASET_ID} publishes no {FORMAT} size to check a transfer against"

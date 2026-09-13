@@ -20,18 +20,19 @@ from vpndetection.middleware import (
     Core,
     Options,
     RequestView,
+    Selectors,
     bind_selectors,
     matches,
     missing_members,
 )
-from vpndetection.models import to_result
+from vpndetection.models import Result, to_result
 
 CORPUS = json.loads((pathlib.Path(__file__).parent.parent / "testdata/testdata.json").read_text())
 MIDDLEWARE = CORPUS["middleware"]
 PUBLIC_IP = "45.83.91.1"
 
 
-def _result_for(case: dict[str, Any]):
+def _result_for(case: dict[str, Any]) -> Result:
     if "bogon" in case:
         # Answered locally, so this needs no transport and pins the synthesized shape
         # rather than a fixture's idea of it.
@@ -62,7 +63,7 @@ class Req:
         self.ip = ip
 
 
-SELECTORS = bind_selectors(
+SELECTORS: Selectors[Req] = bind_selectors(
     lambda request: RequestView(
         header=lambda name: request.headers.get(name.lower()),
         framework_ip=lambda: request.ip,
@@ -163,7 +164,7 @@ def test_selectors_read_what_they_say_they_read() -> None:
 
 def test_an_unresolvable_address_warns_and_does_not_block() -> None:
     warnings: list[str] = []
-    core = Core(
+    core: Core[Req] = Core(
         Options(block_condition={"is_vpn": True}, on_warn=warnings.append),
         lambda _: None,
     )
