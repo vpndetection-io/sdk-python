@@ -7,7 +7,9 @@ from typing import TYPE_CHECKING, Any, Self, TypeVar, cast
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
-from ..models.license_type import LicenseType
+from ..models.database_license_type_type_1 import DatabaseLicenseTypeType1
+from ..models.database_license_type_type_2_type_1 import DatabaseLicenseTypeType2Type1
+from ..models.database_license_type_type_3_type_1 import DatabaseLicenseTypeType3Type1
 from ..models.standing import Standing
 
 if TYPE_CHECKING:
@@ -27,7 +29,10 @@ class Database:
             base (str): The database family, e.g. `vpn_ip`. What the license is held against. Example: vpn_ip.
             name (str):  Example: VPN IP.
             summary (str):
-            license_type (LicenseType): What a license permits you to do with the data.
+            license_type (DatabaseLicenseTypeType1 | DatabaseLicenseTypeType2Type1 | DatabaseLicenseTypeType3Type1 | None):
+                What a license permits you to do with the data. Null for a family
+                you hold no license for, which is every one with standing
+                `unlicensed`.
             starts (datetime.datetime | None):
             expires (datetime.datetime | None): A hard stop. Null when the license has no end date, which is the normal case
                 for a rolling agreement, and when there is no license. A rolling license reports its turnover date in renews_at
@@ -47,7 +52,12 @@ class Database:
     base: str
     name: str
     summary: str
-    license_type: LicenseType
+    license_type: (
+        DatabaseLicenseTypeType1
+        | DatabaseLicenseTypeType2Type1
+        | DatabaseLicenseTypeType3Type1
+        | None
+    )
     starts: datetime.datetime | None
     expires: datetime.datetime | None
     renews_at: datetime.datetime | None
@@ -64,7 +74,15 @@ class Database:
 
         summary = self.summary
 
-        license_type = self.license_type.value
+        license_type: None | str
+        if (
+            isinstance(self.license_type, DatabaseLicenseTypeType1)
+            or isinstance(self.license_type, DatabaseLicenseTypeType2Type1)
+            or isinstance(self.license_type, DatabaseLicenseTypeType3Type1)
+        ):
+            license_type = self.license_type.value
+        else:
+            license_type = self.license_type
 
         starts: None | str
         if isinstance(self.starts, datetime.datetime):
@@ -130,7 +148,49 @@ class Database:
 
         summary = d.pop("summary")
 
-        license_type = LicenseType(d.pop("license_type"))
+        def _parse_license_type(
+            data: object,
+        ) -> (
+            DatabaseLicenseTypeType1
+            | DatabaseLicenseTypeType2Type1
+            | DatabaseLicenseTypeType3Type1
+            | None
+        ):
+            if data is None:
+                return data
+            try:
+                if not isinstance(data, str):
+                    raise TypeError()
+                license_type_type_1 = DatabaseLicenseTypeType1(data)
+
+                return license_type_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            try:
+                if not isinstance(data, str):
+                    raise TypeError()
+                license_type_type_2_type_1 = DatabaseLicenseTypeType2Type1(data)
+
+                return license_type_type_2_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            try:
+                if not isinstance(data, str):
+                    raise TypeError()
+                license_type_type_3_type_1 = DatabaseLicenseTypeType3Type1(data)
+
+                return license_type_type_3_type_1
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(
+                DatabaseLicenseTypeType1
+                | DatabaseLicenseTypeType2Type1
+                | DatabaseLicenseTypeType3Type1
+                | None,
+                data,
+            )
+
+        license_type = _parse_license_type(d.pop("license_type"))
 
         def _parse_starts(data: object) -> datetime.datetime | None:
             if data is None:
