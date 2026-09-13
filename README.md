@@ -67,6 +67,28 @@ async def main():
 asyncio.run(main())
 ```
 
+### Your own address
+
+```python
+result = client.my_ip()
+print(result.ip)   # the address we saw this call come from
+```
+
+Same answer `lookup` would give for that address, and the same cost against your allowance. It is deliberately not cached: which address you are is the whole question, and a machine that moves between networks would otherwise be told where it used to be.
+
+### Your plan and usage
+
+```python
+acct = client.my_account()
+print(acct.plan.key)          # max
+print(acct.usage.requests)    # 580
+print(acct.usage.window_end)  # when the allowance resets
+```
+
+Usage counts against the anniversary of your subscription, not the calendar month and not the billing period, and it is the same number a lookup is gated on. `hard_limit` is `None` on an uncapped plan, which is not the same as zero.
+
+Both are on the async client too: `await client.my_ip()` and `await client.my_account()`.
+
 ### Batch lookup
 
 You can do batch lookups with a list, which parallelizes requests for you efficiently:
