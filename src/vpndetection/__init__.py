@@ -15,12 +15,12 @@ from ._generated.models.account_me import AccountMe
 from ._generated.models.account_plan import AccountPlan
 from ._generated.models.account_plan_tier import AccountPlanTier
 from ._generated.models.account_usage import AccountUsage
+from ._generated.models.database import Database
 from ._generated.models.database_format_size import DatabaseFormatSize
 from ._generated.models.database_metadata import DatabaseMetadata
 from ._generated.models.database_metadata_column import DatabaseMetadataColumn
-from ._generated.models.download import Download
-from ._generated.models.database import Database
 from ._generated.models.database_version import DatabaseVersion
+from ._generated.models.download import Download
 from .aio import AsyncDatabaseApi, AsyncVPNDetection
 from .bogon import is_bogon
 from .client import DatabaseApi, VPNDetection
@@ -39,16 +39,16 @@ __all__ = [
     "AsyncDatabaseApi",
     "AsyncVPNDetection",
     "ClassDetail",
+    "Database",
     "DatabaseApi",
     "DatabaseFormatSize",
     "DatabaseMetadata",
     "DatabaseMetadataColumn",
+    "DatabaseVersion",
     "Download",
     "ErrorKind",
     "Flag",
     "Format",
-    "Database",
-    "DatabaseVersion",
     "ProxyDetail",
     "Result",
     "VPNDetection",

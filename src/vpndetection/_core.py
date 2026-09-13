@@ -15,8 +15,8 @@ import httpx
 from cachetools import TTLCache
 
 from ._generated.client import AuthenticatedClient, Client
-from ._generated.models.download import Download
 from ._generated.models.database import Database
+from ._generated.models.download import Download
 from ._generated.types import Response
 from .errors import VPNDetectionError, error_from_response
 from .models import Result

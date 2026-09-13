@@ -77,6 +77,10 @@ asyncio_mode = "auto"
 # client and the hand-written layer are formatted to the same width.
 [tool.ruff]
 line-length = 100
+# Generated from spec/openapi.yaml, same as the mypy override below: it is checked by
+# being regenerated, so a lint fix here would be undone by the next generate.sh and a
+# newer ruff turning a rule on would fail the build for code nobody here writes.
+extend-exclude = ["src/vpndetection/_generated"]
 
 [tool.mypy]
 python_version = "3.11"
