@@ -1,39 +1,40 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, Self, TypeVar
+from typing import Any, Self, TypeVar, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
-if TYPE_CHECKING:
-    from ..models.database import Database
+from ..models.database_format_size_format import DatabaseFormatSizeFormat
 
-
-T = TypeVar("T", bound="ListDatabasesResponse200")
+T = TypeVar("T", bound="DatabaseFormatSize")
 
 
 @_attrs_define
-class ListDatabasesResponse200:
+class DatabaseFormatSize:
     """
     Attributes:
-        databases (list[Database]):
+        format_ (DatabaseFormatSizeFormat):
+        bytes_ (int | None): Size of the published file, or null when it has not been published yet
     """
 
-    databases: list[Database]
+    format_: DatabaseFormatSizeFormat
+    bytes_: int | None
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        databases = []
-        for databases_item_data in self.databases:
-            databases_item = databases_item_data.to_dict()
-            databases.append(databases_item)
+        format_ = self.format_.value
+
+        bytes_: int | None
+        bytes_ = self.bytes_
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update(
             {
-                "databases": databases,
+                "format": format_,
+                "bytes": bytes_,
             }
         )
 
@@ -41,22 +42,23 @@ class ListDatabasesResponse200:
 
     @classmethod
     def from_dict(cls, src_dict: Mapping[str, Any]) -> Self:
-        from ..models.database import Database
-
         d = dict(src_dict)
-        databases = []
-        _databases = d.pop("databases")
-        for databases_item_data in _databases:
-            databases_item = Database.from_dict(databases_item_data)
+        format_ = DatabaseFormatSizeFormat(d.pop("format"))
 
-            databases.append(databases_item)
+        def _parse_bytes_(data: object) -> int | None:
+            if data is None:
+                return data
+            return cast(int | None, data)
 
-        list_databases_response_200 = cls(
-            databases=databases,
+        bytes_ = _parse_bytes_(d.pop("bytes"))
+
+        database_format_size = cls(
+            format_=format_,
+            bytes_=bytes_,
         )
 
-        list_databases_response_200.additional_properties = d
-        return list_databases_response_200
+        database_format_size.additional_properties = d
+        return database_format_size
 
     @property
     def additional_keys(self) -> list[str]:

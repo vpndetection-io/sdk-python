@@ -27,7 +27,7 @@ from ._core import (
     build_client,
     build_transfer_client,
     checksums_of,
-    datasets_of,
+    databases_of,
     downloads_of,
     parse_body,
     part_file,
@@ -47,10 +47,10 @@ from ._generated.api.database import (
 from ._generated.api.lookup import lookup_ip
 from ._generated.client import AuthenticatedClient
 from ._generated.models.database_checksum_format import DatabaseChecksumFormat
-from ._generated.models.dataset_metadata import DatasetMetadata
+from ._generated.models.database_metadata import DatabaseMetadata
 from ._generated.models.download import Download
 from ._generated.models.download_database_format import DownloadDatabaseFormat
-from ._generated.models.licensed_dataset import LicensedDataset
+from ._generated.models.database import Database
 from .bogon import bogon_result, is_bogon
 from .errors import VPNDetectionError
 from .models import Format, Result, to_result
@@ -200,21 +200,21 @@ class DatabaseApi:
     def __init__(self, owner: VPNDetection) -> None:
         self._owner = owner
 
-    def list(self) -> builtins.list[LicensedDataset]:
+    def list(self) -> builtins.list[Database]:
         """Every dataset your organization is licensed to download."""
 
-        def call() -> builtins.list[LicensedDataset]:
+        def call() -> builtins.list[Database]:
             res = send(lambda: list_databases.sync_detailed(client=self._client))
-            return parse_body(unwrap(res), datasets_of)
+            return parse_body(unwrap(res), databases_of)
 
         return self._retrying(call)
 
-    def metadata(self, dataset_id: str) -> DatasetMetadata:
+    def metadata(self, dataset_id: str) -> DatabaseMetadata:
         """What is inside one dataset: schema, samples, row count and sizes."""
 
-        def call() -> DatasetMetadata:
+        def call() -> DatabaseMetadata:
             res = send(lambda: database_metadata.sync_detailed(client=self._client, id=dataset_id))
-            return parse_body(unwrap(res), DatasetMetadata.from_dict)
+            return parse_body(unwrap(res), DatabaseMetadata.from_dict)
 
         return self._retrying(call)
 

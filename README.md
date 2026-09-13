@@ -154,10 +154,10 @@ Note that `rate_limited` and `quota_exceeded` both arrive as HTTP 429 and are no
 
 ### Database downloads
 
-If your key carries the `db.download` scope, the licensed datasets are available through `client.database`. `list` answers dataset families, and the ids the other calls take come from each family's `versions`. There are three ways to get a database: the time-limited link, the bytes, or straight to a file, which streams so nothing bigger than a chunk is ever held in memory:
+If your key carries the `db.download` scope, the licensed databases are available through `client.database`. `list` answers database families, and the ids the other calls take come from each family's `versions`. There are three ways to get a database: the time-limited link, the bytes, or straight to a file, which streams so nothing bigger than a chunk is ever held in memory:
 
 ```python
-datasets = client.database.list()
+databases = client.database.list()
 
 url = client.database.download_url("vpn_ip_extended_v1", "mmdb")
 raw = client.database.download_bytes("cdn_ip_v1", "csvgz")

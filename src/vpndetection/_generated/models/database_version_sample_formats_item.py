@@ -1,7 +1,7 @@
 from enum import StrEnum
 
 
-class DatasetFormatSizeFormat(StrEnum):
+class DatabaseVersionSampleFormatsItem(StrEnum):
     CSVGZ = "csvgz"
     MMDB = "mmdb"
 

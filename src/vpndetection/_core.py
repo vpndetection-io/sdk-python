@@ -16,7 +16,7 @@ from cachetools import TTLCache
 
 from ._generated.client import AuthenticatedClient, Client
 from ._generated.models.download import Download
-from ._generated.models.licensed_dataset import LicensedDataset
+from ._generated.models.database import Database
 from ._generated.types import Response
 from .errors import VPNDetectionError, error_from_response
 from .models import Result
@@ -236,8 +236,8 @@ def redirect_location(res: Response[Any]) -> str:
     )
 
 
-def datasets_of(body: dict[str, Any]) -> list[LicensedDataset]:
-    return [LicensedDataset.from_dict(d) for d in body["datasets"]]
+def databases_of(body: dict[str, Any]) -> list[Database]:
+    return [Database.from_dict(d) for d in body["databases"]]
 
 
 def downloads_of(body: dict[str, Any]) -> list[Download]:

@@ -31,7 +31,7 @@ from ._core import (
     build_async_transfer_client,
     build_client,
     checksums_of,
-    datasets_of,
+    databases_of,
     downloads_of,
     parse_body,
     part_file,
@@ -51,10 +51,10 @@ from ._generated.api.database import (
 from ._generated.api.lookup import lookup_ip
 from ._generated.client import AuthenticatedClient
 from ._generated.models.database_checksum_format import DatabaseChecksumFormat
-from ._generated.models.dataset_metadata import DatasetMetadata
+from ._generated.models.database_metadata import DatabaseMetadata
 from ._generated.models.download import Download
 from ._generated.models.download_database_format import DownloadDatabaseFormat
-from ._generated.models.licensed_dataset import LicensedDataset
+from ._generated.models.database import Database
 from .bogon import bogon_result, is_bogon
 from .errors import VPNDetectionError
 from .models import Format, Result, to_result
@@ -198,23 +198,23 @@ class AsyncDatabaseApi:
     def __init__(self, owner: AsyncVPNDetection) -> None:
         self._owner = owner
 
-    async def list(self) -> builtins.list[LicensedDataset]:
+    async def list(self) -> builtins.list[Database]:
         """Every dataset your organization is licensed to download."""
 
-        async def call() -> builtins.list[LicensedDataset]:
+        async def call() -> builtins.list[Database]:
             res = await send_async(lambda: list_databases.asyncio_detailed(client=self._client))
-            return parse_body(unwrap(res), datasets_of)
+            return parse_body(unwrap(res), databases_of)
 
         return await self._retrying(call)
 
-    async def metadata(self, dataset_id: str) -> DatasetMetadata:
+    async def metadata(self, dataset_id: str) -> DatabaseMetadata:
         """What is inside one dataset: schema, samples, row count and sizes."""
 
-        async def call() -> DatasetMetadata:
+        async def call() -> DatabaseMetadata:
             res = await send_async(
                 lambda: database_metadata.asyncio_detailed(client=self._client, id=dataset_id)
             )
-            return parse_body(unwrap(res), DatasetMetadata.from_dict)
+            return parse_body(unwrap(res), DatabaseMetadata.from_dict)
 
         return await self._retrying(call)
 

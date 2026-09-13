@@ -7,9 +7,7 @@ from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
 if TYPE_CHECKING:
-    from ..models.database_checksum_response_200_checksums import (
-        DatabaseChecksumResponse200Checksums,
-    )
+    from ..models.db_checksums import DbChecksums
 
 
 T = TypeVar("T", bound="DatabaseChecksumResponse200")
@@ -21,12 +19,12 @@ class DatabaseChecksumResponse200:
     Attributes:
         id (str):
         format_ (str):
-        checksums (DatabaseChecksumResponse200Checksums):
+        checksums (DbChecksums): The published digests for one database file.
     """
 
     id: str
     format_: str
-    checksums: DatabaseChecksumResponse200Checksums
+    checksums: DbChecksums
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -50,16 +48,14 @@ class DatabaseChecksumResponse200:
 
     @classmethod
     def from_dict(cls, src_dict: Mapping[str, Any]) -> Self:
-        from ..models.database_checksum_response_200_checksums import (
-            DatabaseChecksumResponse200Checksums,
-        )
+        from ..models.db_checksums import DbChecksums
 
         d = dict(src_dict)
         id = d.pop("id")
 
         format_ = d.pop("format")
 
-        checksums = DatabaseChecksumResponse200Checksums.from_dict(d.pop("checksums"))
+        checksums = DbChecksums.from_dict(d.pop("checksums"))
 
         database_checksum_response_200 = cls(
             id=id,

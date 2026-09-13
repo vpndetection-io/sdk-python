@@ -10,27 +10,27 @@ from attrs import field as _attrs_field
 from ..types import UNSET, Unset
 
 if TYPE_CHECKING:
-    from ..models.dataset_metadata_sample import DatasetMetadataSample
-    from ..models.dataset_metadata_sample_size import DatasetMetadataSampleSize
-    from ..models.dataset_metadata_schema import DatasetMetadataSchema
-    from ..models.dataset_metadata_size import DatasetMetadataSize
+    from ..models.database_metadata_sample import DatabaseMetadataSample
+    from ..models.database_metadata_sample_size import DatabaseMetadataSampleSize
+    from ..models.database_metadata_schema import DatabaseMetadataSchema
+    from ..models.database_metadata_size import DatabaseMetadataSize
 
 
-T = TypeVar("T", bound="DatasetMetadata")
+T = TypeVar("T", bound="DatabaseMetadata")
 
 
 @_attrs_define
-class DatasetMetadata:
+class DatabaseMetadata:
     """
     Attributes:
         id (str):
         updated (datetime.date):
         entries (int): Row count in the current build
-        schema (DatasetMetadataSchema): Columns, keyed by format
+        schema (DatabaseMetadataSchema): Columns, keyed by format
         update_freq (str | Unset): How often a new build is published
-        sample (DatasetMetadataSample | Unset): A few real rows, keyed by format
-        size (DatasetMetadataSize | Unset): Bytes per format
-        sample_size (DatasetMetadataSampleSize | Unset): Bytes per format of the evaluation sample, where one is
+        sample (DatabaseMetadataSample | Unset): A few real rows, keyed by format
+        size (DatabaseMetadataSize | Unset): Bytes per format
+        sample_size (DatabaseMetadataSampleSize | Unset): Bytes per format of the evaluation sample, where one is
             published
         sample_entries (int | Unset): Row count in the evaluation sample
     """
@@ -38,11 +38,11 @@ class DatasetMetadata:
     id: str
     updated: datetime.date
     entries: int
-    schema: DatasetMetadataSchema
+    schema: DatabaseMetadataSchema
     update_freq: str | Unset = UNSET
-    sample: DatasetMetadataSample | Unset = UNSET
-    size: DatasetMetadataSize | Unset = UNSET
-    sample_size: DatasetMetadataSampleSize | Unset = UNSET
+    sample: DatabaseMetadataSample | Unset = UNSET
+    size: DatabaseMetadataSize | Unset = UNSET
+    sample_size: DatabaseMetadataSampleSize | Unset = UNSET
     sample_entries: int | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -96,10 +96,12 @@ class DatasetMetadata:
 
     @classmethod
     def from_dict(cls, src_dict: Mapping[str, Any]) -> Self:
-        from ..models.dataset_metadata_sample import DatasetMetadataSample
-        from ..models.dataset_metadata_sample_size import DatasetMetadataSampleSize
-        from ..models.dataset_metadata_schema import DatasetMetadataSchema
-        from ..models.dataset_metadata_size import DatasetMetadataSize
+        from ..models.database_metadata_sample import DatabaseMetadataSample
+        from ..models.database_metadata_sample_size import (
+            DatabaseMetadataSampleSize,
+        )
+        from ..models.database_metadata_schema import DatabaseMetadataSchema
+        from ..models.database_metadata_size import DatabaseMetadataSize
 
         d = dict(src_dict)
         id = d.pop("id")
@@ -108,34 +110,34 @@ class DatasetMetadata:
 
         entries = d.pop("entries")
 
-        schema = DatasetMetadataSchema.from_dict(d.pop("schema"))
+        schema = DatabaseMetadataSchema.from_dict(d.pop("schema"))
 
         update_freq = d.pop("update_freq", UNSET)
 
         _sample = d.pop("sample", UNSET)
-        sample: DatasetMetadataSample | Unset
+        sample: DatabaseMetadataSample | Unset
         if isinstance(_sample, Unset):
             sample = UNSET
         else:
-            sample = DatasetMetadataSample.from_dict(_sample)
+            sample = DatabaseMetadataSample.from_dict(_sample)
 
         _size = d.pop("size", UNSET)
-        size: DatasetMetadataSize | Unset
+        size: DatabaseMetadataSize | Unset
         if isinstance(_size, Unset):
             size = UNSET
         else:
-            size = DatasetMetadataSize.from_dict(_size)
+            size = DatabaseMetadataSize.from_dict(_size)
 
         _sample_size = d.pop("sample_size", UNSET)
-        sample_size: DatasetMetadataSampleSize | Unset
+        sample_size: DatabaseMetadataSampleSize | Unset
         if isinstance(_sample_size, Unset):
             sample_size = UNSET
         else:
-            sample_size = DatasetMetadataSampleSize.from_dict(_sample_size)
+            sample_size = DatabaseMetadataSampleSize.from_dict(_sample_size)
 
         sample_entries = d.pop("sample_entries", UNSET)
 
-        dataset_metadata = cls(
+        database_metadata = cls(
             id=id,
             updated=updated,
             entries=entries,
@@ -147,8 +149,8 @@ class DatasetMetadata:
             sample_entries=sample_entries,
         )
 
-        dataset_metadata.additional_properties = d
-        return dataset_metadata
+        database_metadata.additional_properties = d
+        return database_metadata
 
     @property
     def additional_keys(self) -> list[str]:

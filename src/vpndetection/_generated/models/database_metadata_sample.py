@@ -7,18 +7,20 @@ from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
 if TYPE_CHECKING:
-    from ..models.dataset_metadata_column import DatasetMetadataColumn
+    from ..models.database_metadata_sample_additional_property_item import (
+        DatabaseMetadataSampleAdditionalPropertyItem,
+    )
 
 
-T = TypeVar("T", bound="DatasetMetadataSchema")
+T = TypeVar("T", bound="DatabaseMetadataSample")
 
 
 @_attrs_define
-class DatasetMetadataSchema:
-    """Columns, keyed by format"""
+class DatabaseMetadataSample:
+    """A few real rows, keyed by format"""
 
-    additional_properties: dict[str, list[DatasetMetadataColumn]] = _attrs_field(
-        init=False, factory=dict
+    additional_properties: dict[str, list[DatabaseMetadataSampleAdditionalPropertyItem]] = (
+        _attrs_field(init=False, factory=dict)
     )
 
     def to_dict(self) -> dict[str, Any]:
@@ -34,17 +36,19 @@ class DatasetMetadataSchema:
 
     @classmethod
     def from_dict(cls, src_dict: Mapping[str, Any]) -> Self:
-        from ..models.dataset_metadata_column import DatasetMetadataColumn
+        from ..models.database_metadata_sample_additional_property_item import (
+            DatabaseMetadataSampleAdditionalPropertyItem,
+        )
 
         d = dict(src_dict)
-        dataset_metadata_schema = cls()
+        database_metadata_sample = cls()
 
         additional_properties = {}
         for prop_name, prop_dict in d.items():
             additional_property = []
             _additional_property = prop_dict
             for additional_property_item_data in _additional_property:
-                additional_property_item = DatasetMetadataColumn.from_dict(
+                additional_property_item = DatabaseMetadataSampleAdditionalPropertyItem.from_dict(
                     additional_property_item_data
                 )
 
@@ -52,17 +56,19 @@ class DatasetMetadataSchema:
 
             additional_properties[prop_name] = additional_property
 
-        dataset_metadata_schema.additional_properties = additional_properties
-        return dataset_metadata_schema
+        database_metadata_sample.additional_properties = additional_properties
+        return database_metadata_sample
 
     @property
     def additional_keys(self) -> list[str]:
         return list(self.additional_properties.keys())
 
-    def __getitem__(self, key: str) -> list[DatasetMetadataColumn]:
+    def __getitem__(self, key: str) -> list[DatabaseMetadataSampleAdditionalPropertyItem]:
         return self.additional_properties[key]
 
-    def __setitem__(self, key: str, value: list[DatasetMetadataColumn]) -> None:
+    def __setitem__(
+        self, key: str, value: list[DatabaseMetadataSampleAdditionalPropertyItem]
+    ) -> None:
         self.additional_properties[key] = value
 
     def __delitem__(self, key: str) -> None:

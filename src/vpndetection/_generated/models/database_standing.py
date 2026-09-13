@@ -1,7 +1,7 @@
 from enum import StrEnum
 
 
-class LicensedDatasetStanding(StrEnum):
+class DatabaseStanding(StrEnum):
     EXPIRED = "expired"
     LICENSED = "licensed"
     UNLICENSED = "unlicensed"

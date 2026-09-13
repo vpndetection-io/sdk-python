@@ -1,64 +1,67 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any, Self, TypeVar, cast
+from typing import Any, Self, TypeVar
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
-from ..models.dataset_format_size_format import DatasetFormatSizeFormat
+from ..types import UNSET, Unset
 
-T = TypeVar("T", bound="DatasetFormatSize")
+T = TypeVar("T", bound="DatabaseMetadataColumn")
 
 
 @_attrs_define
-class DatasetFormatSize:
+class DatabaseMetadataColumn:
     """
     Attributes:
-        format_ (DatasetFormatSizeFormat):
-        bytes_ (int | None): Size of the published file, or null when it has not been published yet
+        name (str):
+        type_ (str):
+        description (str | Unset):
     """
 
-    format_: DatasetFormatSizeFormat
-    bytes_: int | None
+    name: str
+    type_: str
+    description: str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        format_ = self.format_.value
+        name = self.name
 
-        bytes_: int | None
-        bytes_ = self.bytes_
+        type_ = self.type_
+
+        description = self.description
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update(
             {
-                "format": format_,
-                "bytes": bytes_,
+                "name": name,
+                "type": type_,
             }
         )
+        if description is not UNSET:
+            field_dict["description"] = description
 
         return field_dict
 
     @classmethod
     def from_dict(cls, src_dict: Mapping[str, Any]) -> Self:
         d = dict(src_dict)
-        format_ = DatasetFormatSizeFormat(d.pop("format"))
+        name = d.pop("name")
 
-        def _parse_bytes_(data: object) -> int | None:
-            if data is None:
-                return data
-            return cast(int | None, data)
+        type_ = d.pop("type")
 
-        bytes_ = _parse_bytes_(d.pop("bytes"))
+        description = d.pop("description", UNSET)
 
-        dataset_format_size = cls(
-            format_=format_,
-            bytes_=bytes_,
+        database_metadata_column = cls(
+            name=name,
+            type_=type_,
+            description=description,
         )
 
-        dataset_format_size.additional_properties = d
-        return dataset_format_size
+        database_metadata_column.additional_properties = d
+        return database_metadata_column
 
     @property
     def additional_keys(self) -> list[str]:

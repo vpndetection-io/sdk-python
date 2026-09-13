@@ -6,12 +6,12 @@ from typing import Any, Self, TypeVar
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
-T = TypeVar("T", bound="DatasetMetadataSize")
+T = TypeVar("T", bound="DatabaseMetadataSampleSize")
 
 
 @_attrs_define
-class DatasetMetadataSize:
-    """Bytes per format"""
+class DatabaseMetadataSampleSize:
+    """Bytes per format of the evaluation sample, where one is published"""
 
     additional_properties: dict[str, int] = _attrs_field(init=False, factory=dict)
 
@@ -25,10 +25,10 @@ class DatasetMetadataSize:
     @classmethod
     def from_dict(cls, src_dict: Mapping[str, Any]) -> Self:
         d = dict(src_dict)
-        dataset_metadata_size = cls()
+        database_metadata_sample_size = cls()
 
-        dataset_metadata_size.additional_properties = d
-        return dataset_metadata_size
+        database_metadata_sample_size.additional_properties = d
+        return database_metadata_sample_size
 
     @property
     def additional_keys(self) -> list[str]:
