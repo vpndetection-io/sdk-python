@@ -10,6 +10,11 @@ for batching, caching and the licensed dataset downloads.
 """
 
 from ._core import DEFAULT_BASE_URL
+from ._generated.models.account_apikey import AccountApikey
+from ._generated.models.account_me import AccountMe
+from ._generated.models.account_plan import AccountPlan
+from ._generated.models.account_plan_tier import AccountPlanTier
+from ._generated.models.account_usage import AccountUsage
 from ._generated.models.database_format_size import DatabaseFormatSize
 from ._generated.models.database_metadata import DatabaseMetadata
 from ._generated.models.database_metadata_column import DatabaseMetadataColumn
@@ -26,6 +31,11 @@ __version__ = "4.0.0"
 
 __all__ = [
     "DEFAULT_BASE_URL",
+    "AccountApikey",
+    "AccountMe",
+    "AccountPlan",
+    "AccountPlanTier",
+    "AccountUsage",
     "AsyncDatabaseApi",
     "AsyncVPNDetection",
     "ClassDetail",

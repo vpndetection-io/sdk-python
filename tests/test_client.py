@@ -158,3 +158,80 @@ def test_a_200_missing_a_required_key_is_a_typed_error_not_a_traceback(
 
     assert caught.value.kind == "server_error"
     assert "could not read" in str(caught.value)
+
+
+ACCOUNT_BODY = {
+    "org_id": "85bb51e4-2eb6-4a31-8e4d-02ba8b98fe61",
+    "apikey": {
+        "id": "0ab424cc-7619-4dad-b027-afacdc2cedb0",
+        "expires": None,
+        "allowed_cidrs": [],
+    },
+    "plan": {"key": "max", "tier": "max"},
+    "usage": {
+        "requests": 580,
+        "quota": 5000000,
+        "hard_limit": None,
+        "window_start": "2026-09-04T07:00:00Z",
+        "window_end": "2026-10-04T07:00:00Z",
+    },
+}
+
+
+def test_my_ip_classifies_the_calling_address(make_client: ClientFactory) -> None:
+    stub = Stub({"myip": {"body": {"ip": "45.83.91.1", "is_vpn": True}}})
+    client = make_client(transport=stub.transport)
+
+    result = client.my_ip()
+
+    assert result.ip == "45.83.91.1"
+    assert result.is_vpn is True
+
+
+def test_my_ip_is_not_cached(make_client: ClientFactory) -> None:
+    """The cache is keyed by address, and which address this is IS the question - a
+    machine that moves between networks would otherwise be told where it used to be."""
+    stub = Stub({"myip": {"body": {"ip": "45.83.91.1", "is_vpn": True}}})
+    client = make_client(transport=stub.transport)
+
+    client.my_ip()
+    client.my_ip()
+
+    assert len(stub.calls) == 2
+
+
+def test_my_account_reports_the_plan_and_the_usage(make_client: ClientFactory) -> None:
+    stub = Stub({"api/v1/account/me": {"body": ACCOUNT_BODY}})
+    client = make_client(transport=stub.transport)
+
+    account = client.my_account()
+
+    assert account.plan.key == "max"
+    assert account.plan.tier == "max"
+    assert account.usage.requests == 580
+    assert account.usage.quota == 5000000
+    # Null means NEVER stop, which is not the same as a limit of zero.
+    assert account.usage.hard_limit is None
+    assert account.apikey.allowed_cidrs == []
+
+
+def test_my_account_is_not_cached(make_client: ClientFactory) -> None:
+    """The whole point is what has been spent, so a cached answer is a wrong one within
+    seconds of the next request."""
+    stub = Stub({"api/v1/account/me": {"body": ACCOUNT_BODY}})
+    client = make_client(transport=stub.transport)
+
+    client.my_account()
+    client.my_account()
+
+    assert len(stub.calls) == 2
+
+
+def test_my_account_surfaces_an_unauthorized_key(make_client: ClientFactory) -> None:
+    """Unlike a lookup there is no useful unauthenticated answer, so this is an error
+    rather than a partial result."""
+    stub = Stub({"api/v1/account/me": {"status": 401, "body": {"error": "invalid API key"}}})
+    client = make_client(transport=stub.transport, retries=0)
+
+    with pytest.raises(VPNDetectionError):
+        client.my_account()
