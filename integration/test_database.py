@@ -43,18 +43,27 @@ def test_the_licensed_catalog_answers_the_schema_the_client_was_generated_from()
     finally:
         client.close()
 
-    assert datasets, "the max organization licenses nothing"
-    ids = []
+    assert datasets, "the catalogue arrived empty"
+    licensed = []
     for dataset in datasets:
         assert dataset.base and dataset.name, (
-            f"a licensed family carries no base or name: {dataset}"
+            f"a family carries no base or name: {dataset}"
         )
         assert dataset.standing in ("expired", "licensed", "unlicensed"), (
             f"{dataset.base} carries an undocumented standing {dataset.standing!r}"
         )
-        assert dataset.license_type in ("evaluation", "standard", "redistribute"), (
-            f"{dataset.base} carries an undocumented right {dataset.license_type!r}"
-        )
+        # `list` answers the WHOLE catalogue, so an unlicensed family is a normal row
+        # with no licence type at all. Asserting one either way is what tells a None
+        # apart from a value this client cannot read.
+        if dataset.standing == "unlicensed":
+            assert dataset.license_type is None, (
+                f"{dataset.base} is unlicensed and carries {dataset.license_type!r}"
+            )
+        else:
+            assert dataset.license_type in ("evaluation", "standard", "redistribute"), (
+                f"{dataset.base} carries an undocumented right {dataset.license_type!r}"
+            )
+            licensed.append(dataset.base)
         assert_no_undocumented_keys(dataset)
         # The point of the family shape: a license covers the family, and these are the
         # ids the download and checksum calls take. Before the spec was corrected this
@@ -63,8 +72,10 @@ def test_the_licensed_catalog_answers_the_schema_the_client_was_generated_from()
         for version in dataset.versions:
             assert version.id, f"{dataset.base} has a version with no id"
             assert version.formats, f"{version.id} carries no formats"
-            ids.append(version.id)
-    print(f"==> licensed: {', '.join(ids)}")
+    # The max org holds grants in staging, so an empty list here is the catalogue
+    # arriving without any of them rather than a plan that buys nothing.
+    assert licensed, "the max organization licenses nothing"
+    print(f"==> catalogue: {len(datasets)}, licensed: {', '.join(licensed)}")
 
 
 def assert_no_undocumented_keys(dataset: Database) -> None:
