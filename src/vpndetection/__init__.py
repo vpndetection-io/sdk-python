@@ -27,7 +27,7 @@ from .client import DatabaseApi, VPNDetection
 from .errors import ErrorKind, VPNDetectionError
 from .models import ClassDetail, Flag, Format, ProxyDetail, Result, VpnDetail
 
-__version__ = "4.0.0"
+__version__ = "4.0.1"
 
 __all__ = [
     "DEFAULT_BASE_URL",
