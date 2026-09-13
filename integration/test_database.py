@@ -46,9 +46,7 @@ def test_the_licensed_catalog_answers_the_schema_the_client_was_generated_from()
     assert datasets, "the catalogue arrived empty"
     licensed = []
     for dataset in datasets:
-        assert dataset.base and dataset.name, (
-            f"a family carries no base or name: {dataset}"
-        )
+        assert dataset.base and dataset.name, f"a family carries no base or name: {dataset}"
         assert dataset.standing in ("expired", "licensed", "unlicensed"), (
             f"{dataset.base} carries an undocumented standing {dataset.standing!r}"
         )
