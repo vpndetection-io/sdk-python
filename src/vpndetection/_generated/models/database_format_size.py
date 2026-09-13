@@ -6,7 +6,7 @@ from typing import Any, Self, TypeVar, cast
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
-from ..models.database_format_size_format import DatabaseFormatSizeFormat
+from ..models.database_format import DatabaseFormat
 
 T = TypeVar("T", bound="DatabaseFormatSize")
 
@@ -15,11 +15,11 @@ T = TypeVar("T", bound="DatabaseFormatSize")
 class DatabaseFormatSize:
     """
     Attributes:
-        format_ (DatabaseFormatSizeFormat):
+        format_ (DatabaseFormat): A file format a database version is published in.
         bytes_ (int | None): Size of the published file, or null when it has not been published yet
     """
 
-    format_: DatabaseFormatSizeFormat
+    format_: DatabaseFormat
     bytes_: int | None
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -43,7 +43,7 @@ class DatabaseFormatSize:
     @classmethod
     def from_dict(cls, src_dict: Mapping[str, Any]) -> Self:
         d = dict(src_dict)
-        format_ = DatabaseFormatSizeFormat(d.pop("format"))
+        format_ = DatabaseFormat(d.pop("format"))
 
         def _parse_bytes_(data: object) -> int | None:
             if data is None:

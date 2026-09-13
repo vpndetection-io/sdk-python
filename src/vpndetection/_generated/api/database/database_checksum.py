@@ -5,8 +5,8 @@ import httpx
 
 from ... import errors
 from ...client import AuthenticatedClient, Client
-from ...models.database_checksum_format import DatabaseChecksumFormat
 from ...models.database_checksum_response_200 import DatabaseChecksumResponse200
+from ...models.database_format import DatabaseFormat
 from ...models.error import Error
 from ...types import UNSET, Response
 
@@ -14,7 +14,7 @@ from ...types import UNSET, Response
 def _get_kwargs(
     *,
     id: str,
-    format_: DatabaseChecksumFormat,
+    format_: DatabaseFormat,
 ) -> dict[str, Any]:
 
     params: dict[str, Any] = {}
@@ -89,7 +89,7 @@ def sync_detailed(
     *,
     client: AuthenticatedClient,
     id: str,
-    format_: DatabaseChecksumFormat,
+    format_: DatabaseFormat,
 ) -> Response[DatabaseChecksumResponse200 | Error]:
     """Checksums
 
@@ -97,7 +97,7 @@ def sync_detailed(
 
     Args:
         id (str):
-        format_ (DatabaseChecksumFormat):
+        format_ (DatabaseFormat): A file format a database version is published in.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -123,7 +123,7 @@ def sync(
     *,
     client: AuthenticatedClient,
     id: str,
-    format_: DatabaseChecksumFormat,
+    format_: DatabaseFormat,
 ) -> DatabaseChecksumResponse200 | Error | None:
     """Checksums
 
@@ -131,7 +131,7 @@ def sync(
 
     Args:
         id (str):
-        format_ (DatabaseChecksumFormat):
+        format_ (DatabaseFormat): A file format a database version is published in.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -152,7 +152,7 @@ async def asyncio_detailed(
     *,
     client: AuthenticatedClient,
     id: str,
-    format_: DatabaseChecksumFormat,
+    format_: DatabaseFormat,
 ) -> Response[DatabaseChecksumResponse200 | Error]:
     """Checksums
 
@@ -160,7 +160,7 @@ async def asyncio_detailed(
 
     Args:
         id (str):
-        format_ (DatabaseChecksumFormat):
+        format_ (DatabaseFormat): A file format a database version is published in.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -184,7 +184,7 @@ async def asyncio(
     *,
     client: AuthenticatedClient,
     id: str,
-    format_: DatabaseChecksumFormat,
+    format_: DatabaseFormat,
 ) -> DatabaseChecksumResponse200 | Error | None:
     """Checksums
 
@@ -192,7 +192,7 @@ async def asyncio(
 
     Args:
         id (str):
-        format_ (DatabaseChecksumFormat):
+        format_ (DatabaseFormat): A file format a database version is published in.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.

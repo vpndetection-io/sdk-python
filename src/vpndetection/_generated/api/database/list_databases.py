@@ -56,8 +56,8 @@ def sync_detailed(
 ) -> Response[Error | ListDatabasesResponse200]:
     """List
 
-     Every dataset this organization holds a licence for, with the term and the license_type right beside
-    each one.
+     Every database this organization holds a licence for, with the term and the license_type right
+    beside each one.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -82,8 +82,8 @@ def sync(
 ) -> Error | ListDatabasesResponse200 | None:
     """List
 
-     Every dataset this organization holds a licence for, with the term and the license_type right beside
-    each one.
+     Every database this organization holds a licence for, with the term and the license_type right
+    beside each one.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -104,8 +104,8 @@ async def asyncio_detailed(
 ) -> Response[Error | ListDatabasesResponse200]:
     """List
 
-     Every dataset this organization holds a licence for, with the term and the license_type right beside
-    each one.
+     Every database this organization holds a licence for, with the term and the license_type right
+    beside each one.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -128,8 +128,8 @@ async def asyncio(
 ) -> Error | ListDatabasesResponse200 | None:
     """List
 
-     Every dataset this organization holds a licence for, with the term and the license_type right beside
-    each one.
+     Every database this organization holds a licence for, with the term and the license_type right
+    beside each one.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.

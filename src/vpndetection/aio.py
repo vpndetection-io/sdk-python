@@ -50,10 +50,9 @@ from ._generated.api.database import (
 )
 from ._generated.api.lookup import lookup_ip
 from ._generated.client import AuthenticatedClient
-from ._generated.models.database_checksum_format import DatabaseChecksumFormat
+from ._generated.models.database_format import DatabaseFormat
 from ._generated.models.database_metadata import DatabaseMetadata
 from ._generated.models.download import Download
-from ._generated.models.download_database_format import DownloadDatabaseFormat
 from ._generated.models.database import Database
 from .bogon import bogon_result, is_bogon
 from .errors import VPNDetectionError
@@ -224,7 +223,7 @@ class AsyncDatabaseApi:
         async def call() -> dict[str, str]:
             res = await send_async(
                 lambda: database_checksum.asyncio_detailed(
-                    client=self._client, id=dataset_id, format_=DatabaseChecksumFormat(format)
+                    client=self._client, id=dataset_id, format_=DatabaseFormat(format)
                 )
             )
             return parse_body(unwrap(res), checksums_of)
@@ -254,7 +253,7 @@ class AsyncDatabaseApi:
         async def call() -> str:
             res = await send_async(
                 lambda: download_database.asyncio_detailed(
-                    client=self._client, id=dataset_id, format_=DownloadDatabaseFormat(format)
+                    client=self._client, id=dataset_id, format_=DatabaseFormat(format)
                 )
             )
             return redirect_location(res)

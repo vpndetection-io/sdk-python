@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, Self, TypeVar
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
-from ..models.database_version_sample_formats_item import DatabaseVersionSampleFormatsItem
+from ..models.database_format import DatabaseFormat
 from ..types import UNSET, Unset
 
 if TYPE_CHECKING:
@@ -20,19 +20,18 @@ T = TypeVar("T", bound="DatabaseVersion")
 class DatabaseVersion:
     """
     Attributes:
-        id (str): The versioned dataset id, e.g. `vpn_ip_v1`. Pass this to download. Example: vpn_ip_v1.
+        id (str): The versioned database id, e.g. `vpn_ip_v1`. Pass this to download. Example: vpn_ip_v1.
         version (int):  Example: 1.
         formats (list[DatabaseFormatSize]):
         summary (str | Unset):
-        sample_formats (list[DatabaseVersionSampleFormatsItem] | Unset): The formats an evaluation sample is published
-            in, if any.
+        sample_formats (list[DatabaseFormat] | Unset): The formats an evaluation sample is published in, if any.
     """
 
     id: str
     version: int
     formats: list[DatabaseFormatSize]
     summary: str | Unset = UNSET
-    sample_formats: list[DatabaseVersionSampleFormatsItem] | Unset = UNSET
+    sample_formats: list[DatabaseFormat] | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -89,11 +88,11 @@ class DatabaseVersion:
         summary = d.pop("summary", UNSET)
 
         _sample_formats = d.pop("sample_formats", UNSET)
-        sample_formats: list[DatabaseVersionSampleFormatsItem] | Unset = UNSET
+        sample_formats: list[DatabaseFormat] | Unset = UNSET
         if _sample_formats is not UNSET:
             sample_formats = []
             for sample_formats_item_data in _sample_formats:
-                sample_formats_item = DatabaseVersionSampleFormatsItem(sample_formats_item_data)
+                sample_formats_item = DatabaseFormat(sample_formats_item_data)
 
                 sample_formats.append(sample_formats_item)
 

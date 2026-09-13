@@ -1,7 +1,7 @@
 from enum import StrEnum
 
 
-class DatabaseLicenseType(StrEnum):
+class LicenseType(StrEnum):
     EVALUATION = "evaluation"
     REDISTRIBUTE = "redistribute"
     STANDARD = "standard"

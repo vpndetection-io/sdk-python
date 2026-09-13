@@ -85,7 +85,7 @@ def sync_detailed(
      Poll this to decide whether today's build is worth fetching: it carries
     `updated` and `entries` without downloading anything.
 
-    No `format` parameter - one document describes every format the dataset
+    No `format` parameter - one document describes every format the database
     is built in.
 
     Args:
@@ -120,7 +120,7 @@ def sync(
      Poll this to decide whether today's build is worth fetching: it carries
     `updated` and `entries` without downloading anything.
 
-    No `format` parameter - one document describes every format the dataset
+    No `format` parameter - one document describes every format the database
     is built in.
 
     Args:
@@ -150,7 +150,7 @@ async def asyncio_detailed(
      Poll this to decide whether today's build is worth fetching: it carries
     `updated` and `entries` without downloading anything.
 
-    No `format` parameter - one document describes every format the dataset
+    No `format` parameter - one document describes every format the database
     is built in.
 
     Args:
@@ -183,7 +183,7 @@ async def asyncio(
      Poll this to decide whether today's build is worth fetching: it carries
     `updated` and `entries` without downloading anything.
 
-    No `format` parameter - one document describes every format the dataset
+    No `format` parameter - one document describes every format the database
     is built in.
 
     Args:
