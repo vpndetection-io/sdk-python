@@ -160,7 +160,7 @@ def test_a_200_missing_a_required_key_is_a_typed_error_not_a_traceback(
     assert "could not read" in str(caught.value)
 
 
-ACCOUNT_BODY = {
+ENTITLEMENT_BODY = {
     "org_id": "85bb51e4-2eb6-4a31-8e4d-02ba8b98fe61",
     "apikey": {
         "id": "0ab424cc-7619-4dad-b027-afacdc2cedb0",
@@ -201,24 +201,24 @@ def test_my_ip_is_not_cached(make_client: ClientFactory) -> None:
 
 
 def test_my_entitlement_reports_the_plan_and_the_usage(make_client: ClientFactory) -> None:
-    stub = Stub({"api/v1/account/me": {"body": ACCOUNT_BODY}})
+    stub = Stub({"api/v1/entitlement": {"body": ENTITLEMENT_BODY}})
     client = make_client(transport=stub.transport)
 
-    account = client.my_entitlement()
+    ent = client.my_entitlement()
 
-    assert account.plan.key == "max"
-    assert account.plan.tier == "max"
-    assert account.usage.requests == 580
-    assert account.usage.quota == 5000000
+    assert ent.plan.key == "max"
+    assert ent.plan.tier == "max"
+    assert ent.usage.requests == 580
+    assert ent.usage.quota == 5000000
     # Null means NEVER stop, which is not the same as a limit of zero.
-    assert account.usage.hard_limit is None
-    assert account.apikey.allowed_cidrs == []
+    assert ent.usage.hard_limit is None
+    assert ent.apikey.allowed_cidrs == []
 
 
 def test_my_entitlement_is_not_cached(make_client: ClientFactory) -> None:
     """The whole point is what has been spent, so a cached answer is a wrong one within
     seconds of the next request."""
-    stub = Stub({"api/v1/account/me": {"body": ACCOUNT_BODY}})
+    stub = Stub({"api/v1/entitlement": {"body": ENTITLEMENT_BODY}})
     client = make_client(transport=stub.transport)
 
     client.my_entitlement()
@@ -230,7 +230,7 @@ def test_my_entitlement_is_not_cached(make_client: ClientFactory) -> None:
 def test_my_entitlement_surfaces_an_unauthorized_key(make_client: ClientFactory) -> None:
     """Unlike a lookup there is no useful unauthenticated answer, so this is an error
     rather than a partial result."""
-    stub = Stub({"api/v1/account/me": {"status": 401, "body": {"error": "invalid API key"}}})
+    stub = Stub({"api/v1/entitlement": {"status": 401, "body": {"error": "invalid API key"}}})
     client = make_client(transport=stub.transport, retries=0)
 
     with pytest.raises(VPNDetectionError):
