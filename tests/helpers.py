@@ -126,6 +126,8 @@ class Stub:
 
     def _handle(self, request: httpx.Request) -> httpx.Response:
         self.calls.append(str(request.url))
+        if request.url.path == "/batch":
+            return self._batch(request)
         ip = _ip_of(request)
         route = self.routes.get(ip)
         if route is None:
@@ -133,6 +135,22 @@ class Stub:
         return httpx.Response(
             route.get("status", 200), json=route["body"], headers=route.get("headers")
         )
+
+    # A POST /batch is answered the way the API answers one: every address the table
+    # knows is a result if its route is a 200 and an entry error otherwise, and an
+    # unknown address is the 400 the API gives a string that is not one.
+    def _batch(self, request: httpx.Request) -> httpx.Response:
+        results: dict[str, Any] = {}
+        errors: dict[str, Any] = {}
+        for ip in json.loads(request.content or b"{}").get("ips", []):
+            route = self.routes.get(ip)
+            if route is None:
+                errors[ip] = {"status": 400, "error": "not a valid IP address"}
+            elif route.get("status", 200) == 200:
+                results[ip] = route["body"]
+            else:
+                errors[ip] = {"status": route["status"], "error": route["body"].get("error")}
+        return httpx.Response(200, json={"results": results, "errors": errors})
 
 
 class Meter:
@@ -172,6 +190,14 @@ class Meter:
     def _leave(self, request: httpx.Request) -> httpx.Response:
         with self._lock:
             self.in_flight -= 1
+        # A batch arrives as one POST per chunk, so it is answered from the addresses in
+        # the body rather than from the path.
+        if request.url.path == "/batch":
+            ips = json.loads(request.content or b"{}").get("ips", [])
+            return httpx.Response(
+                200,
+                json={"results": {ip: {"ip": ip, "is_vpn": False} for ip in ips}, "errors": {}},
+            )
         return httpx.Response(200, json={"ip": _ip_of(request), "is_vpn": False})
 
 

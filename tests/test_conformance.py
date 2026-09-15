@@ -125,6 +125,7 @@ def test_one_bad_address_does_not_lose_the_rest_of_the_batch(make_client: Client
     assert list(got.keys()) == case["expect"]["keys"]
     for key in case["expect"]["errorKeys"]:
         assert isinstance(got[key], VPNDetectionError), f"{key} should carry its error"
+        assert got[key].kind == case["expect"]["errorKinds"][key], key
     assert got["1.1.1.1"].is_vpn is False, "the good address still answered"
 
 
@@ -135,6 +136,43 @@ def test_a_cache_hit_issues_no_second_request(make_client: ClientFactory) -> Non
 
     for _ in range(case["repeat"]):
         client.lookup_batch(case["input"])
+    assert len(stub.calls) == case["expect"]["httpRequests"]
+
+
+def test_a_large_batch_is_sent_in_chunks_of_a_thousand(make_client: ClientFactory) -> None:
+    case = _batch("chunks-of-one-thousand")
+    stub = Stub({ip: {"body": {"ip": ip, "is_vpn": False}} for ip in case["input"]})
+    client = make_client(transport=stub.transport, cache=False)
+    got = client.lookup_batch(case["input"])
+
+    assert len(got) == case["expect"]["keyCount"]
+    assert len(stub.calls) == case["expect"]["httpRequests"]
+    for ip in case["input"]:
+        assert got[ip].ip == ip, f"{ip} should be answered for itself"
+
+
+# A per-entry failure carries no headers, so its 429 can only be a spent allowance, and a
+# 500 is the server's; neither is retried per entry, because retries belong to the call and
+# the call succeeded.
+def test_an_entry_error_is_classified_by_its_status(make_client: ClientFactory) -> None:
+    case = _batch("an-entry-error-is-classified-by-its-status")
+    stub = Stub(
+        {
+            "1.1.1.1": {"body": {"ip": "1.1.1.1", "is_vpn": False}},
+            "8.8.8.8": {
+                "status": 429,
+                "body": {"error": "request allowance exceeded; raise or remove your overage limit"},
+            },
+            "9.9.9.9": {"status": 500, "body": {"error": "lookup failed"}},
+        }
+    )
+    client = make_client(transport=stub.transport, retries=3)
+    got = client.lookup_batch(case["input"])
+
+    assert list(got.keys()) == case["expect"]["keys"]
+    for ip, kind in case["expect"]["errorKinds"].items():
+        assert isinstance(got[ip], VPNDetectionError), f"{ip} should carry its error"
+        assert got[ip].kind == kind, ip
     assert len(stub.calls) == case["expect"]["httpRequests"]
 
 

@@ -10,7 +10,9 @@ from helpers import TESTDATA, ClientFactory, Meter, Stub
 
 from vpndetection import VPNDetection, VPNDetectionError, is_bogon
 
-ADDRESSES = [f"9.9.9.{n}" for n in range(1, 13)]
+# Enough addresses for seven chunks of the batch endpoint's 1000, so a concurrency bound
+# has something to bound: one request per chunk, and only the chunks overlap.
+ADDRESSES = [f"9.{1 + n // 65536}.{n // 256 % 256}.{n % 256}" for n in range(6001)]
 
 
 def test_is_bogon_is_on_the_client_and_agrees_with_the_standalone_export(
@@ -38,7 +40,7 @@ def test_batch_concurrency_is_configurable_per_call(make_client: ClientFactory) 
 
     client.lookup_batch(ADDRESSES, concurrency=3)
 
-    assert meter.calls == len(ADDRESSES)
+    assert meter.calls == 7, "one request per chunk of 1000"
     assert meter.peak <= 3, f"peak in flight was {meter.peak}, expected at most 3"
     assert meter.peak > 1, "requests should still overlap"
 

@@ -10,6 +10,11 @@ from .account_revealed_apikey import AccountRevealedApikey
 from .account_user import AccountUser
 from .apikey_detail import ApikeyDetail
 from .apikey_list import ApikeyList
+from .batch_lookup_error import BatchLookupError
+from .batch_lookup_request import BatchLookupRequest
+from .batch_lookup_response import BatchLookupResponse
+from .batch_lookup_response_errors import BatchLookupResponseErrors
+from .batch_lookup_response_results import BatchLookupResponseResults
 from .class_detail import ClassDetail
 from .database import Database
 from .database_checksum_response_200 import DatabaseChecksumResponse200
@@ -68,6 +73,11 @@ __all__ = (
     "AccountUser",
     "ApikeyDetail",
     "ApikeyList",
+    "BatchLookupError",
+    "BatchLookupRequest",
+    "BatchLookupResponse",
+    "BatchLookupResponseErrors",
+    "BatchLookupResponseResults",
     "ClassDetail",
     "Database",
     "DatabaseChecksumResponse200",

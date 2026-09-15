@@ -12,11 +12,12 @@ import builtins
 import os
 from collections.abc import Awaitable, Callable, Iterable
 from types import TracebackType
-from typing import Self, TypeVar
+from typing import Any, Self, TypeVar
 
 import httpx
 
 from ._core import (
+    BATCH_MAX,
     DEFAULT_BASE_URL,
     DEFAULT_CACHE_MAX_SIZE,
     DEFAULT_CACHE_TTL,
@@ -28,9 +29,11 @@ from ._core import (
     Cache,
     as_error,
     assert_whole_transfer,
+    batch_answers,
     build_async_transfer_client,
     build_client,
     checksums_of,
+    chunked,
     databases_of,
     downloads_of,
     parse_body,
@@ -49,8 +52,9 @@ from ._generated.api.database import (
     list_downloads,
 )
 from ._generated.api.entitlement import my_entitlement
-from ._generated.api.lookup import lookup_ip, lookup_my_ip
+from ._generated.api.lookup import lookup_batch, lookup_ip, lookup_my_ip
 from ._generated.client import AuthenticatedClient
+from ._generated.models.batch_lookup_request import BatchLookupRequest
 from ._generated.models.database import Database
 from ._generated.models.database_format import DatabaseFormat
 from ._generated.models.database_metadata import DatabaseMetadata
@@ -177,31 +181,70 @@ class AsyncVPNDetection:
         concurrency: int | None = None,
         retries: int | None = None,
     ) -> dict[str, Result | VPNDetectionError]:
-        """Classify many addresses concurrently.
+        """Classify many addresses in as few requests as possible.
 
-        Keyed by address rather than positional, so duplicates in the input collapse to
-        a single request and the caller never has to line two lists up. An address that
-        fails carries its error as its value, so one bad entry cannot lose the rest of
-        the answers.
+        Bogons are answered locally and cached answers are reused; everything else goes
+        to the batch endpoint in chunks of up to 1000 addresses, with at most
+        `concurrency` chunks in flight. Keyed by address rather than positional, so
+        duplicates in the input collapse to a single entry and the caller never has to
+        line two lists up. An address that fails carries its error as its value, so one
+        bad entry cannot lose the rest of the answers: the API reports a per-entry
+        failure with the status the single lookup would have answered, and a chunk that
+        fails as a whole marks every address in it.
 
         Each batch gets its own semaphore sized for THIS call, so a per-call concurrency
         really is the ceiling rather than being silently capped by the client's.
         """
         unique = list(dict.fromkeys(ips))
-        if not unique:
-            return {}
-        workers = self._concurrency if concurrency is None else concurrency
-        gate = asyncio.Semaphore(max(1, workers))
+        answers: dict[str, Result | VPNDetectionError] = {}
+        pending: list[str] = []
+        for ip in unique:
+            if is_bogon(ip):
+                answers[ip] = bogon_result(ip)
+                continue
+            hit = self._cache.get(ip) if self._cache is not None else None
+            if hit is not None:
+                answers[ip] = hit
+                continue
+            pending.append(ip)
+        if pending:
+            workers = self._concurrency if concurrency is None else concurrency
+            gate = asyncio.Semaphore(max(1, workers))
 
-        async def one(ip: str) -> Result | VPNDetectionError:
-            async with gate:
-                try:
-                    return await self.lookup(ip, retries=retries)
-                except VPNDetectionError as err:
-                    return err
+            async def one(chunk: list[str]) -> dict[str, Result | VPNDetectionError]:
+                async with gate:
+                    return await self._lookup_chunk(chunk, retries)
 
-        answers = await asyncio.gather(*(one(ip) for ip in unique))
-        return dict(zip(unique, answers, strict=True))
+            for chunk_answers in await asyncio.gather(
+                *(one(chunk) for chunk in chunked(pending, BATCH_MAX))
+            ):
+                answers.update(chunk_answers)
+        return {ip: answers[ip] for ip in unique}
+
+    # One POST /batch, mapped back onto the addresses it was asked about. A chunk-level
+    # failure - the call refused, the transport failing, the retries exhausted - becomes
+    # every address's error, exactly as it would have been had each been looked up alone.
+    async def _lookup_chunk(
+        self, chunk: list[str], retries: int | None
+    ) -> dict[str, Result | VPNDetectionError]:
+        async def call() -> dict[str, Any]:
+            res = await send_async(
+                lambda: lookup_batch.asyncio_detailed(
+                    client=self._client, body=BatchLookupRequest(ips=list(chunk))
+                )
+            )
+            return unwrap(res)
+
+        try:
+            body = await self._retrying(call, self._retries if retries is None else retries)
+        except VPNDetectionError as err:
+            return {ip: err for ip in chunk}
+        answers = batch_answers(chunk, body)
+        if self._cache is not None:
+            for ip, answer in answers.items():
+                if isinstance(answer, Result):
+                    self._cache.put(ip, answer)
+        return answers
 
     async def aclose(self) -> None:
         await self._client.get_async_httpx_client().aclose()

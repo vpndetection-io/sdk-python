@@ -19,7 +19,7 @@ from ._generated.models.database import Database
 from ._generated.models.download import Download
 from ._generated.types import Response
 from .errors import VPNDetectionError, error_from_response
-from .models import Result
+from .models import Result, to_result
 
 DEFAULT_BASE_URL = "https://api.vpndetection.io"
 DEFAULT_CONCURRENCY = 8
@@ -28,6 +28,10 @@ DEFAULT_CACHE_MAX_SIZE = 10_000
 DEFAULT_CACHE_TTL = 3600.0
 DEFAULT_TIMEOUT = 10.0
 DEFAULT_DOWNLOADS_LIMIT = 50
+
+# The most addresses POST /batch takes in one call; a larger batch is sent in chunks of
+# this size.
+BATCH_MAX = 1000
 
 # One chunk of a transfer, and therefore the ceiling on what a download of any size
 # costs in memory.
@@ -223,6 +227,41 @@ def parse_body(body: dict[str, Any], parse: Callable[[dict[str, Any]], T]) -> T:
         return parse(body)
     except (KeyError, TypeError, ValueError) as exc:
         raise VPNDetectionError("server_error", f"malformed response from the API: {exc}") from exc
+
+
+def chunked(ips: list[str], size: int) -> list[list[str]]:
+    return [ips[i : i + size] for i in range(0, len(ips), size)]
+
+
+def entry_error(entry: dict[str, Any]) -> VPNDetectionError:
+    """A per-entry failure inside a successful batch: the status the single lookup would
+    have answered, and its message, with no headers at all - so a 429 here is a spent
+    allowance, which is the only kind the API puts in an entry."""
+    return error_from_response(int(entry["status"]), httpx.Headers(), {"error": entry.get("error")})
+
+
+def batch_answers(chunk: list[str], body: dict[str, Any]) -> dict[str, Result | VPNDetectionError]:
+    """One chunk's answer, mapped back onto the addresses it was asked about.
+
+    Every address lands in exactly one of `results` and `errors`; an address in neither
+    is the server breaking its own contract, and is reported as such rather than lost.
+    """
+    results = body.get("results") or {}
+    errors = body.get("errors") or {}
+    out: dict[str, Result | VPNDetectionError] = {}
+    for ip in chunk:
+        if ip in results:
+            try:
+                out[ip] = parse_body(results[ip], to_result)
+            except VPNDetectionError as err:
+                out[ip] = err
+        elif ip in errors:
+            out[ip] = entry_error(errors[ip])
+        else:
+            out[ip] = VPNDetectionError(
+                "server_error", f"the batch answer did not include {ip}", 200
+            )
+    return out
 
 
 def redirect_location(res: Response[Any]) -> str:
