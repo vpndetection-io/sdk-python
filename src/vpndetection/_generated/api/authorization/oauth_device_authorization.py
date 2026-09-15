@@ -64,7 +64,7 @@ def sync_detailed(
     client: AuthenticatedClient | Client,
     body: DeviceAuthorizationRequest,
 ) -> Response[DeviceAuthorization | OauthError]:
-    """Begin a device authorization
+    """Device authorization
 
      Starts the device flow. Show the `user_code` to the person and send them
     to `verification_uri`; `verification_uri_complete` has the code already
@@ -99,7 +99,7 @@ def sync(
     client: AuthenticatedClient | Client,
     body: DeviceAuthorizationRequest,
 ) -> DeviceAuthorization | OauthError | None:
-    """Begin a device authorization
+    """Device authorization
 
      Starts the device flow. Show the `user_code` to the person and send them
     to `verification_uri`; `verification_uri_complete` has the code already
@@ -129,7 +129,7 @@ async def asyncio_detailed(
     client: AuthenticatedClient | Client,
     body: DeviceAuthorizationRequest,
 ) -> Response[DeviceAuthorization | OauthError]:
-    """Begin a device authorization
+    """Device authorization
 
      Starts the device flow. Show the `user_code` to the person and send them
     to `verification_uri`; `verification_uri_complete` has the code already
@@ -162,7 +162,7 @@ async def asyncio(
     client: AuthenticatedClient | Client,
     body: DeviceAuthorizationRequest,
 ) -> DeviceAuthorization | OauthError | None:
-    """Begin a device authorization
+    """Device authorization
 
      Starts the device flow. Show the `user_code` to the person and send them
     to `verification_uri`; `verification_uri_complete` has the code already

@@ -14,7 +14,7 @@ def _get_kwargs() -> dict[str, Any]:
 
     _kwargs: dict[str, Any] = {
         "method": "get",
-        "url": "/api/v1/entitlement/me",
+        "url": "/api/v1/entitlement",
     }
 
     return _kwargs
@@ -64,7 +64,7 @@ def sync_detailed(
     *,
     client: AuthenticatedClient,
 ) -> Response[Entitlement | EntitlementError]:
-    """Your key, plan and usage
+    """Plan and usage
 
      Answers what the presented key is, what plan is behind it, and what has
     been spent against that plan's allowance in the current window.
@@ -90,7 +90,7 @@ def sync(
     *,
     client: AuthenticatedClient,
 ) -> Entitlement | EntitlementError | None:
-    """Your key, plan and usage
+    """Plan and usage
 
      Answers what the presented key is, what plan is behind it, and what has
     been spent against that plan's allowance in the current window.
@@ -112,7 +112,7 @@ async def asyncio_detailed(
     *,
     client: AuthenticatedClient,
 ) -> Response[Entitlement | EntitlementError]:
-    """Your key, plan and usage
+    """Plan and usage
 
      Answers what the presented key is, what plan is behind it, and what has
     been spent against that plan's allowance in the current window.
@@ -136,7 +136,7 @@ async def asyncio(
     *,
     client: AuthenticatedClient,
 ) -> Entitlement | EntitlementError | None:
-    """Your key, plan and usage
+    """Plan and usage
 
      Answers what the presented key is, what plan is behind it, and what has
     been spent against that plan's allowance in the current window.

@@ -69,7 +69,7 @@ def sync_detailed(
     *,
     client: AuthenticatedClient,
 ) -> Response[LookupError_ | LookupResponse]:
-    """Lookup your own address
+    """My IP
 
      Answers what is known about the address this request came from, which is
     the same answer `GET /{ip}` gives for that address: the plan behind the
@@ -101,7 +101,7 @@ def sync(
     *,
     client: AuthenticatedClient,
 ) -> LookupError_ | LookupResponse | None:
-    """Lookup your own address
+    """My IP
 
      Answers what is known about the address this request came from, which is
     the same answer `GET /{ip}` gives for that address: the plan behind the
@@ -129,7 +129,7 @@ async def asyncio_detailed(
     *,
     client: AuthenticatedClient,
 ) -> Response[LookupError_ | LookupResponse]:
-    """Lookup your own address
+    """My IP
 
      Answers what is known about the address this request came from, which is
     the same answer `GET /{ip}` gives for that address: the plan behind the
@@ -159,7 +159,7 @@ async def asyncio(
     *,
     client: AuthenticatedClient,
 ) -> LookupError_ | LookupResponse | None:
-    """Lookup your own address
+    """My IP
 
      Answers what is known about the address this request came from, which is
     the same answer `GET /{ip}` gives for that address: the plan behind the

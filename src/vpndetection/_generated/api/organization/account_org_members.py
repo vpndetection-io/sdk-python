@@ -13,7 +13,7 @@ def _get_kwargs() -> dict[str, Any]:
 
     _kwargs: dict[str, Any] = {
         "method": "get",
-        "url": "/api/v1/account/org/members",
+        "url": "/api/v1/iam/org/members",
     }
 
     return _kwargs
@@ -58,7 +58,7 @@ def sync_detailed(
     *,
     client: AuthenticatedClient,
 ) -> Response[AccountRc]:
-    """Who else is in your organization
+    """Members
 
      Read-only. Adding or removing a member is an invitation flow with email
     in the middle rather than a POST, and modelling it as one here would
@@ -85,7 +85,7 @@ def sync(
     *,
     client: AuthenticatedClient,
 ) -> AccountRc | None:
-    """Who else is in your organization
+    """Members
 
      Read-only. Adding or removing a member is an invitation flow with email
     in the middle rather than a POST, and modelling it as one here would
@@ -108,7 +108,7 @@ async def asyncio_detailed(
     *,
     client: AuthenticatedClient,
 ) -> Response[AccountRc]:
-    """Who else is in your organization
+    """Members
 
      Read-only. Adding or removing a member is an invitation flow with email
     in the middle rather than a POST, and modelling it as one here would
@@ -133,7 +133,7 @@ async def asyncio(
     *,
     client: AuthenticatedClient,
 ) -> AccountRc | None:
-    """Who else is in your organization
+    """Members
 
      Read-only. Adding or removing a member is an invitation flow with email
     in the middle rather than a POST, and modelling it as one here would

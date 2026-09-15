@@ -94,7 +94,7 @@ def sync_detailed(
     state: str | Unset = UNSET,
     resource: str | Unset = UNSET,
 ) -> Response[Any]:
-    """Send a user here to approve
+    """Authorize
 
      The browser entry point for the authorization-code flow. This is a
     redirect target, not something to call from code.
@@ -153,7 +153,7 @@ async def asyncio_detailed(
     state: str | Unset = UNSET,
     resource: str | Unset = UNSET,
 ) -> Response[Any]:
-    """Send a user here to approve
+    """Authorize
 
      The browser entry point for the authorization-code flow. This is a
     redirect target, not something to call from code.

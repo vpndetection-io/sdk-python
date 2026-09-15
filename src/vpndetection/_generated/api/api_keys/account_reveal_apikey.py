@@ -18,7 +18,7 @@ def _get_kwargs(
 
     _kwargs: dict[str, Any] = {
         "method": "post",
-        "url": "/api/v1/account/apikeys/{id}/reveal".format(
+        "url": "/api/v1/iam/apikeys/{id}/reveal".format(
             id=quote(str(id), safe=""),
         ),
     }
@@ -71,7 +71,7 @@ def sync_detailed(
     *,
     client: AuthenticatedClient,
 ) -> Response[AccountRc | AccountRevealedApikey]:
-    """Read back a key's secret
+    """Reveal
 
      Returns an existing key's secret.
 
@@ -110,7 +110,7 @@ def sync(
     *,
     client: AuthenticatedClient,
 ) -> AccountRc | AccountRevealedApikey | None:
-    """Read back a key's secret
+    """Reveal
 
      Returns an existing key's secret.
 
@@ -144,7 +144,7 @@ async def asyncio_detailed(
     *,
     client: AuthenticatedClient,
 ) -> Response[AccountRc | AccountRevealedApikey]:
-    """Read back a key's secret
+    """Reveal
 
      Returns an existing key's secret.
 
@@ -181,7 +181,7 @@ async def asyncio(
     *,
     client: AuthenticatedClient,
 ) -> AccountRc | AccountRevealedApikey | None:
-    """Read back a key's secret
+    """Reveal
 
      Returns an existing key's secret.
 

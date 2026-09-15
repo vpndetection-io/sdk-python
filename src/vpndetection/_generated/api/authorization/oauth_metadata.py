@@ -48,7 +48,7 @@ def sync_detailed(
     *,
     client: AuthenticatedClient | Client,
 ) -> Response[OauthMetadata]:
-    """Discovery document
+    """Discovery
 
      RFC 8414 authorization server metadata: the endpoints, the grant types
     and the scopes this server supports.
@@ -78,7 +78,7 @@ def sync(
     *,
     client: AuthenticatedClient | Client,
 ) -> OauthMetadata | None:
-    """Discovery document
+    """Discovery
 
      RFC 8414 authorization server metadata: the endpoints, the grant types
     and the scopes this server supports.
@@ -104,7 +104,7 @@ async def asyncio_detailed(
     *,
     client: AuthenticatedClient | Client,
 ) -> Response[OauthMetadata]:
-    """Discovery document
+    """Discovery
 
      RFC 8414 authorization server metadata: the endpoints, the grant types
     and the scopes this server supports.
@@ -132,7 +132,7 @@ async def asyncio(
     *,
     client: AuthenticatedClient | Client,
 ) -> OauthMetadata | None:
-    """Discovery document
+    """Discovery
 
      RFC 8414 authorization server metadata: the endpoints, the grant types
     and the scopes this server supports.

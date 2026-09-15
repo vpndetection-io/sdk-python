@@ -14,7 +14,7 @@ def _get_kwargs() -> dict[str, Any]:
 
     _kwargs: dict[str, Any] = {
         "method": "get",
-        "url": "/api/v1/account/apikeys",
+        "url": "/api/v1/iam/apikeys",
     }
 
     return _kwargs
@@ -59,7 +59,7 @@ def sync_detailed(
     *,
     client: AuthenticatedClient,
 ) -> Response[AccountRc | ApikeyList]:
-    """List your API keys
+    """List
 
      Metadata only. A key's secret is never in a list - not here and not in
     the console - because a list is the response that ends up in logs,
@@ -91,7 +91,7 @@ def sync(
     *,
     client: AuthenticatedClient,
 ) -> AccountRc | ApikeyList | None:
-    """List your API keys
+    """List
 
      Metadata only. A key's secret is never in a list - not here and not in
     the console - because a list is the response that ends up in logs,
@@ -119,7 +119,7 @@ async def asyncio_detailed(
     *,
     client: AuthenticatedClient,
 ) -> Response[AccountRc | ApikeyList]:
-    """List your API keys
+    """List
 
      Metadata only. A key's secret is never in a list - not here and not in
     the console - because a list is the response that ends up in logs,
@@ -149,7 +149,7 @@ async def asyncio(
     *,
     client: AuthenticatedClient,
 ) -> AccountRc | ApikeyList | None:
-    """List your API keys
+    """List
 
      Metadata only. A key's secret is never in a list - not here and not in
     the console - because a list is the response that ends up in logs,

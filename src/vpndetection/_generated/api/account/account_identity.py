@@ -14,7 +14,7 @@ def _get_kwargs() -> dict[str, Any]:
 
     _kwargs: dict[str, Any] = {
         "method": "get",
-        "url": "/api/v1/account/identity",
+        "url": "/api/v1/iam/identity",
     }
 
     return _kwargs
@@ -59,7 +59,7 @@ def sync_detailed(
     *,
     client: AuthenticatedClient,
 ) -> Response[AccountRc | Identity]:
-    """Identity - who this credential belongs to
+    """Identity
 
      The identity behind this credential: what it is, the organization it is
     scoped to, and the scopes it currently holds.
@@ -96,7 +96,7 @@ def sync(
     *,
     client: AuthenticatedClient,
 ) -> AccountRc | Identity | None:
-    """Identity - who this credential belongs to
+    """Identity
 
      The identity behind this credential: what it is, the organization it is
     scoped to, and the scopes it currently holds.
@@ -129,7 +129,7 @@ async def asyncio_detailed(
     *,
     client: AuthenticatedClient,
 ) -> Response[AccountRc | Identity]:
-    """Identity - who this credential belongs to
+    """Identity
 
      The identity behind this credential: what it is, the organization it is
     scoped to, and the scopes it currently holds.
@@ -164,7 +164,7 @@ async def asyncio(
     *,
     client: AuthenticatedClient,
 ) -> AccountRc | Identity | None:
-    """Identity - who this credential belongs to
+    """Identity
 
      The identity behind this credential: what it is, the organization it is
     scoped to, and the scopes it currently holds.

@@ -64,7 +64,7 @@ def sync_detailed(
     client: AuthenticatedClient | Client,
     body: TokenRequest,
 ) -> Response[OauthError | TokenResponse]:
-    """Exchange a grant for tokens
+    """Token
 
      Three grant types.
 
@@ -106,7 +106,7 @@ def sync(
     client: AuthenticatedClient | Client,
     body: TokenRequest,
 ) -> OauthError | TokenResponse | None:
-    """Exchange a grant for tokens
+    """Token
 
      Three grant types.
 
@@ -143,7 +143,7 @@ async def asyncio_detailed(
     client: AuthenticatedClient | Client,
     body: TokenRequest,
 ) -> Response[OauthError | TokenResponse]:
-    """Exchange a grant for tokens
+    """Token
 
      Three grant types.
 
@@ -183,7 +183,7 @@ async def asyncio(
     client: AuthenticatedClient | Client,
     body: TokenRequest,
 ) -> OauthError | TokenResponse | None:
-    """Exchange a grant for tokens
+    """Token
 
      Three grant types.
 

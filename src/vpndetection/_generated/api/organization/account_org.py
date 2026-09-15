@@ -14,7 +14,7 @@ def _get_kwargs() -> dict[str, Any]:
 
     _kwargs: dict[str, Any] = {
         "method": "get",
-        "url": "/api/v1/account/org",
+        "url": "/api/v1/iam/org",
     }
 
     return _kwargs
@@ -59,7 +59,7 @@ def sync_detailed(
     *,
     client: AuthenticatedClient,
 ) -> Response[AccountOrgWrap | AccountRc]:
-    """Your organization
+    """Organization
 
      The organization this credential is scoped to.
 
@@ -88,7 +88,7 @@ def sync(
     *,
     client: AuthenticatedClient,
 ) -> AccountOrgWrap | AccountRc | None:
-    """Your organization
+    """Organization
 
      The organization this credential is scoped to.
 
@@ -113,7 +113,7 @@ async def asyncio_detailed(
     *,
     client: AuthenticatedClient,
 ) -> Response[AccountOrgWrap | AccountRc]:
-    """Your organization
+    """Organization
 
      The organization this credential is scoped to.
 
@@ -140,7 +140,7 @@ async def asyncio(
     *,
     client: AuthenticatedClient,
 ) -> AccountOrgWrap | AccountRc | None:
-    """Your organization
+    """Organization
 
      The organization this credential is scoped to.
 

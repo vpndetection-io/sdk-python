@@ -58,7 +58,7 @@ def sync_detailed(
     client: AuthenticatedClient | Client,
     body: RevokeRequest,
 ) -> Response[OauthRevokeResponse200]:
-    """Revoke a token
+    """Revoke
 
      RFC 7009. Always answers 200, including for a token that was never
     valid - an endpoint that distinguished the two would be a way to test
@@ -94,7 +94,7 @@ def sync(
     client: AuthenticatedClient | Client,
     body: RevokeRequest,
 ) -> OauthRevokeResponse200 | None:
-    """Revoke a token
+    """Revoke
 
      RFC 7009. Always answers 200, including for a token that was never
     valid - an endpoint that distinguished the two would be a way to test
@@ -125,7 +125,7 @@ async def asyncio_detailed(
     client: AuthenticatedClient | Client,
     body: RevokeRequest,
 ) -> Response[OauthRevokeResponse200]:
-    """Revoke a token
+    """Revoke
 
      RFC 7009. Always answers 200, including for a token that was never
     valid - an endpoint that distinguished the two would be a way to test
@@ -159,7 +159,7 @@ async def asyncio(
     client: AuthenticatedClient | Client,
     body: RevokeRequest,
 ) -> OauthRevokeResponse200 | None:
-    """Revoke a token
+    """Revoke
 
      RFC 7009. Always answers 200, including for a token that was never
     valid - an endpoint that distinguished the two would be a way to test

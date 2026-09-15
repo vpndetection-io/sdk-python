@@ -18,7 +18,7 @@ def _get_kwargs(
 
     _kwargs: dict[str, Any] = {
         "method": "post",
-        "url": "/api/v1/account/apikeys/{id}/rotate".format(
+        "url": "/api/v1/iam/apikeys/{id}/rotate".format(
             id=quote(str(id), safe=""),
         ),
     }
@@ -71,7 +71,7 @@ def sync_detailed(
     *,
     client: AuthenticatedClient,
 ) -> Response[AccountCreatedApikey | AccountRc]:
-    """Rotate an API key
+    """Rotate
 
      Replaces the secret behind a key, keeping its id, name and settings.
     The previous secret stops working immediately.
@@ -103,7 +103,7 @@ def sync(
     *,
     client: AuthenticatedClient,
 ) -> AccountCreatedApikey | AccountRc | None:
-    """Rotate an API key
+    """Rotate
 
      Replaces the secret behind a key, keeping its id, name and settings.
     The previous secret stops working immediately.
@@ -130,7 +130,7 @@ async def asyncio_detailed(
     *,
     client: AuthenticatedClient,
 ) -> Response[AccountCreatedApikey | AccountRc]:
-    """Rotate an API key
+    """Rotate
 
      Replaces the secret behind a key, keeping its id, name and settings.
     The previous secret stops working immediately.
@@ -160,7 +160,7 @@ async def asyncio(
     *,
     client: AuthenticatedClient,
 ) -> AccountCreatedApikey | AccountRc | None:
-    """Rotate an API key
+    """Rotate
 
      Replaces the secret behind a key, keeping its id, name and settings.
     The previous secret stops working immediately.

@@ -19,7 +19,7 @@ def _get_kwargs(
 
     _kwargs: dict[str, Any] = {
         "method": "post",
-        "url": "/api/v1/account/apikeys",
+        "url": "/api/v1/iam/apikeys",
     }
 
     _kwargs["json"] = body.to_dict()
@@ -75,7 +75,7 @@ def sync_detailed(
     client: AuthenticatedClient,
     body: AccountCreateApikeyRequest,
 ) -> Response[AccountCreatedApikey | AccountRc]:
-    """Create an API key
+    """Create
 
      Creates a key and returns its secret.
 
@@ -109,7 +109,7 @@ def sync(
     client: AuthenticatedClient,
     body: AccountCreateApikeyRequest,
 ) -> AccountCreatedApikey | AccountRc | None:
-    """Create an API key
+    """Create
 
      Creates a key and returns its secret.
 
@@ -138,7 +138,7 @@ async def asyncio_detailed(
     client: AuthenticatedClient,
     body: AccountCreateApikeyRequest,
 ) -> Response[AccountCreatedApikey | AccountRc]:
-    """Create an API key
+    """Create
 
      Creates a key and returns its secret.
 
@@ -170,7 +170,7 @@ async def asyncio(
     client: AuthenticatedClient,
     body: AccountCreateApikeyRequest,
 ) -> AccountCreatedApikey | AccountRc | None:
-    """Create an API key
+    """Create
 
      Creates a key and returns its secret.
 

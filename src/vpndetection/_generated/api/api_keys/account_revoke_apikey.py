@@ -17,7 +17,7 @@ def _get_kwargs(
 
     _kwargs: dict[str, Any] = {
         "method": "post",
-        "url": "/api/v1/account/apikeys/{id}/revoke".format(
+        "url": "/api/v1/iam/apikeys/{id}/revoke".format(
             id=quote(str(id), safe=""),
         ),
     }
@@ -70,7 +70,7 @@ def sync_detailed(
     *,
     client: AuthenticatedClient,
 ) -> Response[AccountRc]:
-    """Revoke an API key
+    """Revoke
 
      Stops the key working. Revocation is soft: the key stays listed with a
     `revoked_at`, because the organization still owns whatever it did while
@@ -103,7 +103,7 @@ def sync(
     *,
     client: AuthenticatedClient,
 ) -> AccountRc | None:
-    """Revoke an API key
+    """Revoke
 
      Stops the key working. Revocation is soft: the key stays listed with a
     `revoked_at`, because the organization still owns whatever it did while
@@ -131,7 +131,7 @@ async def asyncio_detailed(
     *,
     client: AuthenticatedClient,
 ) -> Response[AccountRc]:
-    """Revoke an API key
+    """Revoke
 
      Stops the key working. Revocation is soft: the key stays listed with a
     `revoked_at`, because the organization still owns whatever it did while
@@ -162,7 +162,7 @@ async def asyncio(
     *,
     client: AuthenticatedClient,
 ) -> AccountRc | None:
-    """Revoke an API key
+    """Revoke
 
      Stops the key working. Revocation is soft: the key stays listed with a
     `revoked_at`, because the organization still owns whatever it did while
