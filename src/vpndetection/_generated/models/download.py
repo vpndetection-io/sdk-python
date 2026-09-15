@@ -24,6 +24,8 @@ class Download:
             sample (bool): The evaluation sample rather than the database itself.
             bytes_ (int | None): Object size at redirect time, NOT bytes delivered: the transfer is a
                 presigned redirect straight to object storage, so we never observe it.
+                int64 for the same reason as DatabaseFormatSize.bytes - it is the
+                size of the same object.
             http_status (int | None):
             apikey_id (None | str): The key that made the request. Null when the org acted through the
                 console rather than through a key.

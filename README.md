@@ -79,7 +79,7 @@ Same answer `lookup` would give for that address, and the same cost against your
 ### Your plan and usage
 
 ```python
-acct = client.my_account()
+acct = client.my_entitlement()
 print(acct.plan.key)          # max
 print(acct.usage.requests)    # 580
 print(acct.usage.window_end)  # when the allowance resets
@@ -87,7 +87,7 @@ print(acct.usage.window_end)  # when the allowance resets
 
 Usage counts against the anniversary of your subscription, not the calendar month and not the billing period, and it is the same number a lookup is gated on. `hard_limit` is `None` on an uncapped plan, which is not the same as zero.
 
-Both are on the async client too: `await client.my_ip()` and `await client.my_account()`.
+Both are on the async client too: `await client.my_ip()` and `await client.my_entitlement()`.
 
 ### Batch lookup
 

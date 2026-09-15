@@ -1,7 +1,7 @@
 from enum import StrEnum
 
 
-class AccountPlanTier(StrEnum):
+class EntitlementPlanTier(StrEnum):
     FREE = "free"
     MAX = "max"
     SCALE = "scale"

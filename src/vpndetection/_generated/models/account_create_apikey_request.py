@@ -6,62 +6,57 @@ from typing import Any, Self, TypeVar, cast
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
-from ..models.database_format import DatabaseFormat
+from ..types import UNSET, Unset
 
-T = TypeVar("T", bound="DatabaseFormatSize")
+T = TypeVar("T", bound="AccountCreateApikeyRequest")
 
 
 @_attrs_define
-class DatabaseFormatSize:
+class AccountCreateApikeyRequest:
     """
     Attributes:
-        format_ (DatabaseFormat): A file format a database version is published in.
-        bytes_ (int | None): Size of the published file, or null when it has not been published
-            yet. int64 because it is not hypothetical: resproxy_ip_14d's MMDB is
-            4.58 GB, so a 32-bit field cannot carry the catalogue and `list`
-            throws for every caller rather than for that one entry.
+        name (str): A label you will recognise later. Shown wherever the key is listed.
+        allowed_scopes (list[str] | Unset): What the new key may do. Omit for a key that carries no named scope, which
+            is the safe default.
     """
 
-    format_: DatabaseFormat
-    bytes_: int | None
+    name: str
+    allowed_scopes: list[str] | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        format_ = self.format_.value
+        name = self.name
 
-        bytes_: int | None
-        bytes_ = self.bytes_
+        allowed_scopes: list[str] | Unset = UNSET
+        if not isinstance(self.allowed_scopes, Unset):
+            allowed_scopes = self.allowed_scopes
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update(
             {
-                "format": format_,
-                "bytes": bytes_,
+                "name": name,
             }
         )
+        if allowed_scopes is not UNSET:
+            field_dict["allowed_scopes"] = allowed_scopes
 
         return field_dict
 
     @classmethod
     def from_dict(cls, src_dict: Mapping[str, Any]) -> Self:
         d = dict(src_dict)
-        format_ = DatabaseFormat(d.pop("format"))
+        name = d.pop("name")
 
-        def _parse_bytes_(data: object) -> int | None:
-            if data is None:
-                return data
-            return cast(int | None, data)
+        allowed_scopes = cast(list[str], d.pop("allowed_scopes", UNSET))
 
-        bytes_ = _parse_bytes_(d.pop("bytes"))
-
-        database_format_size = cls(
-            format_=format_,
-            bytes_=bytes_,
+        account_create_apikey_request = cls(
+            name=name,
+            allowed_scopes=allowed_scopes,
         )
 
-        database_format_size.additional_properties = d
-        return database_format_size
+        account_create_apikey_request.additional_properties = d
+        return account_create_apikey_request
 
     @property
     def additional_keys(self) -> list[str]:

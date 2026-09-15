@@ -6,27 +6,32 @@ from typing import Any, Self, TypeVar
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
-T = TypeVar("T", bound="AccountError")
+T = TypeVar("T", bound="AccountRevealedApikey")
 
 
 @_attrs_define
-class AccountError:
+class AccountRevealedApikey:
     """
     Attributes:
-        error (str):
+        rc (str):
+        key (str): The secret.
     """
 
-    error: str
+    rc: str
+    key: str
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        error = self.error
+        rc = self.rc
+
+        key = self.key
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update(
             {
-                "error": error,
+                "rc": rc,
+                "key": key,
             }
         )
 
@@ -35,14 +40,17 @@ class AccountError:
     @classmethod
     def from_dict(cls, src_dict: Mapping[str, Any]) -> Self:
         d = dict(src_dict)
-        error = d.pop("error")
+        rc = d.pop("rc")
 
-        account_error = cls(
-            error=error,
+        key = d.pop("key")
+
+        account_revealed_apikey = cls(
+            rc=rc,
+            key=key,
         )
 
-        account_error.additional_properties = d
-        return account_error
+        account_revealed_apikey.additional_properties = d
+        return account_revealed_apikey
 
     @property
     def additional_keys(self) -> list[str]:

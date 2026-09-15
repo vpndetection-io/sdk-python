@@ -200,11 +200,11 @@ def test_my_ip_is_not_cached(make_client: ClientFactory) -> None:
     assert len(stub.calls) == 2
 
 
-def test_my_account_reports_the_plan_and_the_usage(make_client: ClientFactory) -> None:
+def test_my_entitlement_reports_the_plan_and_the_usage(make_client: ClientFactory) -> None:
     stub = Stub({"api/v1/account/me": {"body": ACCOUNT_BODY}})
     client = make_client(transport=stub.transport)
 
-    account = client.my_account()
+    account = client.my_entitlement()
 
     assert account.plan.key == "max"
     assert account.plan.tier == "max"
@@ -215,23 +215,23 @@ def test_my_account_reports_the_plan_and_the_usage(make_client: ClientFactory) -
     assert account.apikey.allowed_cidrs == []
 
 
-def test_my_account_is_not_cached(make_client: ClientFactory) -> None:
+def test_my_entitlement_is_not_cached(make_client: ClientFactory) -> None:
     """The whole point is what has been spent, so a cached answer is a wrong one within
     seconds of the next request."""
     stub = Stub({"api/v1/account/me": {"body": ACCOUNT_BODY}})
     client = make_client(transport=stub.transport)
 
-    client.my_account()
-    client.my_account()
+    client.my_entitlement()
+    client.my_entitlement()
 
     assert len(stub.calls) == 2
 
 
-def test_my_account_surfaces_an_unauthorized_key(make_client: ClientFactory) -> None:
+def test_my_entitlement_surfaces_an_unauthorized_key(make_client: ClientFactory) -> None:
     """Unlike a lookup there is no useful unauthenticated answer, so this is an error
     rather than a partial result."""
     stub = Stub({"api/v1/account/me": {"status": 401, "body": {"error": "invalid API key"}}})
     client = make_client(transport=stub.transport, retries=0)
 
     with pytest.raises(VPNDetectionError):
-        client.my_account()
+        client.my_entitlement()

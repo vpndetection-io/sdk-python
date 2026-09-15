@@ -7,11 +7,11 @@ from typing import Any, Self, TypeVar, cast
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
-T = TypeVar("T", bound="AccountUsage")
+T = TypeVar("T", bound="EntitlementUsage")
 
 
 @_attrs_define
-class AccountUsage:
+class EntitlementUsage:
     """
     Attributes:
         requests (int): Requests counted in the current window. The same number the lookup
@@ -75,7 +75,7 @@ class AccountUsage:
 
         window_end = datetime.datetime.fromisoformat(d.pop("window_end"))
 
-        account_usage = cls(
+        entitlement_usage = cls(
             requests=requests,
             quota=quota,
             hard_limit=hard_limit,
@@ -83,8 +83,8 @@ class AccountUsage:
             window_end=window_end,
         )
 
-        account_usage.additional_properties = d
-        return account_usage
+        entitlement_usage.additional_properties = d
+        return entitlement_usage
 
     @property
     def additional_keys(self) -> list[str]:

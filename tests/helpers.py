@@ -71,10 +71,10 @@ class ClientAdapter:
             return self.client.my_ip(**kwargs)
         return asyncio.run(self.client.my_ip(**kwargs))
 
-    def my_account(self, **kwargs: Any) -> Any:
+    def my_entitlement(self, **kwargs: Any) -> Any:
         if isinstance(self.client, VPNDetection):
-            return self.client.my_account(**kwargs)
-        return asyncio.run(self.client.my_account(**kwargs))
+            return self.client.my_entitlement(**kwargs)
+        return asyncio.run(self.client.my_entitlement(**kwargs))
 
     def lookup_batch(self, ips: Any, **kwargs: Any) -> dict[str, Any]:
         if isinstance(self.client, VPNDetection):

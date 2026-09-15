@@ -41,7 +41,7 @@ from ._core import (
     storage_refusal,
     unwrap,
 )
-from ._generated.api.account import account_me
+from ._generated.api.entitlement import my_entitlement
 from ._generated.api.database import (
     database_checksum,
     database_metadata,
@@ -51,7 +51,7 @@ from ._generated.api.database import (
 )
 from ._generated.api.lookup import lookup_ip, lookup_my_ip
 from ._generated.client import AuthenticatedClient
-from ._generated.models.account_me import AccountMe
+from ._generated.models.entitlement import Entitlement
 from ._generated.models.database import Database
 from ._generated.models.database_format import DatabaseFormat
 from ._generated.models.database_metadata import DatabaseMetadata
@@ -145,12 +145,12 @@ class AsyncVPNDetection:
 
         return await self._retrying(call, self._retries if retries is None else retries)
 
-    async def my_account(self, *, retries: int | None = None) -> AccountMe:
+    async def my_entitlement(self, *, retries: int | None = None) -> Entitlement:
         """What this client's key is entitled to, and how much of it has been used.
 
         Named for what it answers rather than `me`, which sits one letter from `my_ip`
         and means something quite different: one is which address you are calling FROM,
-        the other is which account you are calling AS.
+        the other is what the key you are calling WITH may spend.
 
         Unlike a lookup there is no useful unauthenticated answer, so a client built
         without a key gets an unauthorized error rather than a partial one.
@@ -164,9 +164,9 @@ class AsyncVPNDetection:
         answer is a wrong one within seconds of the next request.
         """
 
-        async def call() -> AccountMe:
-            res = await send_async(lambda: account_me.asyncio_detailed(client=self._client))
-            return parse_body(unwrap(res), AccountMe.from_dict)
+        async def call() -> Entitlement:
+            res = await send_async(lambda: my_entitlement.asyncio_detailed(client=self._client))
+            return parse_body(unwrap(res), Entitlement.from_dict)
 
         return await self._retrying(call, self._retries if retries is None else retries)
 

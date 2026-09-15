@@ -5,8 +5,8 @@ import httpx
 
 from ... import errors
 from ...client import AuthenticatedClient, Client
-from ...models.account_error import AccountError
-from ...models.account_me import AccountMe
+from ...models.account_org_wrap import AccountOrgWrap
+from ...models.account_rc import AccountRc
 from ...types import Response
 
 
@@ -14,7 +14,7 @@ def _get_kwargs() -> dict[str, Any]:
 
     _kwargs: dict[str, Any] = {
         "method": "get",
-        "url": "/api/v1/account/me",
+        "url": "/api/v1/account/org",
     }
 
     return _kwargs
@@ -22,26 +22,21 @@ def _get_kwargs() -> dict[str, Any]:
 
 def _parse_response(
     *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> AccountError | AccountMe | None:
+) -> AccountOrgWrap | AccountRc | None:
     if response.status_code == 200:
-        response_200 = AccountMe.from_dict(response.json())
+        response_200 = AccountOrgWrap.from_dict(response.json())
 
         return response_200
 
     if response.status_code == 401:
-        response_401 = AccountError.from_dict(response.json())
+        response_401 = AccountRc.from_dict(response.json())
 
         return response_401
 
     if response.status_code == 403:
-        response_403 = AccountError.from_dict(response.json())
+        response_403 = AccountRc.from_dict(response.json())
 
         return response_403
-
-    if response.status_code == 503:
-        response_503 = AccountError.from_dict(response.json())
-
-        return response_503
 
     if client.raise_on_unexpected_status:
         raise errors.UnexpectedStatus(response.status_code, response.content)
@@ -51,7 +46,7 @@ def _parse_response(
 
 def _build_response(
     *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> Response[AccountError | AccountMe]:
+) -> Response[AccountOrgWrap | AccountRc]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -63,18 +58,21 @@ def _build_response(
 def sync_detailed(
     *,
     client: AuthenticatedClient,
-) -> Response[AccountError | AccountMe]:
-    """Your key, plan and usage
+) -> Response[AccountOrgWrap | AccountRc]:
+    """Your organization
 
-     Answers what the presented key is, what plan is behind it, and what has
-    been spent against that plan's allowance in the current window.
+     The organization this credential is scoped to.
+
+    There is no way to name a different one. A credential describes exactly
+    one organization, so an identifier in the path could only ever be your
+    own or a refusal.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[AccountError | AccountMe]
+        Response[AccountOrgWrap | AccountRc]
     """
 
     kwargs = _get_kwargs()
@@ -89,18 +87,21 @@ def sync_detailed(
 def sync(
     *,
     client: AuthenticatedClient,
-) -> AccountError | AccountMe | None:
-    """Your key, plan and usage
+) -> AccountOrgWrap | AccountRc | None:
+    """Your organization
 
-     Answers what the presented key is, what plan is behind it, and what has
-    been spent against that plan's allowance in the current window.
+     The organization this credential is scoped to.
+
+    There is no way to name a different one. A credential describes exactly
+    one organization, so an identifier in the path could only ever be your
+    own or a refusal.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        AccountError | AccountMe
+        AccountOrgWrap | AccountRc
     """
 
     return sync_detailed(
@@ -111,18 +112,21 @@ def sync(
 async def asyncio_detailed(
     *,
     client: AuthenticatedClient,
-) -> Response[AccountError | AccountMe]:
-    """Your key, plan and usage
+) -> Response[AccountOrgWrap | AccountRc]:
+    """Your organization
 
-     Answers what the presented key is, what plan is behind it, and what has
-    been spent against that plan's allowance in the current window.
+     The organization this credential is scoped to.
+
+    There is no way to name a different one. A credential describes exactly
+    one organization, so an identifier in the path could only ever be your
+    own or a refusal.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[AccountError | AccountMe]
+        Response[AccountOrgWrap | AccountRc]
     """
 
     kwargs = _get_kwargs()
@@ -135,18 +139,21 @@ async def asyncio_detailed(
 async def asyncio(
     *,
     client: AuthenticatedClient,
-) -> AccountError | AccountMe | None:
-    """Your key, plan and usage
+) -> AccountOrgWrap | AccountRc | None:
+    """Your organization
 
-     Answers what the presented key is, what plan is behind it, and what has
-    been spent against that plan's allowance in the current window.
+     The organization this credential is scoped to.
+
+    There is no way to name a different one. A credential describes exactly
+    one organization, so an identifier in the path could only ever be your
+    own or a refusal.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        AccountError | AccountMe
+        AccountOrgWrap | AccountRc
     """
 
     return (

@@ -8,11 +8,11 @@ from uuid import UUID
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
-T = TypeVar("T", bound="AccountApikey")
+T = TypeVar("T", bound="EntitlementApikey")
 
 
 @_attrs_define
-class AccountApikey:
+class EntitlementApikey:
     """The credential itself. The key is never echoed - only its id, which is
     what the console shows and what you can act on.
 
@@ -73,14 +73,14 @@ class AccountApikey:
 
         allowed_cidrs = cast(list[str], d.pop("allowed_cidrs"))
 
-        account_apikey = cls(
+        entitlement_apikey = cls(
             id=id,
             expires=expires,
             allowed_cidrs=allowed_cidrs,
         )
 
-        account_apikey.additional_properties = d
-        return account_apikey
+        entitlement_apikey.additional_properties = d
+        return entitlement_apikey
 
     @property
     def additional_keys(self) -> list[str]:

@@ -1,41 +1,41 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any, Self, TypeVar
+from typing import TYPE_CHECKING, Any, Self, TypeVar
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
-from ..models.account_plan_tier import AccountPlanTier
+if TYPE_CHECKING:
+    from ..models.account_org import AccountOrg
 
-T = TypeVar("T", bound="AccountPlan")
+
+T = TypeVar("T", bound="AccountOrgWrap")
 
 
 @_attrs_define
-class AccountPlan:
+class AccountOrgWrap:
     """
     Attributes:
-        key (str): The plan the organization is on. Example: max.
-        tier (AccountPlanTier): The field tier, which decides how much of a lookup answer comes
-            back. What each tier includes is documented on the lookup endpoint
-            rather than repeated here, so there is one place it can be wrong.
+        rc (str):
+        org (AccountOrg):
     """
 
-    key: str
-    tier: AccountPlanTier
+    rc: str
+    org: AccountOrg
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        key = self.key
+        rc = self.rc
 
-        tier = self.tier.value
+        org = self.org.to_dict()
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update(
             {
-                "key": key,
-                "tier": tier,
+                "rc": rc,
+                "org": org,
             }
         )
 
@@ -43,18 +43,20 @@ class AccountPlan:
 
     @classmethod
     def from_dict(cls, src_dict: Mapping[str, Any]) -> Self:
+        from ..models.account_org import AccountOrg
+
         d = dict(src_dict)
-        key = d.pop("key")
+        rc = d.pop("rc")
 
-        tier = AccountPlanTier(d.pop("tier"))
+        org = AccountOrg.from_dict(d.pop("org"))
 
-        account_plan = cls(
-            key=key,
-            tier=tier,
+        account_org_wrap = cls(
+            rc=rc,
+            org=org,
         )
 
-        account_plan.additional_properties = d
-        return account_plan
+        account_org_wrap.additional_properties = d
+        return account_org_wrap
 
     @property
     def additional_keys(self) -> list[str]:

@@ -8,29 +8,29 @@ from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
 if TYPE_CHECKING:
-    from ..models.account_apikey import AccountApikey
-    from ..models.account_plan import AccountPlan
-    from ..models.account_usage import AccountUsage
+    from ..models.entitlement_apikey import EntitlementApikey
+    from ..models.entitlement_plan import EntitlementPlan
+    from ..models.entitlement_usage import EntitlementUsage
 
 
-T = TypeVar("T", bound="AccountMe")
+T = TypeVar("T", bound="Entitlement")
 
 
 @_attrs_define
-class AccountMe:
+class Entitlement:
     """
     Attributes:
         org_id (UUID): The organization the key belongs to.
-        apikey (AccountApikey): The credential itself. The key is never echoed - only its id, which is
+        apikey (EntitlementApikey): The credential itself. The key is never echoed - only its id, which is
             what the console shows and what you can act on.
-        plan (AccountPlan):
-        usage (AccountUsage):
+        plan (EntitlementPlan):
+        usage (EntitlementUsage):
     """
 
     org_id: UUID
-    apikey: AccountApikey
-    plan: AccountPlan
-    usage: AccountUsage
+    apikey: EntitlementApikey
+    plan: EntitlementPlan
+    usage: EntitlementUsage
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -57,28 +57,28 @@ class AccountMe:
 
     @classmethod
     def from_dict(cls, src_dict: Mapping[str, Any]) -> Self:
-        from ..models.account_apikey import AccountApikey
-        from ..models.account_plan import AccountPlan
-        from ..models.account_usage import AccountUsage
+        from ..models.entitlement_apikey import EntitlementApikey
+        from ..models.entitlement_plan import EntitlementPlan
+        from ..models.entitlement_usage import EntitlementUsage
 
         d = dict(src_dict)
         org_id = UUID(d.pop("org_id"))
 
-        apikey = AccountApikey.from_dict(d.pop("apikey"))
+        apikey = EntitlementApikey.from_dict(d.pop("apikey"))
 
-        plan = AccountPlan.from_dict(d.pop("plan"))
+        plan = EntitlementPlan.from_dict(d.pop("plan"))
 
-        usage = AccountUsage.from_dict(d.pop("usage"))
+        usage = EntitlementUsage.from_dict(d.pop("usage"))
 
-        account_me = cls(
+        entitlement = cls(
             org_id=org_id,
             apikey=apikey,
             plan=plan,
             usage=usage,
         )
 
-        account_me.additional_properties = d
-        return account_me
+        entitlement.additional_properties = d
+        return entitlement
 
     @property
     def additional_keys(self) -> list[str]:
