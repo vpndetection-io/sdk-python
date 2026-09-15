@@ -10,17 +10,17 @@ for batching, caching and the licensed dataset downloads.
 """
 
 from ._core import DEFAULT_BASE_URL
-from ._generated.models.entitlement_apikey import EntitlementApikey
-from ._generated.models.entitlement import Entitlement
-from ._generated.models.entitlement_plan import EntitlementPlan
-from ._generated.models.entitlement_plan_tier import EntitlementPlanTier
-from ._generated.models.entitlement_usage import EntitlementUsage
 from ._generated.models.database import Database
 from ._generated.models.database_format_size import DatabaseFormatSize
 from ._generated.models.database_metadata import DatabaseMetadata
 from ._generated.models.database_metadata_column import DatabaseMetadataColumn
 from ._generated.models.database_version import DatabaseVersion
 from ._generated.models.download import Download
+from ._generated.models.entitlement import Entitlement
+from ._generated.models.entitlement_apikey import EntitlementApikey
+from ._generated.models.entitlement_plan import EntitlementPlan
+from ._generated.models.entitlement_plan_tier import EntitlementPlanTier
+from ._generated.models.entitlement_usage import EntitlementUsage
 from .aio import AsyncDatabaseApi, AsyncVPNDetection
 from .bogon import is_bogon
 from .client import DatabaseApi, VPNDetection
@@ -31,11 +31,6 @@ __version__ = "5.0.0"
 
 __all__ = [
     "DEFAULT_BASE_URL",
-    "EntitlementApikey",
-    "Entitlement",
-    "EntitlementPlan",
-    "EntitlementPlanTier",
-    "EntitlementUsage",
     "AsyncDatabaseApi",
     "AsyncVPNDetection",
     "ClassDetail",
@@ -46,6 +41,11 @@ __all__ = [
     "DatabaseMetadataColumn",
     "DatabaseVersion",
     "Download",
+    "Entitlement",
+    "EntitlementApikey",
+    "EntitlementPlan",
+    "EntitlementPlanTier",
+    "EntitlementUsage",
     "ErrorKind",
     "Flag",
     "Format",

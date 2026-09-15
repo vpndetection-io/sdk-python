@@ -37,7 +37,6 @@ from ._core import (
     storage_refusal,
     unwrap,
 )
-from ._generated.api.entitlement import my_entitlement
 from ._generated.api.database import (
     database_checksum,
     database_metadata,
@@ -45,13 +44,14 @@ from ._generated.api.database import (
     list_databases,
     list_downloads,
 )
+from ._generated.api.entitlement import my_entitlement
 from ._generated.api.lookup import lookup_ip, lookup_my_ip
 from ._generated.client import AuthenticatedClient
-from ._generated.models.entitlement import Entitlement
 from ._generated.models.database import Database
 from ._generated.models.database_format import DatabaseFormat
 from ._generated.models.database_metadata import DatabaseMetadata
 from ._generated.models.download import Download
+from ._generated.models.entitlement import Entitlement
 from .bogon import bogon_result, is_bogon
 from .errors import VPNDetectionError
 from .models import Format, Result, to_result
