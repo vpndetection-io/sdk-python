@@ -11,7 +11,7 @@ import httpx
 import pytest
 from helpers import TESTDATA, ClientAdapter, ClientFactory, Meter, Stall, Stub
 
-from vpndetection import VPNDetection, VPNDetectionError, is_bogon
+from vpndetection import DEFAULT_BASE_URL, Result, VPNDetection, VPNDetectionError, is_bogon
 
 # Enough addresses for seven chunks of the batch endpoint's 1000, so a concurrency bound
 # has something to bound: one request per chunk, and only the chunks overlap.
@@ -82,6 +82,23 @@ def test_without_an_override_the_client_concurrency_still_applies(
     client.lookup_batch(ADDRESSES)
 
     assert meter.peak <= 2, f"peak in flight was {meter.peak}, expected at most 2"
+
+
+def test_a_batch_takes_any_number_of_addresses_in_chunks_of_a_thousand(
+    make_client: ClientFactory,
+) -> None:
+    addresses = ADDRESSES[:2500]
+    stub = Stub({ip: {"body": {"ip": ip, "is_vpn": False}} for ip in addresses})
+    client = make_client(transport=stub.transport, cache=False)
+
+    got = client.lookup_batch(addresses)
+
+    assert stub.calls == [f"POST {DEFAULT_BASE_URL}/batch"] * 3
+    assert list(got) == addresses
+    for ip in addresses:
+        answer = got[ip]
+        assert isinstance(answer, Result) and answer.is_bogon is False, f"{ip} should be served"
+        assert answer.ip == ip, f"{ip} should be answered for itself"
 
 
 def test_retries_are_configurable_per_call(make_client: ClientFactory) -> None:

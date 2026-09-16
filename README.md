@@ -91,7 +91,7 @@ Both are on the async client too: `await client.my_ip()` and `await client.my_en
 
 ### Batch lookup
 
-Look up many addresses at once. Bogons and cached answers are handled locally, and everything else goes to the batch endpoint in chunks of up to 1000 addresses, in parallel:
+Look up as many addresses as you like at once. Bogons and cached answers are handled locally, and everything else goes to the batch endpoint in chunks of up to 1000 addresses, in parallel:
 
 ```python
 results = client.lookup_batch(["45.83.91.1", "8.8.8.8", "1.1.1.1"])

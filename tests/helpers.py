@@ -126,7 +126,7 @@ class Stub:
         self.transport = httpx.MockTransport(self._handle)
 
     def _handle(self, request: httpx.Request) -> httpx.Response:
-        self.calls.append(str(request.url))
+        self.calls.append(f"{request.method} {request.url}")
         if request.url.path == "/batch":
             return self._batch(request)
         ip = _ip_of(request)
