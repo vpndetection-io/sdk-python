@@ -8,16 +8,20 @@ knowing when a sibling SDK's test file is full of renaming.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import pathlib
+import time
 from typing import Any
 
 import pytest
-from helpers import Stub
+from helpers import Stall, Stub
 
-from vpndetection import VPNDetection, VPNDetectionError
+from vpndetection import AsyncVPNDetection, VPNDetection, VPNDetectionError
 from vpndetection.middleware import (
+    AsyncCore,
     Core,
+    Lookup,
     Options,
     RequestView,
     Selectors,
@@ -186,8 +190,34 @@ def test_an_injected_client_is_used_rather_than_a_second_one_built() -> None:
     assert shared.lookup(PUBLIC_IP).is_vpn is True
 
 
-def test_an_async_client_is_refused_by_the_sync_core() -> None:
-    from vpndetection import AsyncVPNDetection
+def test_the_timeout_bounds_a_lookup_through_a_client_passed_in() -> None:
+    with Stall() as stall, VPNDetection(base_url=stall.url, timeout=5.0, retries=0) as client:
+        core = _core(client=client, timeout=0.2)
+        started = time.monotonic()
+        lookup = core.evaluate(Req())
+        elapsed = time.monotonic() - started
 
+    assert lookup is not None and lookup.blocked is False
+    assert isinstance(lookup.error, VPNDetectionError) and lookup.error.kind == "network"
+    assert elapsed < 2.5, f"the lookup held the request for {elapsed:.2f}s"
+
+
+def test_the_timeout_bounds_a_lookup_through_an_async_client_passed_in() -> None:
+    async def evaluate(url: str) -> Lookup | None:
+        async with AsyncVPNDetection(base_url=url, timeout=5.0, retries=0) as client:
+            core: AsyncCore[Req] = AsyncCore(Options(client=client, timeout=0.2), SELECTORS.default)
+            return await core.evaluate(Req())
+
+    with Stall() as stall:
+        started = time.monotonic()
+        lookup = asyncio.run(evaluate(stall.url))
+        elapsed = time.monotonic() - started
+
+    assert lookup is not None and lookup.blocked is False
+    assert isinstance(lookup.error, VPNDetectionError) and lookup.error.kind == "network"
+    assert elapsed < 2.5, f"the lookup held the request for {elapsed:.2f}s"
+
+
+def test_an_async_client_is_refused_by_the_sync_core() -> None:
     with pytest.raises(TypeError, match="use AsyncCore"):
         Core(Options(client=AsyncVPNDetection()), SELECTORS.default)

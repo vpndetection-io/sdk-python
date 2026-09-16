@@ -105,10 +105,10 @@ for ip, result in results.items():
 
 Results are keyed by address, in the order you first listed each one, so duplicates in your list collapse into a single entry and one address failing never loses the rest: it carries its error as its value, with the status the API would have given that address on its own.
 
-How many chunks are in flight at once, and how many times a failed chunk is retried, are configurable per call:
+How many chunks are in flight at once, how many times a failed chunk is retried and how long each request may take are configurable per call:
 
 ```python
-results = client.lookup_batch(many_ips, concurrency=4, retries=4)
+results = client.lookup_batch(many_ips, concurrency=4, retries=4, timeout=30)
 ```
 
 ### Caching
@@ -171,6 +171,13 @@ except VPNDetectionError as err:
 ```
 
 `kind` is one of `bad_request`, `unauthorized`, `forbidden`, `rate_limited`, `quota_exceeded`, `server_error` or `network`.
+
+A request that runs past its `timeout` fails with `network`. The default is 10 seconds per attempt, so a retried call can take longer in total, and a database download is exempt. Set it on the client, or on a single `lookup`, `my_ip`, `my_entitlement` or `lookup_batch` call:
+
+```python
+client = VPNDetection(timeout=30)
+result = client.lookup("45.83.91.1", timeout=2)
+```
 
 Note that `rate_limited` and `quota_exceeded` both arrive as HTTP 429 and are not the same thing. A rate limit is when the API faces extreme traffic bursts and so retrying later works; but a spent quota needs your allowance raised or the window to roll over. The library retries rate limits for you, but not if your quota is exceeded.
 

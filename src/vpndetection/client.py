@@ -35,6 +35,7 @@ from ._core import (
     parse_body,
     part_file,
     redirect_location,
+    request,
     retry_delay,
     send,
     storage_refusal,
@@ -74,6 +75,11 @@ class VPNDetection:
     The cache is per instance, so an answer is never shared between two clients holding
     different API keys and therefore entitled to different fields.
 
+    `timeout` is how long one attempt at a request may take, in seconds, so a call that is
+    retried can take longer in total; a database transfer is exempt. `lookup`, `my_ip`,
+    `my_entitlement` and `lookup_batch` also take `retries` and `timeout`, which override
+    the client's for that call alone.
+
     Holds an HTTP connection pool, so use it as a context manager or call `close()` when
     you are done with it.
     """
@@ -112,7 +118,9 @@ class VPNDetection:
         """
         return is_bogon(ip)
 
-    def lookup(self, ip: str, *, retries: int | None = None) -> Result:
+    def lookup(
+        self, ip: str, *, retries: int | None = None, timeout: float | None = None
+    ) -> Result:
         """Classify one address.
 
         A bogon is answered locally and never reaches the network. Everything else is
@@ -126,7 +134,7 @@ class VPNDetection:
                 return hit
 
         def call() -> Result:
-            res = send(lambda: lookup_ip.sync_detailed(ip, client=self._client))
+            res = request(lookup_ip, self._client, timeout, ip=ip)
             return parse_body(unwrap(res), to_result)
 
         result = self._retrying(call, self._retries if retries is None else retries)
@@ -134,7 +142,7 @@ class VPNDetection:
             self._cache.put(ip, result)
         return result
 
-    def my_ip(self, *, retries: int | None = None) -> Result:
+    def my_ip(self, *, retries: int | None = None, timeout: float | None = None) -> Result:
         """Classify the address this client is calling from.
 
         The same answer `lookup` would give for that address, at the same cost against
@@ -147,12 +155,14 @@ class VPNDetection:
         """
 
         def call() -> Result:
-            res = send(lambda: lookup_my_ip.sync_detailed(client=self._client))
+            res = request(lookup_my_ip, self._client, timeout)
             return parse_body(unwrap(res), to_result)
 
         return self._retrying(call, self._retries if retries is None else retries)
 
-    def my_entitlement(self, *, retries: int | None = None) -> Entitlement:
+    def my_entitlement(
+        self, *, retries: int | None = None, timeout: float | None = None
+    ) -> Entitlement:
         """What this client's key is entitled to, and how much of it has been used.
 
         Named for what it answers rather than `me`, which sits one letter from `my_ip`
@@ -172,7 +182,7 @@ class VPNDetection:
         """
 
         def call() -> Entitlement:
-            res = send(lambda: my_entitlement.sync_detailed(client=self._client))
+            res = request(my_entitlement, self._client, timeout)
             return parse_body(unwrap(res), Entitlement.from_dict)
 
         return self._retrying(call, self._retries if retries is None else retries)
@@ -183,6 +193,7 @@ class VPNDetection:
         *,
         concurrency: int | None = None,
         retries: int | None = None,
+        timeout: float | None = None,
     ) -> dict[str, Result | VPNDetectionError]:
         """Classify many addresses in as few requests as possible.
 
@@ -215,7 +226,7 @@ class VPNDetection:
             workers = self._concurrency if concurrency is None else concurrency
             with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
                 futures = [
-                    pool.submit(self._lookup_chunk, chunk, retries)
+                    pool.submit(self._lookup_chunk, chunk, retries, timeout)
                     for chunk in chunked(pending, BATCH_MAX)
                 ]
             for future in futures:
@@ -241,13 +252,11 @@ class VPNDetection:
     # failure - the call refused, the transport failing, the retries exhausted - becomes
     # every address's error, exactly as it would have been had each been looked up alone.
     def _lookup_chunk(
-        self, chunk: list[str], retries: int | None
+        self, chunk: list[str], retries: int | None, timeout: float | None
     ) -> dict[str, Result | VPNDetectionError]:
         def call() -> dict[str, Any]:
-            res = send(
-                lambda: lookup_batch.sync_detailed(
-                    client=self._client, body=BatchLookupRequest(ips=list(chunk))
-                )
+            res = request(
+                lookup_batch, self._client, timeout, body=BatchLookupRequest(ips=list(chunk))
             )
             return unwrap(res)
 

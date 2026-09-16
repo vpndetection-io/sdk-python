@@ -90,10 +90,9 @@ class Options(Generic[Req]):
     api_key: str | None = None
     base_url: str | None = None
     #: How long a lookup may hold the request, in seconds. Defaults to 2.5, a much
-    #: tighter bound than the client's own 30.
-    #:
-    #: Ignored when ``client`` is given: a client you built carries its own timeout,
-    #: and silently rebuilding it here would throw away the cache you passed in for.
+    #: tighter bound than a client's own. Applied to each lookup rather than to the
+    #: client, so it holds for a ``client`` you pass in without changing that client's
+    #: timeout for anything else it does.
     timeout: float = DEFAULT_TIMEOUT
     #: Retry attempts for a transient failure. Defaults to 0, unlike the client's 2.
     retries: int = DEFAULT_RETRIES
@@ -199,9 +198,7 @@ class Core(_Base[Req]):
         client = options.client
         if client is None:
             client = VPNDetection(
-                api_key=options.api_key,
-                base_url=options.base_url or DEFAULT_BASE_URL,
-                timeout=options.timeout,
+                api_key=options.api_key, base_url=options.base_url or DEFAULT_BASE_URL
             )
         if isinstance(client, AsyncVPNDetection):
             raise TypeError("Core needs a VPNDetection; use AsyncCore for an async client")
@@ -215,7 +212,9 @@ class Core(_Base[Req]):
         if isinstance(resolved, Lookup):
             return resolved
         try:
-            result = self._client.lookup(resolved, retries=self._options.retries)
+            result = self._client.lookup(
+                resolved, retries=self._options.retries, timeout=self._options.timeout
+            )
         except Exception as error:  # noqa: BLE001 - a failed lookup must never propagate
             return self._failed(resolved, error)
         return self._decide(resolved, result)
@@ -229,9 +228,7 @@ class AsyncCore(_Base[Req]):
         client = options.client
         if client is None:
             client = AsyncVPNDetection(
-                api_key=options.api_key,
-                base_url=options.base_url or DEFAULT_BASE_URL,
-                timeout=options.timeout,
+                api_key=options.api_key, base_url=options.base_url or DEFAULT_BASE_URL
             )
         if not isinstance(client, AsyncVPNDetection):
             raise TypeError("AsyncCore needs an AsyncVPNDetection; use Core for a sync client")
@@ -245,7 +242,9 @@ class AsyncCore(_Base[Req]):
         if isinstance(resolved, Lookup):
             return resolved
         try:
-            result = await self._client.lookup(resolved, retries=self._options.retries)
+            result = await self._client.lookup(
+                resolved, retries=self._options.retries, timeout=self._options.timeout
+            )
         except Exception as error:  # noqa: BLE001 - a failed lookup must never propagate
             return self._failed(resolved, error)
         return self._decide(resolved, result)

@@ -3,16 +3,33 @@
 from __future__ import annotations
 
 import dataclasses
+import time
+from collections.abc import Callable
+from typing import Any
 
 import httpx
 import pytest
-from helpers import TESTDATA, ClientFactory, Meter, Stub
+from helpers import TESTDATA, ClientAdapter, ClientFactory, Meter, Stall, Stub
 
 from vpndetection import VPNDetection, VPNDetectionError, is_bogon
 
 # Enough addresses for seven chunks of the batch endpoint's 1000, so a concurrency bound
 # has something to bound: one request per chunk, and only the chunks overlap.
 ADDRESSES = [f"9.{1 + n // 65536}.{n // 256 % 256}.{n % 256}" for n in range(6001)]
+
+# The client's bound sits far above the call's, so an override accepted and ignored fails on
+# how long the call took rather than passing on the timeout it hit anyway.
+CLIENT_TIMEOUT = 5.0
+CALL_TIMEOUT = 0.2
+
+PER_CALL_TIMEOUT: dict[str, Callable[[ClientAdapter], Any]] = {
+    "lookup": lambda client: client.lookup("9.9.9.9", timeout=CALL_TIMEOUT),
+    "my_ip": lambda client: client.my_ip(timeout=CALL_TIMEOUT),
+    "my_entitlement": lambda client: client.my_entitlement(timeout=CALL_TIMEOUT),
+    "lookup_batch": lambda client: _raised(
+        client.lookup_batch(["9.9.9.9"], timeout=CALL_TIMEOUT)["9.9.9.9"]
+    ),
+}
 
 
 def test_is_bogon_is_on_the_client_and_agrees_with_the_standalone_export(
@@ -76,6 +93,35 @@ def test_retries_are_configurable_per_call(make_client: ClientFactory) -> None:
 
     # 1 initial attempt plus 2 retries, rather than the instance's 0.
     assert len(stub.calls) == 3
+
+
+@pytest.mark.parametrize("call", PER_CALL_TIMEOUT)
+def test_a_per_call_timeout_fires_before_the_clients(make_client: ClientFactory, call: str) -> None:
+    with Stall() as stall:
+        client = make_client(base_url=stall.url, timeout=CLIENT_TIMEOUT, retries=0)
+        started = time.monotonic()
+        with pytest.raises(VPNDetectionError) as caught:
+            PER_CALL_TIMEOUT[call](client)
+        elapsed = time.monotonic() - started
+
+    assert caught.value.kind == "network"
+    assert caught.value.retryable is True
+    assert elapsed < CLIENT_TIMEOUT / 2, f"took {elapsed:.2f}s, so the client's timeout fired"
+
+
+def test_a_per_call_timeout_leaves_the_clients_own_in_place(make_client: ClientFactory) -> None:
+    with Stall() as stall:
+        client = make_client(base_url=stall.url, timeout=1.0, retries=0)
+        with pytest.raises(VPNDetectionError):
+            client.lookup("9.9.9.9", timeout=CALL_TIMEOUT)
+        started = time.monotonic()
+        with pytest.raises(VPNDetectionError):
+            client.lookup("9.9.9.9")
+        elapsed = time.monotonic() - started
+
+    # What the generated client's `with_timeout` gets wrong: it rewrites the timeout of the
+    # one httpx client every later call shares.
+    assert elapsed >= 0.9, f"a call with no override gave up after {elapsed:.2f}s"
 
 
 def test_a_spent_quota_is_never_retried(make_client: ClientFactory) -> None:
@@ -237,3 +283,10 @@ def test_my_entitlement_surfaces_an_unauthorized_key(make_client: ClientFactory)
 
     with pytest.raises(VPNDetectionError):
         client.my_entitlement()
+
+
+def _raised(answer: object) -> object:
+    """A batch answer, raised when it is an error, so a batch fails the way a lookup does."""
+    if isinstance(answer, BaseException):
+        raise answer
+    return answer

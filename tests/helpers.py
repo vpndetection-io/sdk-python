@@ -12,10 +12,11 @@ import asyncio
 import dataclasses
 import datetime
 import json
+import socket
 import threading
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Self
 
 import httpx
 
@@ -199,6 +200,27 @@ class Meter:
                 json={"results": {ip: {"ip": ip, "is_vpn": False} for ip in ips}, "errors": {}},
             )
         return httpx.Response(200, json={"ip": _ip_of(request), "is_vpn": False})
+
+
+class Stall:
+    """A local listener that never answers, so the only thing that can end a request to it
+    is a timeout.
+
+    A real socket rather than a `MockTransport`, because httpx enforces a timeout in its
+    network transport and a mock transport never consults one. Nothing calls `accept`: the
+    kernel completes the handshake regardless, so the request goes out and the read stalls.
+    """
+
+    def __init__(self) -> None:
+        self._listener = socket.create_server(("127.0.0.1", 0))
+        host, port = self._listener.getsockname()[:2]
+        self.url = f"http://{host}:{port}"
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        self._listener.close()
 
 
 def as_wire(detail: Any) -> dict[str, Any]:

@@ -9,6 +9,7 @@ import os
 import threading
 from collections.abc import Awaitable, Callable, Iterator
 from pathlib import Path
+from types import ModuleType
 from typing import IO, Any, TypeVar, cast
 
 import httpx
@@ -196,6 +197,43 @@ async def send_async(call: Callable[[], Awaitable[Response[Any]]]) -> Response[A
         raise VPNDetectionError(
             "server_error", f"the API answered with a body this client could not read: {exc}"
         ) from exc
+
+
+def request(
+    endpoint: ModuleType, client: AuthenticatedClient, timeout: float | None, **params: Any
+) -> Response[Any]:
+    """`send` for one generated endpoint, bounded by `timeout` seconds in place of the
+    client's own timeout, or by the client's own when it is None.
+
+    Assembled from the endpoint module's `_get_kwargs` and `_build_response` because its
+    `sync_detailed` cannot take a timeout. The generated client's `with_timeout` is no way
+    round that: it rewrites the timeout of the one httpx client every concurrent call
+    shares, and leaves it rewritten.
+    """
+
+    def call() -> Response[Any]:
+        res = client.get_httpx_client().request(
+            **endpoint._get_kwargs(**params),
+            timeout=httpx.USE_CLIENT_DEFAULT if timeout is None else httpx.Timeout(timeout),
+        )
+        return cast(Response[Any], endpoint._build_response(client=client, response=res))
+
+    return send(call)
+
+
+async def request_async(
+    endpoint: ModuleType, client: AuthenticatedClient, timeout: float | None, **params: Any
+) -> Response[Any]:
+    """`request`, awaited."""
+
+    async def call() -> Response[Any]:
+        res = await client.get_async_httpx_client().request(
+            **endpoint._get_kwargs(**params),
+            timeout=httpx.USE_CLIENT_DEFAULT if timeout is None else httpx.Timeout(timeout),
+        )
+        return cast(Response[Any], endpoint._build_response(client=client, response=res))
+
+    return await send_async(call)
 
 
 def unwrap(res: Response[Any]) -> dict[str, Any]:

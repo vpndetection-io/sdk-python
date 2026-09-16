@@ -39,6 +39,7 @@ from ._core import (
     parse_body,
     part_file,
     redirect_location,
+    request_async,
     retry_delay,
     send_async,
     storage_refusal,
@@ -109,7 +110,9 @@ class AsyncVPNDetection:
         """
         return is_bogon(ip)
 
-    async def lookup(self, ip: str, *, retries: int | None = None) -> Result:
+    async def lookup(
+        self, ip: str, *, retries: int | None = None, timeout: float | None = None
+    ) -> Result:
         """Classify one address.
 
         A bogon is answered locally and never reaches the network. Everything else is
@@ -123,7 +126,7 @@ class AsyncVPNDetection:
                 return hit
 
         async def call() -> Result:
-            res = await send_async(lambda: lookup_ip.asyncio_detailed(ip, client=self._client))
+            res = await request_async(lookup_ip, self._client, timeout, ip=ip)
             return parse_body(unwrap(res), to_result)
 
         result = await self._retrying(call, self._retries if retries is None else retries)
@@ -131,7 +134,7 @@ class AsyncVPNDetection:
             self._cache.put(ip, result)
         return result
 
-    async def my_ip(self, *, retries: int | None = None) -> Result:
+    async def my_ip(self, *, retries: int | None = None, timeout: float | None = None) -> Result:
         """Classify the address this client is calling from.
 
         The same answer `lookup` would give for that address, at the same cost against
@@ -144,12 +147,14 @@ class AsyncVPNDetection:
         """
 
         async def call() -> Result:
-            res = await send_async(lambda: lookup_my_ip.asyncio_detailed(client=self._client))
+            res = await request_async(lookup_my_ip, self._client, timeout)
             return parse_body(unwrap(res), to_result)
 
         return await self._retrying(call, self._retries if retries is None else retries)
 
-    async def my_entitlement(self, *, retries: int | None = None) -> Entitlement:
+    async def my_entitlement(
+        self, *, retries: int | None = None, timeout: float | None = None
+    ) -> Entitlement:
         """What this client's key is entitled to, and how much of it has been used.
 
         Named for what it answers rather than `me`, which sits one letter from `my_ip`
@@ -169,7 +174,7 @@ class AsyncVPNDetection:
         """
 
         async def call() -> Entitlement:
-            res = await send_async(lambda: my_entitlement.asyncio_detailed(client=self._client))
+            res = await request_async(my_entitlement, self._client, timeout)
             return parse_body(unwrap(res), Entitlement.from_dict)
 
         return await self._retrying(call, self._retries if retries is None else retries)
@@ -180,6 +185,7 @@ class AsyncVPNDetection:
         *,
         concurrency: int | None = None,
         retries: int | None = None,
+        timeout: float | None = None,
     ) -> dict[str, Result | VPNDetectionError]:
         """Classify many addresses in as few requests as possible.
 
@@ -213,7 +219,7 @@ class AsyncVPNDetection:
 
             async def one(chunk: list[str]) -> dict[str, Result | VPNDetectionError]:
                 async with gate:
-                    return await self._lookup_chunk(chunk, retries)
+                    return await self._lookup_chunk(chunk, retries, timeout)
 
             for chunk_answers in await asyncio.gather(
                 *(one(chunk) for chunk in chunked(pending, BATCH_MAX))
@@ -225,13 +231,11 @@ class AsyncVPNDetection:
     # failure - the call refused, the transport failing, the retries exhausted - becomes
     # every address's error, exactly as it would have been had each been looked up alone.
     async def _lookup_chunk(
-        self, chunk: list[str], retries: int | None
+        self, chunk: list[str], retries: int | None, timeout: float | None
     ) -> dict[str, Result | VPNDetectionError]:
         async def call() -> dict[str, Any]:
-            res = await send_async(
-                lambda: lookup_batch.asyncio_detailed(
-                    client=self._client, body=BatchLookupRequest(ips=list(chunk))
-                )
+            res = await request_async(
+                lookup_batch, self._client, timeout, body=BatchLookupRequest(ips=list(chunk))
             )
             return unwrap(res)
 
