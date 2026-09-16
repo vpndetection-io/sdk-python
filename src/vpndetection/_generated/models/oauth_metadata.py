@@ -24,8 +24,11 @@ class OauthMetadata:
         response_types_supported (list[str] | Unset):
         grant_types_supported (list[str] | Unset):
         code_challenge_methods_supported (list[str] | Unset):
-        client_id_metadata_document_supported (bool | Unset): A client_id may be an https URL serving your client
-            metadata.
+        token_endpoint_auth_methods_supported (list[str] | Unset): Always `none`. Every client is public and has no
+            secret.
+        authorization_response_iss_parameter_supported (bool | Unset): RFC 9207. A redirect back from the authorization
+            endpoint carries `iss`.
+        service_documentation (str | Unset):
     """
 
     issuer: str
@@ -37,7 +40,9 @@ class OauthMetadata:
     response_types_supported: list[str] | Unset = UNSET
     grant_types_supported: list[str] | Unset = UNSET
     code_challenge_methods_supported: list[str] | Unset = UNSET
-    client_id_metadata_document_supported: bool | Unset = UNSET
+    token_endpoint_auth_methods_supported: list[str] | Unset = UNSET
+    authorization_response_iss_parameter_supported: bool | Unset = UNSET
+    service_documentation: str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -67,7 +72,15 @@ class OauthMetadata:
         if not isinstance(self.code_challenge_methods_supported, Unset):
             code_challenge_methods_supported = self.code_challenge_methods_supported
 
-        client_id_metadata_document_supported = self.client_id_metadata_document_supported
+        token_endpoint_auth_methods_supported: list[str] | Unset = UNSET
+        if not isinstance(self.token_endpoint_auth_methods_supported, Unset):
+            token_endpoint_auth_methods_supported = self.token_endpoint_auth_methods_supported
+
+        authorization_response_iss_parameter_supported = (
+            self.authorization_response_iss_parameter_supported
+        )
+
+        service_documentation = self.service_documentation
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -90,10 +103,16 @@ class OauthMetadata:
             field_dict["grant_types_supported"] = grant_types_supported
         if code_challenge_methods_supported is not UNSET:
             field_dict["code_challenge_methods_supported"] = code_challenge_methods_supported
-        if client_id_metadata_document_supported is not UNSET:
-            field_dict["client_id_metadata_document_supported"] = (
-                client_id_metadata_document_supported
+        if token_endpoint_auth_methods_supported is not UNSET:
+            field_dict["token_endpoint_auth_methods_supported"] = (
+                token_endpoint_auth_methods_supported
             )
+        if authorization_response_iss_parameter_supported is not UNSET:
+            field_dict["authorization_response_iss_parameter_supported"] = (
+                authorization_response_iss_parameter_supported
+            )
+        if service_documentation is not UNSET:
+            field_dict["service_documentation"] = service_documentation
 
         return field_dict
 
@@ -120,9 +139,15 @@ class OauthMetadata:
             list[str], d.pop("code_challenge_methods_supported", UNSET)
         )
 
-        client_id_metadata_document_supported = d.pop(
-            "client_id_metadata_document_supported", UNSET
+        token_endpoint_auth_methods_supported = cast(
+            list[str], d.pop("token_endpoint_auth_methods_supported", UNSET)
         )
+
+        authorization_response_iss_parameter_supported = d.pop(
+            "authorization_response_iss_parameter_supported", UNSET
+        )
+
+        service_documentation = d.pop("service_documentation", UNSET)
 
         oauth_metadata = cls(
             issuer=issuer,
@@ -134,7 +159,9 @@ class OauthMetadata:
             response_types_supported=response_types_supported,
             grant_types_supported=grant_types_supported,
             code_challenge_methods_supported=code_challenge_methods_supported,
-            client_id_metadata_document_supported=client_id_metadata_document_supported,
+            token_endpoint_auth_methods_supported=token_endpoint_auth_methods_supported,
+            authorization_response_iss_parameter_supported=authorization_response_iss_parameter_supported,
+            service_documentation=service_documentation,
         )
 
         oauth_metadata.additional_properties = d

@@ -15,13 +15,13 @@ T = TypeVar("T", bound="TokenRequest")
 class TokenRequest:
     """
     Attributes:
-        grant_type (str):
+        grant_type (str): `urn:ietf:params:oauth:grant-type:device_code`, `authorization_code` or `refresh_token`.
         client_id (str):
-        device_code (str | Unset):
-        code (str | Unset):
-        code_verifier (str | Unset):
-        redirect_uri (str | Unset):
-        refresh_token (str | Unset):
+        device_code (str | Unset): Required by the device code grant.
+        code (str | Unset): Required by the authorization code grant.
+        code_verifier (str | Unset): Required by the authorization code grant.
+        redirect_uri (str | Unset): Authorization code grant: the `redirect_uri` the code was issued against, exactly.
+        refresh_token (str | Unset): Required by the refresh token grant.
     """
 
     grant_type: str

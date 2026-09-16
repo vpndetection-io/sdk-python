@@ -18,7 +18,7 @@ class DeviceAuthorization:
         device_code (str): Yours. Poll with it; never show it to anyone.
         user_code (str): Short and typable. This is what the person confirms.
         verification_uri (str):
-        expires_in (int):
+        expires_in (int): Seconds until both codes expire.
         interval (int): Seconds between polls.
         verification_uri_complete (str | Unset): The same page with the code already filled in.
     """

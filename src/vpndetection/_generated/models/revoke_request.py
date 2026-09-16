@@ -15,8 +15,8 @@ T = TypeVar("T", bound="RevokeRequest")
 class RevokeRequest:
     """
     Attributes:
-        token (str):
-        client_id (str | Unset):
+        token (str): An access token or a refresh token.
+        client_id (str | Unset): Accepted and not checked.
     """
 
     token: str
