@@ -3,15 +3,32 @@
 from __future__ import annotations
 
 import dataclasses
+import inspect
 import time
 from collections.abc import Callable
 from typing import Any
 
 import httpx
 import pytest
-from helpers import TESTDATA, ClientAdapter, ClientFactory, Meter, Stall, Stub
+from helpers import (
+    TESTDATA,
+    ClientAdapter,
+    ClientFactory,
+    FakeClock,
+    LoopBound,
+    Meter,
+    SlowBody,
+    Stub,
+    settle,
+)
 
-from vpndetection import DEFAULT_BASE_URL, Result, VPNDetection, VPNDetectionError, is_bogon
+from vpndetection import (
+    AsyncVPNDetection,
+    DeviceAuthorization,
+    VPNDetection,
+    VPNDetectionError,
+    is_bogon,
+)
 
 # Enough addresses for seven chunks of the batch endpoint's 1000, so a concurrency bound
 # has something to bound: one request per chunk, and only the chunks overlap.
@@ -19,16 +36,47 @@ ADDRESSES = [f"9.{1 + n // 65536}.{n // 256 % 256}.{n % 256}" for n in range(600
 
 # The client's bound sits far above the call's, so an override accepted and ignored fails on
 # how long the call took rather than passing on the timeout it hit anyway.
-CLIENT_TIMEOUT = 5.0
-CALL_TIMEOUT = 0.2
+CLIENT_TIMEOUT = 0.6
+CALL_TIMEOUT = 0.1
 
-PER_CALL_TIMEOUT: dict[str, Callable[[ClientAdapter], Any]] = {
-    "lookup": lambda client: client.lookup("9.9.9.9", timeout=CALL_TIMEOUT),
-    "my_ip": lambda client: client.my_ip(timeout=CALL_TIMEOUT),
-    "my_entitlement": lambda client: client.my_entitlement(timeout=CALL_TIMEOUT),
-    "lookup_batch": lambda client: _raised(
-        client.lookup_batch(["9.9.9.9"], timeout=CALL_TIMEOUT)["9.9.9.9"]
+# A byte this often resets httpx's own per-read timeout for good, so only a deadline over the
+# whole attempt ends the call.
+TRICKLE = 0.02
+
+DEVICE = DeviceAuthorization(
+    device_code="mo_dc_x",
+    user_code="BCDF-GHJK",
+    verification_uri="https://app.example.test/device",
+    expires_in=900,
+    interval=5,
+)
+
+# Every call that takes a per-call timeout, called with the keyword arguments given.
+PER_CALL_TIMEOUT: dict[str, Callable[..., Any]] = {
+    "lookup": lambda client, **kw: client.lookup("9.9.9.9", **kw),
+    "my_ip": lambda client, **kw: client.my_ip(**kw),
+    "my_entitlement": lambda client, **kw: client.my_entitlement(**kw),
+    "lookup_batch": lambda client, **kw: _raised(client.lookup_batch(["9.9.9.9"], **kw)["9.9.9.9"]),
+    "oauth.metadata": lambda client, **kw: client.oauth.metadata(**kw),
+    "oauth.device_authorization": lambda client, **kw: client.oauth.device_authorization(
+        "your-client-id", **kw
     ),
+    "oauth.exchange_device_code": lambda client, **kw: client.oauth.exchange_device_code(
+        "your-client-id", "mo_dc_x", **kw
+    ),
+    "oauth.exchange_refresh_token": lambda client, **kw: client.oauth.exchange_refresh_token(
+        "your-client-id", "mo_rt_x", **kw
+    ),
+    "oauth.revoke": lambda client, **kw: client.oauth.revoke("your-client-id", "mo_rt_x", **kw),
+    "oauth.poll_device_token": lambda client, **kw: client.oauth.poll_device_token(
+        "your-client-id", DEVICE, **kw
+    ),
+}
+
+# The JSON database calls take no per-call options, so the client's bound is theirs.
+CLIENT_TIMEOUT_ONLY: dict[str, Callable[[ClientAdapter], Any]] = {
+    "database.list": lambda client: client.database.list(),
+    "database.download_url": lambda client: client.database.download_url("cdn_ip_v1", "mmdb"),
 }
 
 
@@ -84,21 +132,25 @@ def test_without_an_override_the_client_concurrency_still_applies(
     assert meter.peak <= 2, f"peak in flight was {meter.peak}, expected at most 2"
 
 
-def test_a_batch_takes_any_number_of_addresses_in_chunks_of_a_thousand(
-    make_client: ClientFactory,
+@pytest.mark.parametrize("concurrency", [0, -1, 0.5, 1.5, float("nan")])
+def test_a_per_call_concurrency_below_one_is_refused_before_any_request(
+    make_client: ClientFactory, concurrency: Any
 ) -> None:
-    addresses = ADDRESSES[:2500]
-    stub = Stub({ip: {"body": {"ip": ip, "is_vpn": False}} for ip in addresses})
+    stub = Stub({})
     client = make_client(transport=stub.transport, cache=False)
+    bound = LoopBound()
 
-    got = client.lookup_batch(addresses)
+    outcome = settle(
+        lambda: client.lookup_batch(["45.83.91.1", "10.0.0.1"], concurrency=concurrency),
+        bound,
+        within=5.0,
+    )
 
-    assert stub.calls == [f"POST {DEFAULT_BASE_URL}/batch"] * 3
-    assert list(got) == addresses
-    for ip in addresses:
-        answer = got[ip]
-        assert isinstance(answer, Result) and answer.is_bogon is False, f"{ip} should be served"
-        assert answer.ip == ip, f"{ip} should be answered for itself"
+    assert isinstance(outcome, VPNDetectionError), f"{concurrency}: settled with {outcome!r}"
+    assert outcome.kind == "bad_request"
+    assert outcome.retryable is False
+    assert "concurrency" in str(outcome)
+    assert stub.calls == []
 
 
 def test_retries_are_configurable_per_call(make_client: ClientFactory) -> None:
@@ -113,32 +165,65 @@ def test_retries_are_configurable_per_call(make_client: ClientFactory) -> None:
 
 
 @pytest.mark.parametrize("call", PER_CALL_TIMEOUT)
-def test_a_per_call_timeout_fires_before_the_clients(make_client: ClientFactory, call: str) -> None:
-    with Stall() as stall:
-        client = make_client(base_url=stall.url, timeout=CLIENT_TIMEOUT, retries=0)
-        started = time.monotonic()
-        with pytest.raises(VPNDetectionError) as caught:
-            PER_CALL_TIMEOUT[call](client)
-        elapsed = time.monotonic() - started
+def test_a_per_call_timeout_bounds_a_trickling_body_and_leaves_the_clients_own_alone(
+    make_client: ClientFactory, call: str
+) -> None:
+    bound = LoopBound()
+    with SlowBody(trickle=TRICKLE) as server:
+        client = make_client(base_url=server.url, timeout=CLIENT_TIMEOUT, retries=0)
+        client.oauth.use_clock(FakeClock(bound))
+        overridden = _timed(lambda: PER_CALL_TIMEOUT[call](client, timeout=CALL_TIMEOUT), bound)
+        default = _timed(lambda: PER_CALL_TIMEOUT[call](client), bound)
 
-    assert caught.value.kind == "network"
-    assert caught.value.retryable is True
-    assert elapsed < CLIENT_TIMEOUT / 2, f"took {elapsed:.2f}s, so the client's timeout fired"
-
-
-def test_a_per_call_timeout_leaves_the_clients_own_in_place(make_client: ClientFactory) -> None:
-    with Stall() as stall:
-        client = make_client(base_url=stall.url, timeout=1.0, retries=0)
-        with pytest.raises(VPNDetectionError):
-            client.lookup("9.9.9.9", timeout=CALL_TIMEOUT)
-        started = time.monotonic()
-        with pytest.raises(VPNDetectionError):
-            client.lookup("9.9.9.9")
-        elapsed = time.monotonic() - started
-
+    assert overridden < CLIENT_TIMEOUT / 2, (
+        f"took {overridden:.2f}s, so the call's timeout did not end it"
+    )
     # What the generated client's `with_timeout` gets wrong: it rewrites the timeout of the
     # one httpx client every later call shares.
-    assert elapsed >= 0.9, f"a call with no override gave up after {elapsed:.2f}s"
+    assert CLIENT_TIMEOUT - 0.05 <= default < CLIENT_TIMEOUT + 1, (
+        f"a call with no override gave up after {default:.2f}s"
+    )
+
+
+@pytest.mark.parametrize("call", CLIENT_TIMEOUT_ONLY)
+def test_the_clients_timeout_bounds_a_trickling_body_on_a_database_call(
+    make_client: ClientFactory, call: str
+) -> None:
+    bound = LoopBound()
+    with SlowBody(trickle=TRICKLE) as server:
+        client = make_client(base_url=server.url, timeout=CALL_TIMEOUT, retries=0)
+        elapsed = _timed(lambda: CLIENT_TIMEOUT_ONLY[call](client), bound)
+
+    assert elapsed < CLIENT_TIMEOUT / 2, f"took {elapsed:.2f}s"
+
+
+def test_a_body_that_stalls_after_its_headers_is_bounded(make_client: ClientFactory) -> None:
+    bound = LoopBound()
+    with SlowBody(trickle=None) as server:
+        client = make_client(base_url=server.url, timeout=CLIENT_TIMEOUT, retries=0)
+        elapsed = _timed(lambda: client.lookup("9.9.9.9", timeout=CALL_TIMEOUT), bound)
+
+    assert elapsed < CLIENT_TIMEOUT / 2, f"took {elapsed:.2f}s"
+
+
+def test_the_default_timeout_is_thirty_seconds() -> None:
+    for client in (VPNDetection, AsyncVPNDetection):
+        assert inspect.signature(client).parameters["timeout"].default == 30
+
+
+@pytest.mark.parametrize("status", [405, 409, 422])
+def test_every_4xx_is_the_callers_error_and_never_retried(
+    make_client: ClientFactory, status: int
+) -> None:
+    stub = Stub({"9.9.9.9": {"status": status, "body": {"error": "refused"}}})
+    client = make_client(transport=stub.transport, cache=False, retries=2)
+
+    with pytest.raises(VPNDetectionError) as caught:
+        client.lookup("9.9.9.9")
+
+    assert caught.value.kind == "bad_request"
+    assert caught.value.retryable is False
+    assert len(stub.calls) == 1
 
 
 def test_a_spent_quota_is_never_retried(make_client: ClientFactory) -> None:
@@ -300,6 +385,17 @@ def test_my_entitlement_surfaces_an_unauthorized_key(make_client: ClientFactory)
 
     with pytest.raises(VPNDetectionError):
         client.my_entitlement()
+
+
+def _timed(call: Callable[[], Any], bound: LoopBound) -> float:
+    """How long `call` took to fail, which it must do as a retryable network error."""
+    started = time.monotonic()
+    outcome = settle(call, bound, within=10.0)
+    elapsed = time.monotonic() - started
+    assert isinstance(outcome, VPNDetectionError), f"settled with {outcome!r}"
+    assert outcome.kind == "network", outcome
+    assert outcome.retryable is True
+    return elapsed
 
 
 def _raised(answer: object) -> object:

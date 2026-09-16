@@ -172,7 +172,7 @@ except VPNDetectionError as err:
 
 `kind` is one of `bad_request`, `unauthorized`, `forbidden`, `rate_limited`, `quota_exceeded`, `server_error` or `network`.
 
-A request that runs past its `timeout` fails with `network`. The default is 10 seconds per attempt, so a retried call can take longer in total, and a database download is exempt. Set it on the client, or on a single `lookup`, `my_ip`, `my_entitlement` or `lookup_batch` call:
+A request that runs past its `timeout` fails with `network`. The default is 30 seconds per attempt, body included, so a retried call can take longer in total, and a database download is exempt. Set it on the client, or on a single `lookup`, `my_ip`, `my_entitlement`, `lookup_batch` or `oauth` call:
 
 ```python
 client = VPNDetection(timeout=30)
@@ -194,6 +194,27 @@ written = client.database.download("vpn_ip_extended_v1", "mmdb", "./vpn_ip_exten
 ```
 
 `download_bytes` holds the whole file in memory, and the catalog runs from `cdn_ip_v1` at 10 KB to `resproxy_ip_90d_v1` at 1.79 GB, so use `download` for anything you have not measured.
+
+### Sign in with OAuth (device flow)
+
+A program running on someone's own machine can let them sign in with a browser and pick one of their API keys, instead of asking them to paste it:
+
+```python
+from vpndetection import VPNDetection
+
+with VPNDetection() as signin:
+    device = signin.oauth.device_authorization(
+        "your-client-id", scope="account.read apikeys.read apikeys.reveal"
+    )
+    print(f"Open {device.verification_uri} and enter {device.user_code}")
+    tokens = signin.oauth.poll_device_token("your-client-id", device)
+
+if tokens.apikey is None:
+    raise SystemExit("No API key was picked")
+client = VPNDetection(tokens.apikey)
+```
+
+A refusal raises `OauthAccessDeniedError` and a code that ran out raises `OauthExpiredTokenError`, and client IDs are issued on request from support@vpndetection.io. `client.oauth.revoke("your-client-id", tokens.refresh_token)` signs the machine out.
 
 ### Fields your plan does not include
 

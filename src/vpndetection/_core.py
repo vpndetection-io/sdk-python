@@ -3,10 +3,13 @@ unwrapping, the retry policy, and the per-instance cache."""
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
+import contextvars
 import json
 import os
 import threading
+import time
 from collections.abc import Awaitable, Callable, Iterator
 from pathlib import Path
 from types import ModuleType
@@ -19,7 +22,7 @@ from ._generated.client import AuthenticatedClient, Client
 from ._generated.models.database import Database
 from ._generated.models.download import Download
 from ._generated.types import Response
-from .errors import VPNDetectionError, error_from_response
+from .errors import VPNDetectionError, error_from_response, oauth_error_from
 from .models import Result, to_result
 
 DEFAULT_BASE_URL = "https://api.vpndetection.io"
@@ -27,12 +30,18 @@ DEFAULT_CONCURRENCY = 8
 DEFAULT_RETRIES = 2
 DEFAULT_CACHE_MAX_SIZE = 10_000
 DEFAULT_CACHE_TTL = 3600.0
-DEFAULT_TIMEOUT = 10.0
+DEFAULT_TIMEOUT = 30.0
 DEFAULT_DOWNLOADS_LIMIT = 50
 
 # The most addresses POST /batch takes in one call; a larger batch is sent in chunks of
 # this size.
 BATCH_MAX = 1000
+
+OAUTH_METADATA_PATH = "/.well-known/oauth-authorization-server"
+OAUTH_DEVICE_AUTHORIZATION_PATH = "/oauth/device_authorization"
+OAUTH_TOKEN_PATH = "/oauth/token"
+OAUTH_REVOKE_PATH = "/oauth/revoke"
+DEVICE_CODE_GRANT = "urn:ietf:params:oauth:grant-type:device_code"
 
 # One chunk of a transfer, and therefore the ceiling on what a download of any size
 # costs in memory.
@@ -200,10 +209,10 @@ async def send_async(call: Callable[[], Awaitable[Response[Any]]]) -> Response[A
 
 
 def request(
-    endpoint: ModuleType, client: AuthenticatedClient, timeout: float | None, **params: Any
+    endpoint: ModuleType, client: AuthenticatedClient, bound: float | None, **params: Any
 ) -> Response[Any]:
-    """`send` for one generated endpoint, bounded by `timeout` seconds in place of the
-    client's own timeout, or by the client's own when it is None.
+    """`send` for one generated endpoint, one attempt of it finished within `bound` seconds,
+    or unbounded when that is None.
 
     Assembled from the endpoint module's `_get_kwargs` and `_build_response` because its
     `sync_detailed` cannot take a timeout. The generated client's `with_timeout` is no way
@@ -212,28 +221,147 @@ def request(
     """
 
     def call() -> Response[Any]:
-        res = client.get_httpx_client().request(
-            **endpoint._get_kwargs(**params),
-            timeout=httpx.USE_CLIENT_DEFAULT if timeout is None else httpx.Timeout(timeout),
-        )
+        http = client.get_httpx_client()
+        req = http.build_request(**endpoint._get_kwargs(**params), timeout=httpx.Timeout(bound))
+        res = exchange(http, req, bound)
         return cast(Response[Any], endpoint._build_response(client=client, response=res))
 
     return send(call)
 
 
 async def request_async(
-    endpoint: ModuleType, client: AuthenticatedClient, timeout: float | None, **params: Any
+    endpoint: ModuleType, client: AuthenticatedClient, bound: float | None, **params: Any
 ) -> Response[Any]:
     """`request`, awaited."""
 
     async def call() -> Response[Any]:
-        res = await client.get_async_httpx_client().request(
-            **endpoint._get_kwargs(**params),
-            timeout=httpx.USE_CLIENT_DEFAULT if timeout is None else httpx.Timeout(timeout),
-        )
+        http = client.get_async_httpx_client()
+        req = http.build_request(**endpoint._get_kwargs(**params), timeout=httpx.Timeout(bound))
+        res = await exchange_async(http, req, bound)
         return cast(Response[Any], endpoint._build_response(client=client, response=res))
 
     return await send_async(call)
+
+
+def exchange(http: httpx.Client, req: httpx.Request, bound: float | None) -> httpx.Response:
+    """One attempt at `req`, its whole body read, finished within `bound` seconds or failed
+    as a `network` error.
+
+    httpx bounds each PHASE of a request (connect, write, every read), not the attempt, so a
+    body trickling in a byte at a time outlasts any timeout it is given. The attempt runs on
+    a thread of its own and the caller waits at most `bound` for it; one abandoned stops at
+    its next chunk, or at the per-phase bound `req` also carries.
+    """
+    if bound is None:
+        return http.send(req)
+    finished = threading.Event()
+    abandoned = threading.Event()
+    outcome: list[httpx.Response | BaseException] = []
+    context = contextvars.copy_context()
+
+    def attempt() -> None:
+        try:
+            outcome.append(context.run(_read_whole, http, req, abandoned))
+        except BaseException as exc:  # noqa: BLE001 - raised again on the caller's thread
+            outcome.append(exc)
+        finally:
+            finished.set()
+
+    threading.Thread(target=attempt, name="vpndetection-attempt", daemon=True).start()
+    try:
+        if not finished.wait(bound):
+            raise _deadline_passed(bound)
+    finally:
+        abandoned.set()
+    if isinstance(outcome[0], BaseException):
+        raise outcome[0]
+    return outcome[0]
+
+
+async def exchange_async(
+    http: httpx.AsyncClient, req: httpx.Request, bound: float | None
+) -> httpx.Response:
+    """`exchange`, awaited. Cancelling the attempt closes its connection, so no thread is
+    needed to leave it behind."""
+    if bound is None:
+        return await http.send(req)
+    deadline = asyncio.timeout(bound)
+    try:
+        async with deadline:
+            return await http.send(req)
+    except TimeoutError:
+        if not deadline.expired():
+            raise
+        raise _deadline_passed(bound) from None
+
+
+def oauth_request(
+    client: AuthenticatedClient,
+    method: str,
+    path: str,
+    form: dict[str, str] | None,
+    bound: float | None,
+) -> httpx.Response:
+    """One attempt at an OAuth endpoint, carrying no credential, its failure raised."""
+    http = client.get_httpx_client()
+    return oauth_checked(exchange(http, _oauth_build(http, method, path, form, bound), bound))
+
+
+async def oauth_request_async(
+    client: AuthenticatedClient,
+    method: str,
+    path: str,
+    form: dict[str, str] | None,
+    bound: float | None,
+) -> httpx.Response:
+    """`oauth_request`, awaited."""
+    http = client.get_async_httpx_client()
+    req = _oauth_build(http, method, path, form, bound)
+    return oauth_checked(await exchange_async(http, req, bound))
+
+
+def oauth_checked(res: httpx.Response) -> httpx.Response:
+    """A 2xx as it came, or the failure it describes.
+
+    Only a 4xx whose body is a JSON object with a STRING `error` is an OAuth refusal. Every
+    5xx, whatever its body says, is the server failing, and is retried wherever the
+    operation retries.
+    """
+    status = res.status_code
+    if 200 <= status < 300:
+        return res
+    body = _decode(res.content)
+    if 400 <= status < 500 and isinstance(body, dict) and isinstance(body.get("error"), str):
+        description = body.get("error_description")
+        raise oauth_error_from(
+            body["error"], description if isinstance(description, str) else None, status
+        )
+    raise error_from_response(status, res.headers, body)
+
+
+def oauth_body(res: httpx.Response) -> Any:
+    """A 2xx OAuth answer's JSON, or None when it does not parse."""
+    return _decode(res.content)
+
+
+class Clock:
+    """The device poll's wait and its deadline, replaced together in tests."""
+
+    def now(self) -> float:
+        return time.monotonic()
+
+    def sleep(self, seconds: float) -> None:
+        time.sleep(seconds)
+
+
+class AsyncClock:
+    """`Clock`, awaited."""
+
+    def now(self) -> float:
+        return time.monotonic()
+
+    async def sleep(self, seconds: float) -> None:
+        await asyncio.sleep(seconds)
 
 
 def unwrap(res: Response[Any]) -> dict[str, Any]:
@@ -265,6 +393,17 @@ def parse_body(body: dict[str, Any], parse: Callable[[dict[str, Any]], T]) -> T:
         return parse(body)
     except (KeyError, TypeError, ValueError) as exc:
         raise VPNDetectionError("server_error", f"malformed response from the API: {exc}") from exc
+
+
+def check_concurrency(concurrency: int | None) -> None:
+    """Refuse a per-call concurrency that could never send a chunk, before anything is sent,
+    rather than quietly running it as 1."""
+    if concurrency is None:
+        return
+    if isinstance(concurrency, bool) or not isinstance(concurrency, int) or concurrency < 1:
+        raise VPNDetectionError(
+            "bad_request", f"concurrency must be a whole number of at least 1, got {concurrency!r}"
+        )
 
 
 def chunked(ips: list[str], size: int) -> list[list[str]]:
@@ -359,6 +498,59 @@ class Cache:
     def put(self, ip: str, result: Result) -> None:
         with self._lock:
             self._entries[ip] = result
+
+
+# The generated client bakes the API key into every request it builds. None of the OAuth
+# endpoints reads one, and on the token endpoint an `Authorization` header reads as client
+# authentication, which these public clients do not have. So it comes off here, in the one
+# place every OAuth request is built.
+def _oauth_build(
+    http: httpx.Client | httpx.AsyncClient,
+    method: str,
+    path: str,
+    form: dict[str, str] | None,
+    bound: float | None,
+) -> httpx.Request:
+    req = http.build_request(method, path, data=form, timeout=httpx.Timeout(bound))
+    req.headers.pop("authorization", None)
+    return req
+
+
+# Reads the body on the attempt's own thread, and gives up between chunks once the caller
+# has stopped waiting, which closes the connection rather than draining a trickle.
+def _read_whole(
+    http: httpx.Client, req: httpx.Request, abandoned: threading.Event
+) -> httpx.Response:
+    res = http.send(req, stream=True)
+    try:
+        if isinstance(res.stream, httpx.SyncByteStream):
+            res.stream = _Abandonable(res.stream, abandoned, req)
+        res.read()
+    finally:
+        res.close()
+    return res
+
+
+class _Abandonable(httpx.SyncByteStream):
+    def __init__(
+        self, inner: httpx.SyncByteStream, abandoned: threading.Event, req: httpx.Request
+    ) -> None:
+        self._inner = inner
+        self._abandoned = abandoned
+        self._req = req
+
+    def __iter__(self) -> Iterator[bytes]:
+        for chunk in self._inner:
+            if self._abandoned.is_set():
+                raise httpx.ReadError("abandoned once its deadline passed", request=self._req)
+            yield chunk
+
+    def close(self) -> None:
+        self._inner.close()
+
+
+def _deadline_passed(bound: float) -> VPNDetectionError:
+    return VPNDetectionError("network", f"the request did not complete within {bound:g} seconds")
 
 
 # The generated Response declares a plain MutableMapping, but always carries httpx's

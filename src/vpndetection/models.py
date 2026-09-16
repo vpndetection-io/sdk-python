@@ -1,4 +1,4 @@
-"""What a lookup answers, and the one place the wire shape becomes an idiomatic one."""
+"""What the API answers, and the one place the wire shape becomes an idiomatic one."""
 
 from __future__ import annotations
 
@@ -8,13 +8,17 @@ from typing import Any, Literal, TypeVar
 
 from ._generated.models.lookup_response import LookupResponse
 from ._generated.types import Unset
+from .errors import VPNDetectionError
 
 __all__ = [
     "ClassDetail",
+    "DeviceAuthorization",
     "Flag",
     "Format",
+    "OauthMetadata",
     "ProxyDetail",
     "Result",
+    "TokenResponse",
     "VpnDetail",
 ]
 
@@ -188,3 +192,141 @@ def _proxy(value: Any) -> ProxyDetail | None:
         hits_days_pct=_opt(value.hits_days_pct),
         providers_num=_opt(value.providers_num),
     )
+
+
+@dataclass(frozen=True, slots=True)
+class OauthMetadata:
+    """The authorization server's discovery document (RFC 8414)."""
+
+    issuer: str
+    authorization_endpoint: str
+    token_endpoint: str
+    device_authorization_endpoint: str | None = None
+    revocation_endpoint: str | None = None
+    scopes_supported: tuple[str, ...] | None = None
+    response_types_supported: tuple[str, ...] | None = None
+    grant_types_supported: tuple[str, ...] | None = None
+    code_challenge_methods_supported: tuple[str, ...] | None = None
+    token_endpoint_auth_methods_supported: tuple[str, ...] | None = None
+    authorization_response_iss_parameter_supported: bool | None = None
+    service_documentation: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class DeviceAuthorization:
+    """A started device sign-in. Show the person `verification_uri` and `user_code`, then
+    pass this to `poll_device_token`. `expires_in` and `interval` are seconds.
+
+    `device_code` is left out of the repr, because it is what redeems the sign-in.
+    """
+
+    device_code: str = field(repr=False)
+    user_code: str
+    verification_uri: str
+    expires_in: int
+    interval: int
+    verification_uri_complete: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class TokenResponse:
+    """What a token exchange answers.
+
+    `apikey_id` names the API key the person picked, and `apikey` is its secret. Either can
+    be None: no key was picked, or their role no longer reveals keys. `apikey` also stays
+    None after a refresh, which never hands a secret over, and for a key created before
+    secrets could be revealed. The secrets are left out of the repr, so logging one does
+    not leak them.
+    """
+
+    access_token: str = field(repr=False)
+    token_type: str
+    expires_in: int
+    refresh_token: str | None = field(default=None, repr=False)
+    scope: str | None = None
+    apikey_id: str | None = None
+    apikey: str | None = field(default=None, repr=False)
+
+
+def to_oauth_metadata(body: Any, status: int) -> OauthMetadata:
+    return OauthMetadata(**_members(body, _OAUTH_METADATA, status))
+
+
+def to_device_authorization(body: Any, status: int) -> DeviceAuthorization:
+    return DeviceAuthorization(**_members(body, _DEVICE_AUTHORIZATION, status))
+
+
+def to_token_response(body: Any, status: int) -> TokenResponse:
+    return TokenResponse(**_members(body, _TOKEN_RESPONSE, status))
+
+
+# A member's type on the wire, and whether a 2xx without it is malformed.
+_Member = tuple[Literal["str", "int", "bool", "strs"], bool]
+
+_OAUTH_METADATA: dict[str, _Member] = {
+    "issuer": ("str", True),
+    "authorization_endpoint": ("str", True),
+    "token_endpoint": ("str", True),
+    "device_authorization_endpoint": ("str", False),
+    "revocation_endpoint": ("str", False),
+    "scopes_supported": ("strs", False),
+    "response_types_supported": ("strs", False),
+    "grant_types_supported": ("strs", False),
+    "code_challenge_methods_supported": ("strs", False),
+    "token_endpoint_auth_methods_supported": ("strs", False),
+    "authorization_response_iss_parameter_supported": ("bool", False),
+    "service_documentation": ("str", False),
+}
+
+_DEVICE_AUTHORIZATION: dict[str, _Member] = {
+    "device_code": ("str", True),
+    "user_code": ("str", True),
+    "verification_uri": ("str", True),
+    "verification_uri_complete": ("str", False),
+    "expires_in": ("int", True),
+    "interval": ("int", True),
+}
+
+_TOKEN_RESPONSE: dict[str, _Member] = {
+    "access_token": ("str", True),
+    "token_type": ("str", True),
+    "expires_in": ("int", True),
+    "refresh_token": ("str", False),
+    "scope": ("str", False),
+    "apikey_id": ("str", False),
+    "apikey": ("str", False),
+}
+
+_WIRE_NAMES = {"apikey_id": "mslm:apikey_id", "apikey": "mslm:apikey"}
+
+
+# Only the declared members are copied, on PRESENCE, so an absent one stays None and an
+# empty `scope` stays "". A null reads as absent. Anything undeclared is dropped.
+def _members(body: Any, members: dict[str, _Member], status: int) -> dict[str, Any]:
+    if not isinstance(body, dict):
+        raise VPNDetectionError("server_error", "the answer was not a JSON object", status)
+    out: dict[str, Any] = {}
+    for name, (kind, required) in members.items():
+        wire = _WIRE_NAMES.get(name, name)
+        value = body.get(wire)
+        if value is None:
+            if required:
+                raise VPNDetectionError("server_error", f"the answer carried no {wire}", status)
+            continue
+        out[name] = _typed(value, kind, wire, status)
+    return out
+
+
+def _typed(value: Any, kind: str, wire: str, status: int) -> Any:
+    if kind == "strs" and isinstance(value, list) and all(isinstance(v, str) for v in value):
+        return tuple(value)
+    if kind == "str" and isinstance(value, str):
+        return value
+    if kind == "bool" and isinstance(value, bool):
+        return value
+    # bool is an int in Python, and never a count of seconds.
+    if kind == "int" and isinstance(value, int) and not isinstance(value, bool):
+        return value
+    if kind == "int" and isinstance(value, float) and value.is_integer():
+        return int(value)
+    raise VPNDetectionError("server_error", f"the answer's {wire} is not a {kind}", status)

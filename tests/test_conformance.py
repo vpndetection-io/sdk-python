@@ -12,7 +12,7 @@ from typing import Any
 import pytest
 from helpers import TESTDATA, ClientFactory, Stub, as_wire
 
-from vpndetection import VPNDetectionError, is_bogon
+from vpndetection import DEFAULT_BASE_URL, Result, VPNDetectionError, is_bogon
 
 DETAIL_OBJECTS = ("vpn", "hosting", "dcproxy")
 
@@ -139,16 +139,22 @@ def test_a_cache_hit_issues_no_second_request(make_client: ClientFactory) -> Non
     assert len(stub.calls) == case["expect"]["httpRequests"]
 
 
-def test_a_large_batch_is_sent_in_chunks_of_a_thousand(make_client: ClientFactory) -> None:
-    case = _batch("chunks-of-one-thousand")
+# The first pins the boundary, the second that nothing caps how many addresses a call takes.
+@pytest.mark.parametrize("name", ["chunks-of-one-thousand", "uncapped-input-is-chunked"])
+def test_a_large_batch_is_sent_in_chunks_of_a_thousand(
+    make_client: ClientFactory, name: str
+) -> None:
+    case = _batch(name)
     stub = Stub({ip: {"body": {"ip": ip, "is_vpn": False}} for ip in case["input"]})
     client = make_client(transport=stub.transport, cache=False)
     got = client.lookup_batch(case["input"])
 
     assert len(got) == case["expect"]["keyCount"]
-    assert len(stub.calls) == case["expect"]["httpRequests"]
+    assert list(got) == case["input"]
+    assert stub.calls == [f"POST {DEFAULT_BASE_URL}/batch"] * case["expect"]["httpRequests"]
     for ip in case["input"]:
-        assert got[ip].ip == ip, f"{ip} should be answered for itself"
+        answer = got[ip]
+        assert isinstance(answer, Result) and answer.ip == ip, f"{ip} should be served for itself"
 
 
 # A per-entry failure carries no headers, so its 429 can only be a spent allowance, and a

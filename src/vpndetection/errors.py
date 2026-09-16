@@ -9,7 +9,13 @@ from typing import Any, Literal
 
 import httpx
 
-__all__ = ["ErrorKind", "VPNDetectionError"]
+__all__ = [
+    "ErrorKind",
+    "OauthAccessDeniedError",
+    "OauthError",
+    "OauthExpiredTokenError",
+    "VPNDetectionError",
+]
 
 ErrorKind = Literal[
     "bad_request",
@@ -61,8 +67,61 @@ class VPNDetectionError(Exception):
 
     def __repr__(self) -> str:
         return (
-            f"VPNDetectionError(kind={self.kind!r}, status={self.status!r}, message={str(self)!r})"
+            f"{type(self).__name__}(kind={self.kind!r}, status={self.status!r}, "
+            f"message={str(self)!r})"
         )
+
+
+class OauthError(VPNDetectionError):
+    """The authorization server refusing an OAuth request, such as `slow_down` or
+    `invalid_grant`. Never retryable: every token exchange spends what it presents.
+
+    Its `kind` follows the status like any response's, so a 401 here is `unauthorized` and
+    means an unregistered `client_id`, never the API key, which these requests do not carry.
+    """
+
+    error_code: str
+    """The server's code, kept as sent."""
+    error_description: str | None
+    """The server's explanation, when it sent one."""
+
+    def __init__(
+        self, error_code: str, error_description: str | None = None, status: int | None = None
+    ) -> None:
+        kind = (
+            "bad_request" if status is None else error_from_response(status, _NO_HEADERS, None).kind
+        )
+        message = error_code if error_description is None else f"{error_code}: {error_description}"
+        super().__init__(kind, message, status)
+        self.error_code = error_code
+        self.error_description = error_description
+
+    @property
+    def retryable(self) -> bool:
+        return False
+
+
+class OauthAccessDeniedError(OauthError):
+    """The person refused the sign-in. Its device code is spent, so a new attempt starts over."""
+
+    def __init__(self, error_description: str | None = None, status: int | None = None) -> None:
+        super().__init__("access_denied", error_description, status)
+
+
+class OauthExpiredTokenError(OauthError):
+    """The device code is no longer valid: it expired, or was already used or refused. A poll
+    that outlives the code raises this itself, with a `status` of None."""
+
+    def __init__(self, error_description: str | None = None, status: int | None = None) -> None:
+        super().__init__("expired_token", error_description, status)
+
+
+def oauth_error_from(error_code: str, error_description: str | None, status: int) -> OauthError:
+    if error_code == "access_denied":
+        return OauthAccessDeniedError(error_description, status)
+    if error_code == "expired_token":
+        return OauthExpiredTokenError(error_description, status)
+    return OauthError(error_code, error_description, status)
 
 
 def error_from_response(status: int, headers: httpx.Headers, body: Any) -> VPNDetectionError:
@@ -75,15 +134,18 @@ def error_from_response(status: int, headers: httpx.Headers, body: Any) -> VPNDe
         if retry_after is None:
             return VPNDetectionError("quota_exceeded", message, status)
         return VPNDetectionError("rate_limited", message, status, retry_after)
-    if status == 400:
-        return VPNDetectionError("bad_request", message, status)
     if status == 401:
         return VPNDetectionError("unauthorized", message, status)
     if status == 403:
         return VPNDetectionError("forbidden", message, status)
-    if status == 404:
+    # Every other 4xx on the RANGE rather than a list, so a status nobody enumerated is
+    # still the caller's error and is never retried as if the server had failed.
+    if 400 <= status < 500:
         return VPNDetectionError("bad_request", message, status)
     return VPNDetectionError("server_error", message, status)
+
+
+_NO_HEADERS = httpx.Headers()
 
 
 # The two APIs behind this host answer with different envelopes: the lookup endpoint

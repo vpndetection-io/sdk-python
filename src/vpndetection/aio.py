@@ -25,23 +25,31 @@ from ._core import (
     DEFAULT_DOWNLOADS_LIMIT,
     DEFAULT_RETRIES,
     DEFAULT_TIMEOUT,
+    DEVICE_CODE_GRANT,
+    OAUTH_DEVICE_AUTHORIZATION_PATH,
+    OAUTH_METADATA_PATH,
+    OAUTH_REVOKE_PATH,
+    OAUTH_TOKEN_PATH,
     TRANSFER_CHUNK_BYTES,
+    AsyncClock,
     Cache,
     as_error,
     assert_whole_transfer,
     batch_answers,
     build_async_transfer_client,
     build_client,
+    check_concurrency,
     checksums_of,
     chunked,
     databases_of,
     downloads_of,
+    oauth_body,
+    oauth_request_async,
     parse_body,
     part_file,
     redirect_location,
     request_async,
     retry_delay,
-    send_async,
     storage_refusal,
     unwrap,
 )
@@ -62,10 +70,20 @@ from ._generated.models.database_metadata import DatabaseMetadata
 from ._generated.models.download import Download
 from ._generated.models.entitlement import Entitlement
 from .bogon import bogon_result, is_bogon
-from .errors import VPNDetectionError
-from .models import Format, Result, to_result
+from .errors import OauthError, OauthExpiredTokenError, VPNDetectionError
+from .models import (
+    DeviceAuthorization,
+    Format,
+    OauthMetadata,
+    Result,
+    TokenResponse,
+    to_device_authorization,
+    to_oauth_metadata,
+    to_result,
+    to_token_response,
+)
 
-__all__ = ["AsyncDatabaseApi", "AsyncVPNDetection"]
+__all__ = ["AsyncDatabaseApi", "AsyncOauthApi", "AsyncVPNDetection"]
 
 T = TypeVar("T")
 
@@ -79,6 +97,8 @@ class AsyncVPNDetection:
     """
 
     database: AsyncDatabaseApi
+
+    oauth: AsyncOauthApi
     """The licensed dataset downloads, for keys that carry the `db.download` scope."""
 
     def __init__(
@@ -99,7 +119,9 @@ class AsyncVPNDetection:
         self._cache = Cache(cache_max_size, cache_ttl) if cache else None
         self._concurrency = concurrency
         self._retries = retries
+        self._timeout = timeout
         self.database = AsyncDatabaseApi(self)
+        self.oauth = AsyncOauthApi(self)
 
     def is_bogon(self, ip: str) -> bool:
         """Whether an address is private, loopback, link-local, documentation, multicast
@@ -126,7 +148,7 @@ class AsyncVPNDetection:
                 return hit
 
         async def call() -> Result:
-            res = await request_async(lookup_ip, self._client, timeout, ip=ip)
+            res = await request_async(lookup_ip, self._client, self._bound(timeout), ip=ip)
             return parse_body(unwrap(res), to_result)
 
         result = await self._retrying(call, self._retries if retries is None else retries)
@@ -147,7 +169,7 @@ class AsyncVPNDetection:
         """
 
         async def call() -> Result:
-            res = await request_async(lookup_my_ip, self._client, timeout)
+            res = await request_async(lookup_my_ip, self._client, self._bound(timeout))
             return parse_body(unwrap(res), to_result)
 
         return await self._retrying(call, self._retries if retries is None else retries)
@@ -174,7 +196,7 @@ class AsyncVPNDetection:
         """
 
         async def call() -> Entitlement:
-            res = await request_async(my_entitlement, self._client, timeout)
+            res = await request_async(my_entitlement, self._client, self._bound(timeout))
             return parse_body(unwrap(res), Entitlement.from_dict)
 
         return await self._retrying(call, self._retries if retries is None else retries)
@@ -199,8 +221,10 @@ class AsyncVPNDetection:
         fails as a whole marks every address in it.
 
         Each batch gets its own semaphore sized for THIS call, so a per-call concurrency
-        really is the ceiling rather than being silently capped by the client's.
+        really is the ceiling rather than being silently capped by the client's. A per-call
+        `concurrency` below 1 is refused as `bad_request` before anything is sent.
         """
+        check_concurrency(concurrency)
         unique = list(dict.fromkeys(ips))
         answers: dict[str, Result | VPNDetectionError] = {}
         pending: list[str] = []
@@ -235,7 +259,10 @@ class AsyncVPNDetection:
     ) -> dict[str, Result | VPNDetectionError]:
         async def call() -> dict[str, Any]:
             res = await request_async(
-                lookup_batch, self._client, timeout, body=BatchLookupRequest(ips=list(chunk))
+                lookup_batch,
+                self._client,
+                self._bound(timeout),
+                body=BatchLookupRequest(ips=list(chunk)),
             )
             return unwrap(res)
 
@@ -265,6 +292,10 @@ class AsyncVPNDetection:
     ) -> None:
         await self.aclose()
 
+    # A per-call timeout, or the client's own when the call gave none.
+    def _bound(self, timeout: float | None) -> float | None:
+        return self._timeout if timeout is None else timeout
+
     async def _retrying(self, call: Callable[[], Awaitable[T]], retries: int) -> T:
         attempt = 0
         while True:
@@ -293,7 +324,7 @@ class AsyncDatabaseApi:
         """Every dataset your organization is licensed to download."""
 
         async def call() -> builtins.list[Database]:
-            res = await send_async(lambda: list_databases.asyncio_detailed(client=self._client))
+            res = await request_async(list_databases, self._client, self._owner._timeout)
             return parse_body(unwrap(res), databases_of)
 
         return await self._retrying(call)
@@ -302,8 +333,8 @@ class AsyncDatabaseApi:
         """What is inside one dataset: schema, samples, row count and sizes."""
 
         async def call() -> DatabaseMetadata:
-            res = await send_async(
-                lambda: database_metadata.asyncio_detailed(client=self._client, id=dataset_id)
+            res = await request_async(
+                database_metadata, self._client, self._owner._timeout, id=dataset_id
             )
             return parse_body(unwrap(res), DatabaseMetadata.from_dict)
 
@@ -313,10 +344,12 @@ class AsyncDatabaseApi:
         """Every checksum published for one dataset file, keyed by algorithm."""
 
         async def call() -> dict[str, str]:
-            res = await send_async(
-                lambda: database_checksum.asyncio_detailed(
-                    client=self._client, id=dataset_id, format_=DatabaseFormat(format)
-                )
+            res = await request_async(
+                database_checksum,
+                self._client,
+                self._owner._timeout,
+                id=dataset_id,
+                format_=DatabaseFormat(format),
             )
             return parse_body(unwrap(res), checksums_of)
 
@@ -326,8 +359,8 @@ class AsyncDatabaseApi:
         """Your organization's recent download attempts, newest first."""
 
         async def call() -> builtins.list[Download]:
-            res = await send_async(
-                lambda: list_downloads.asyncio_detailed(client=self._client, limit=limit)
+            res = await request_async(
+                list_downloads, self._client, self._owner._timeout, limit=limit
             )
             return parse_body(unwrap(res), downloads_of)
 
@@ -343,10 +376,12 @@ class AsyncDatabaseApi:
         """
 
         async def call() -> str:
-            res = await send_async(
-                lambda: download_database.asyncio_detailed(
-                    client=self._client, id=dataset_id, format_=DatabaseFormat(format)
-                )
+            res = await request_async(
+                download_database,
+                self._client,
+                self._owner._timeout,
+                id=dataset_id,
+                format_=DatabaseFormat(format),
             )
             return redirect_location(res)
 
@@ -424,3 +459,104 @@ class AsyncDatabaseApi:
 
     async def _retrying(self, call: Callable[[], Awaitable[T]]) -> T:
         return await self._owner._retrying(call, self._owner._retries)
+
+
+class AsyncOauthApi:
+    """`OauthApi`, for asyncio. Cancelling the task stops a poll's wait and any request in
+    flight at once, and surfaces as `asyncio.CancelledError`."""
+
+    def __init__(self, owner: AsyncVPNDetection) -> None:
+        self._owner = owner
+        self._clock = AsyncClock()
+
+    async def metadata(self, *, timeout: float | None = None) -> OauthMetadata:
+        """The authorization server's discovery document."""
+
+        async def call() -> OauthMetadata:
+            res = await self._send("GET", OAUTH_METADATA_PATH, None, timeout)
+            return to_oauth_metadata(oauth_body(res), res.status_code)
+
+        return await self._owner._retrying(call, self._owner._retries)
+
+    async def device_authorization(
+        self,
+        client_id: str,
+        *,
+        scope: str | None = None,
+        resource: str | None = None,
+        timeout: float | None = None,
+    ) -> DeviceAuthorization:
+        """Start a device sign-in; see `OauthApi.device_authorization`."""
+        form = {"client_id": client_id}
+        if scope is not None:
+            form["scope"] = scope
+        if resource is not None:
+            form["resource"] = resource
+
+        async def call() -> DeviceAuthorization:
+            res = await self._send("POST", OAUTH_DEVICE_AUTHORIZATION_PATH, form, timeout)
+            return to_device_authorization(oauth_body(res), res.status_code)
+
+        return await self._owner._retrying(call, self._owner._retries)
+
+    async def exchange_device_code(
+        self, client_id: str, device_code: str, *, timeout: float | None = None
+    ) -> TokenResponse:
+        """Redeem an approved device code, once; see `OauthApi.exchange_device_code`."""
+        form = {"grant_type": DEVICE_CODE_GRANT, "device_code": device_code, "client_id": client_id}
+        return await self._exchange(form, timeout)
+
+    async def exchange_refresh_token(
+        self, client_id: str, refresh_token: str, *, timeout: float | None = None
+    ) -> TokenResponse:
+        """Trade a refresh token for a new pair, once; see `OauthApi.exchange_refresh_token`."""
+        form = {
+            "grant_type": "refresh_token",
+            "refresh_token": refresh_token,
+            "client_id": client_id,
+        }
+        return await self._exchange(form, timeout)
+
+    async def revoke(self, client_id: str, token: str, *, timeout: float | None = None) -> None:
+        """End a token; revoking the refresh token signs the machine out."""
+
+        async def call() -> None:
+            form = {"token": token, "client_id": client_id}
+            await self._send("POST", OAUTH_REVOKE_PATH, form, timeout)
+
+        await self._owner._retrying(call, self._owner._retries)
+
+    async def poll_device_token(
+        self, client_id: str, device: DeviceAuthorization, *, timeout: float | None = None
+    ) -> TokenResponse:
+        """Wait for the person to approve a device sign-in; see `OauthApi.poll_device_token`.
+        Cancel the task to stop waiting."""
+        interval = device.interval if device.interval >= 1 else 5
+        deadline = self._clock.now() + device.expires_in
+        while True:
+            await self._clock.sleep(interval)
+            if self._clock.now() >= deadline:
+                raise OauthExpiredTokenError()
+            try:
+                return await self.exchange_device_code(
+                    client_id, device.device_code, timeout=timeout
+                )
+            except OauthError as err:
+                # RFC 8628: slow_down widens the interval for every later request, not the next.
+                if err.error_code == "slow_down":
+                    interval += 5
+                elif err.error_code != "authorization_pending":
+                    raise
+
+    async def _exchange(self, form: dict[str, str], timeout: float | None) -> TokenResponse:
+        async def call() -> TokenResponse:
+            res = await self._send("POST", OAUTH_TOKEN_PATH, form, timeout)
+            return to_token_response(oauth_body(res), res.status_code)
+
+        return await self._owner._retrying(call, 0)
+
+    async def _send(
+        self, method: str, path: str, form: dict[str, str] | None, timeout: float | None
+    ) -> httpx.Response:
+        bound = self._owner._bound(timeout)
+        return await oauth_request_async(self._owner._client, method, path, form, bound)

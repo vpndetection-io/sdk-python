@@ -21,17 +21,34 @@ from ._generated.models.entitlement_apikey import EntitlementApikey
 from ._generated.models.entitlement_plan import EntitlementPlan
 from ._generated.models.entitlement_plan_tier import EntitlementPlanTier
 from ._generated.models.entitlement_usage import EntitlementUsage
-from .aio import AsyncDatabaseApi, AsyncVPNDetection
+from .aio import AsyncDatabaseApi, AsyncOauthApi, AsyncVPNDetection
 from .bogon import is_bogon
-from .client import DatabaseApi, VPNDetection
-from .errors import ErrorKind, VPNDetectionError
-from .models import ClassDetail, Flag, Format, ProxyDetail, Result, VpnDetail
+from .client import DatabaseApi, OauthApi, VPNDetection
+from .errors import (
+    ErrorKind,
+    OauthAccessDeniedError,
+    OauthError,
+    OauthExpiredTokenError,
+    VPNDetectionError,
+)
+from .models import (
+    ClassDetail,
+    DeviceAuthorization,
+    Flag,
+    Format,
+    OauthMetadata,
+    ProxyDetail,
+    Result,
+    TokenResponse,
+    VpnDetail,
+)
 
-__version__ = "5.1.0"
+__version__ = "5.2.0"
 
 __all__ = [
     "DEFAULT_BASE_URL",
     "AsyncDatabaseApi",
+    "AsyncOauthApi",
     "AsyncVPNDetection",
     "ClassDetail",
     "Database",
@@ -40,6 +57,7 @@ __all__ = [
     "DatabaseMetadata",
     "DatabaseMetadataColumn",
     "DatabaseVersion",
+    "DeviceAuthorization",
     "Download",
     "Entitlement",
     "EntitlementApikey",
@@ -49,8 +67,14 @@ __all__ = [
     "ErrorKind",
     "Flag",
     "Format",
+    "OauthAccessDeniedError",
+    "OauthApi",
+    "OauthError",
+    "OauthExpiredTokenError",
+    "OauthMetadata",
     "ProxyDetail",
     "Result",
+    "TokenResponse",
     "VPNDetection",
     "VPNDetectionError",
     "VpnDetail",
