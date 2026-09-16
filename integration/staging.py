@@ -99,6 +99,8 @@ class Fact:
     origin: str
     path: str
     carried_key: bool
+    #: What a POST /batch asked about, in the order it asked; empty for any other request.
+    addresses: tuple[str, ...] = ()
 
 
 class Recorder(httpx.BaseTransport):
@@ -152,7 +154,16 @@ def fact_for(request: httpx.Request, key: str) -> Fact:
         origin=f"{request.url.scheme}://{request.url.netloc.decode()}",
         path=request.url.path,
         carried_key=carried,
+        addresses=batch_addresses(request),
     )
+
+
+def batch_addresses(request: httpx.Request) -> tuple[str, ...]:
+    """The addresses in a POST /batch body. They carry no credential, and they are the only
+    place a duplicate or a bogon reaching the wire shows once a batch is one request."""
+    if request.method != "POST" or request.url.path != "/batch":
+        return ()
+    return tuple(json.loads(request.content).get("ips", []))
 
 
 def client_for(rung: Rung) -> tuple[VPNDetection, Recorder]:

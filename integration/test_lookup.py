@@ -119,9 +119,13 @@ def test_a_batch_collapses_duplicates_and_keeps_bogons_off_the_wire() -> None:
         client.close()
 
     assert sorted(got) == sorted([PROBE, "8.8.8.8", "10.0.0.1"])
-    # Distinct paths rather than a call count, so a retry against a wobbling staging cannot
+    assert {fact.path for fact in recorder.facts} == {"/batch"}
+    # Per request rather than a call count, so a retry against a wobbling staging cannot
     # read as a failure to deduplicate.
-    assert sorted({fact.path for fact in recorder.facts}) == sorted([f"/{PROBE}", "/8.8.8.8"])
+    for fact in recorder.facts:
+        assert sorted(fact.addresses) == sorted([PROBE, "8.8.8.8"]), (
+            f"a duplicate or a bogon reached the wire: {fact.addresses}"
+        )
     bogon = got["10.0.0.1"]
     assert not isinstance(bogon, Exception) and bogon.is_bogon, "10.0.0.1 reached the network"
     for ip in (PROBE, "8.8.8.8"):
