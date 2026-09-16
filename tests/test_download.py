@@ -18,7 +18,7 @@ import httpx
 import pytest
 from helpers import ClientAdapter, ClientFactory
 
-from vpndetection import VPNDetectionError
+from vpndetection import VPNDetectionError, _core
 
 API = "https://api.example"
 STORAGE = "https://storage.example"
@@ -37,7 +37,8 @@ class Blob:
     A `size` of zero is the small CSV nearly every test wants. Above that the body is
     synthetic, and `delivered` under `size` promises a whole dataset and cuts it short,
     which is the silent truncation a client has to catch. `dies` makes that shortfall
-    arrive as a dropped connection instead of a clean end of body.
+    arrive as a dropped connection instead of a clean end of body. `refusals` is how many
+    requests are answered 503 before the blob is served.
     """
 
     size: int = 0
@@ -45,6 +46,7 @@ class Blob:
     dies: bool = False
     status: int = 200
     encoding: str | None = None
+    refusals: int = 0
 
 
 class Origin:
@@ -77,6 +79,8 @@ class Origin:
             return httpx.Response(302, headers={"Location": BLOB})
         if str(request.url) != BLOB:
             return httpx.Response(404, json={"rc": "NO_SUCH_PATH"})
+        if self.paths().count("/blob") <= self.blob.refusals:
+            return httpx.Response(503)
         if self.blob.status != 200:
             return httpx.Response(self.blob.status, content=b"<Error><Code>AccessDenied</Code>")
 
@@ -120,10 +124,10 @@ class BlobStream(httpx.SyncByteStream, httpx.AsyncByteStream):
             raise httpx.ReadError("the connection dropped mid-transfer")
 
 
-def origin(make_client: ClientFactory, blob: Blob | None = None) -> Origin:
+def origin(make_client: ClientFactory, blob: Blob | None = None, retries: int = 2) -> Origin:
     served = Origin(blob or Blob())
     served.client = make_client(
-        api_key=API_KEY, base_url=API, transport=served.transport, cache=False
+        api_key=API_KEY, base_url=API, transport=served.transport, cache=False, retries=retries
     )
     return served
 
@@ -273,3 +277,41 @@ def test_a_content_encoded_body_is_not_mistaken_for_a_short_one(
     served = origin(make_client, Blob(encoding="gzip"))
 
     assert served.client.database.download_bytes("cdn_ip_v1", "csvgz") == SMALL
+
+
+# Only the response HEAD of a transfer is retried. A 5xx there has written nothing, so it is
+# as transient as the API's; a body that dies part way is never fetched again, or the second
+# copy would append to the bytes already written. Each half pins the other, so neither passes
+# vacuously, and each counts storage requests before it looks at the outcome.
+def test_a_storage_5xx_before_the_body_is_retried(
+    make_client: ClientFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(_core, "_BACKOFF_BASE", 0.0)
+    served = origin(make_client, Blob(refusals=1), retries=2)
+
+    outcome: bytes | Exception
+    try:
+        outcome = served.client.database.download_bytes("cdn_ip_v1", "csvgz")
+    except (VPNDetectionError, httpx.HTTPError) as exc:
+        outcome = exc
+
+    assert served.paths().count("/blob") == 2, "object storage should see the 503 and its retry"
+    assert outcome == SMALL
+
+
+@pytest.mark.parametrize("method", ["download", "download_bytes"])
+def test_a_transfer_that_dies_part_way_is_not_fetched_again(
+    make_client: ClientFactory, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, method: str
+) -> None:
+    monkeypatch.setattr(_core, "_BACKOFF_BASE", 0.0)
+    served = origin(make_client, Blob(size=4 << 20, delivered=1 << 20, dies=True), retries=2)
+    rest = (tmp_path / "dies-once.csv.gz",) if method == "download" else ()
+
+    failure: Exception | None = None
+    try:
+        getattr(served.client.database, method)("cdn_ip_v1", "csvgz", *rest)
+    except (VPNDetectionError, httpx.HTTPError) as exc:
+        failure = exc
+
+    assert served.paths().count("/blob") == 1, "a body that died part way was fetched again"
+    assert isinstance(failure, httpx.ReadError), f"got {failure!r}"
