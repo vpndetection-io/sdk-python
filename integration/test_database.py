@@ -51,7 +51,7 @@ def test_the_licensed_catalog_answers_the_schema_the_client_was_generated_from()
             f"{dataset.base} carries an undocumented standing {dataset.standing!r}"
         )
         # `list` answers the WHOLE catalogue, so an unlicensed family is a normal row
-        # with no licence type at all. Asserting one either way is what tells a None
+        # with no license type at all. Asserting one either way is what tells a None
         # apart from a value this client cannot read.
         if dataset.standing == "unlicensed":
             assert dataset.license_type is None, (
