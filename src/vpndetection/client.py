@@ -97,9 +97,10 @@ class VPNDetection:
     `timeout` is how long one attempt at a request may take, in seconds, body included, so a
     call that is retried can take longer in total; None means no bound, and a database
     transfer is exempt. `lookup`, `my_ip`, `my_entitlement` and `lookup_batch` also take
-    `retries` and `timeout`, and every `oauth` request takes `timeout`, which override the
-    client's for that call alone. Any other `timeout` that is not a finite number greater
-    than 0 is a `ValueError` where it is set, rather than a failure of every request.
+    `retries` and `timeout`, and every `oauth` request and every `database` call but the two
+    transfers takes `timeout`, which override the client's for that call alone. Any other
+    `timeout` that is not a finite number greater than 0 is a `ValueError` where it is set,
+    rather than a failure of every request.
 
     Holds an HTTP connection pool, so use it as a context manager or call `close()` when
     you are done with it.
@@ -329,41 +330,56 @@ class DatabaseApi:
 
     `list` is a method here, which shadows the builtin for everything else in the class
     body, so the return annotations name `builtins.list` explicitly.
+
+    Every call here that asks the API a question takes `timeout`, in seconds, bounding
+    each ATTEMPT of that call alone and overriding the client's. The two transfers take
+    none and refuse one rather than ignoring it: a dataset runs to gigabytes and minutes,
+    so any bound that suits a JSON call would abandon a healthy download.
     """
 
     def __init__(self, owner: VPNDetection) -> None:
         self._owner = owner
 
-    def list(self) -> builtins.list[Database]:
-        """Every dataset your organization is licensed to download."""
+    def list(self, *, timeout: float | None = None) -> builtins.list[Database]:
+        """Every dataset your organization is licensed to download.
+
+        `timeout` bounds each attempt at this call alone, in place of the client's.
+        """
 
         def call() -> builtins.list[Database]:
-            res = request(list_databases, self._client, self._owner._timeout)
+            res = request(list_databases, self._client, self._bound(timeout))
             return parse_body(unwrap(res), databases_of)
 
         return self._retrying(call)
 
-    def metadata(self, dataset_id: str) -> DatabaseMetadata:
-        """What is inside one dataset: schema, samples, row count and sizes."""
+    def metadata(self, dataset_id: str, *, timeout: float | None = None) -> DatabaseMetadata:
+        """What is inside one dataset: schema, samples, row count and sizes.
+
+        `timeout` bounds each attempt at this call alone, in place of the client's.
+        """
 
         def call() -> DatabaseMetadata:
-            res = request(database_metadata, self._client, self._owner._timeout, id=dataset_id)
+            res = request(database_metadata, self._client, self._bound(timeout), id=dataset_id)
             return parse_body(unwrap(res), DatabaseMetadata.from_dict)
 
         return self._retrying(call)
 
-    def checksums(self, dataset_id: str, format: Format) -> dict[str, str]:
+    def checksums(
+        self, dataset_id: str, format: Format, *, timeout: float | None = None
+    ) -> dict[str, str]:
         """Every checksum published for one dataset file, keyed by algorithm.
 
         Keyed rather than one digest because the API publishes md5, sha1, sha256 and
         sha512 side by side and which of them you want is your verifier's business.
+
+        `timeout` bounds each attempt at this call alone, in place of the client's.
         """
 
         def call() -> dict[str, str]:
             res = request(
                 database_checksum,
                 self._client,
-                self._owner._timeout,
+                self._bound(timeout),
                 id=dataset_id,
                 format_=DatabaseFormat(format),
             )
@@ -371,29 +387,37 @@ class DatabaseApi:
 
         return self._retrying(call)
 
-    def downloads(self, limit: int = DEFAULT_DOWNLOADS_LIMIT) -> builtins.list[Download]:
-        """Your organization's recent download attempts, newest first."""
+    def downloads(
+        self, limit: int = DEFAULT_DOWNLOADS_LIMIT, *, timeout: float | None = None
+    ) -> builtins.list[Download]:
+        """Your organization's recent download attempts, newest first.
+
+        `timeout` bounds each attempt at this call alone, in place of the client's.
+        """
 
         def call() -> builtins.list[Download]:
-            res = request(list_downloads, self._client, self._owner._timeout, limit=limit)
+            res = request(list_downloads, self._client, self._bound(timeout), limit=limit)
             return parse_body(unwrap(res), downloads_of)
 
         return self._retrying(call)
 
-    def download_url(self, dataset_id: str, format: Format) -> str:
+    def download_url(self, dataset_id: str, format: Format, *, timeout: float | None = None) -> str:
         """The time-limited URL for one dataset file.
 
         The API answers `302` to object storage. The URL is returned rather than the
         bytes so the caller decides how to transfer a file that routinely runs to
         gigabytes; the link authorizes the START of a transfer, so one already running is
         not interrupted when it lapses.
+
+        `timeout` bounds each attempt at MINTING the link, which is an ordinary API
+        request, and says nothing about the transfer you then run with it.
         """
 
         def call() -> str:
             res = request(
                 download_database,
                 self._client,
-                self._owner._timeout,
+                self._bound(timeout),
                 id=dataset_id,
                 format_=DatabaseFormat(format),
             )
@@ -465,6 +489,9 @@ class DatabaseApi:
     @property
     def _client(self) -> AuthenticatedClient:
         return self._owner._client
+
+    def _bound(self, timeout: float | None) -> float | None:
+        return self._owner._bound(timeout)
 
     def _retrying(self, call: Callable[[], T]) -> T:
         return self._owner._retrying(call, self._owner._retries)

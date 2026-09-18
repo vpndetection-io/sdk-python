@@ -172,7 +172,7 @@ except VPNDetectionError as err:
 
 `kind` is one of `bad_request`, `unauthorized`, `forbidden`, `rate_limited`, `quota_exceeded`, `server_error` or `network`.
 
-A request that runs past its `timeout` fails with `network`. The default is 30 seconds per attempt, body included, so a retried call can take longer in total, and a database download is exempt. Set it on the client, or on a single `lookup`, `my_ip`, `my_entitlement`, `lookup_batch` or `oauth` call:
+A request that runs past its `timeout` fails with `network`. The default is 30 seconds per attempt, body included, so a retried call can take longer in total, and a database download is exempt. Set it on the client, or on a single `lookup`, `my_ip`, `my_entitlement`, `lookup_batch`, `oauth` or `database` call (the last from 5.4.0, transfers aside):
 
 ```python
 client = VPNDetection(timeout=30)
@@ -200,6 +200,15 @@ written = client.database.download("vpn_ip_extended_v1", "mmdb", "./vpn_ip_exten
 `DATABASE_FORMATS`, `STANDINGS` and `LICENSE_TYPES` hold the published formats and the values a family's `standing` and `license_type` can take, at runtime, for checking one that came from a flag or a form before you make a call.
 
 `download_bytes` holds the whole file in memory, and the catalog runs from `cdn_ip_v1` at 10 KB to `resproxy_ip_90d_v1` at 1.79 GB, so use `download` for anything you have not measured.
+
+From 5.4.0, `list`, `metadata`, `checksums`, `downloads` and `download_url` each take a keyword-only `timeout` in seconds, bounding each attempt at that one call in place of the client's:
+
+```python
+catalog = client.database.list(timeout=5)
+sums = client.database.checksums("vpn_ip_extended_v1", "mmdb", timeout=5)
+```
+
+`download` and `download_bytes` deliberately take no `timeout` and raise `TypeError` if handed one, rather than accepting it and quietly doing nothing: a transfer runs to gigabytes and minutes, so any bound that suits a JSON call would abandon a healthy download. `download_url` does take one, because minting the link is an ordinary API request - it bounds that request, not whatever you do with the link afterwards.
 
 ### Sign in with OAuth (device flow)
 

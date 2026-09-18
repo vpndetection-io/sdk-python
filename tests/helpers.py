@@ -17,7 +17,7 @@ import threading
 import time
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any, NoReturn, Self
+from typing import Any, NoReturn, Self, cast
 
 import httpx
 import pytest
@@ -104,23 +104,34 @@ class DatabaseAdapter:
     def __init__(self, client: VPNDetection | AsyncVPNDetection) -> None:
         self._client = client
 
-    def list(self) -> Any:
-        return self._call("list")
+    def list(self, **kwargs: Any) -> Any:
+        return self._call("list", **kwargs)
 
-    def download_url(self, dataset_id: str, format: str) -> str:
-        return self._call("download_url", dataset_id, format)  # type: ignore[no-any-return]
+    def metadata(self, dataset_id: str, **kwargs: Any) -> Any:
+        return self._call("metadata", dataset_id, **kwargs)
 
-    def download(self, dataset_id: str, format: str, path: Any) -> int:
-        return self._call("download", dataset_id, format, path)  # type: ignore[no-any-return]
+    def checksums(self, dataset_id: str, format: str, **kwargs: Any) -> Any:
+        return self._call("checksums", dataset_id, format, **kwargs)
 
-    def download_bytes(self, dataset_id: str, format: str) -> bytes:
-        return self._call("download_bytes", dataset_id, format)  # type: ignore[no-any-return]
+    def downloads(self, *args: Any, **kwargs: Any) -> Any:
+        return self._call("downloads", *args, **kwargs)
 
-    def _call(self, name: str, *args: Any) -> Any:
+    def download_url(self, dataset_id: str, format: str, **kwargs: Any) -> str:
+        return cast(str, self._call("download_url", dataset_id, format, **kwargs))
+
+    def download(self, dataset_id: str, format: str, path: Any, **kwargs: Any) -> int:
+        return cast(int, self._call("download", dataset_id, format, path, **kwargs))
+
+    def download_bytes(self, dataset_id: str, format: str, **kwargs: Any) -> bytes:
+        return cast(bytes, self._call("download_bytes", dataset_id, format, **kwargs))
+
+    # Keyword arguments are forwarded untouched and none is named here: a `timeout`
+    # in this signature would swallow the TypeError a transfer must raise for one.
+    def _call(self, name: str, *args: Any, **kwargs: Any) -> Any:
         method = getattr(self._client.database, name)
         if isinstance(self._client, VPNDetection):
-            return method(*args)
-        return asyncio.run(method(*args))
+            return method(*args, **kwargs)
+        return asyncio.run(method(*args, **kwargs))
 
 
 class OauthAdapter:

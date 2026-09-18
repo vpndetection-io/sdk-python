@@ -7,6 +7,7 @@ import dataclasses
 import inspect
 import time
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import attrs
@@ -14,7 +15,6 @@ import httpx
 import pytest
 from helpers import (
     TESTDATA,
-    ClientAdapter,
     ClientFactory,
     FakeClock,
     LoopBound,
@@ -100,12 +100,26 @@ PER_CALL_TIMEOUT: dict[str, Callable[..., Any]] = {
     "oauth.poll_device_token": lambda client, **kw: client.oauth.poll_device_token(
         "your-client-id", DEVICE, **kw
     ),
+    "database.list": lambda client, **kw: client.database.list(**kw),
+    "database.metadata": lambda client, **kw: client.database.metadata("cdn_ip_v1", **kw),
+    "database.checksums": lambda client, **kw: client.database.checksums("cdn_ip_v1", "mmdb", **kw),
+    "database.downloads": lambda client, **kw: client.database.downloads(**kw),
+    "database.download_url": lambda client, **kw: client.database.download_url(
+        "cdn_ip_v1", "mmdb", **kw
+    ),
 }
 
-# The JSON database calls take no per-call options, so the client's bound is theirs.
-CLIENT_TIMEOUT_ONLY: dict[str, Callable[[ClientAdapter], Any]] = {
-    "database.list": lambda client: client.database.list(),
-    "database.download_url": lambda client: client.database.download_url("cdn_ip_v1", "mmdb"),
+# The database calls that ask the API a question, so a per-call bound is theirs to take.
+JSON_DATABASE_CALLS = ["list", "metadata", "checksums", "downloads", "download_url"]
+
+# The two transfers, which must REFUSE a per-call timeout rather than ignore one.
+TRANSFERS: dict[str, Callable[..., Any]] = {
+    "database.download": lambda client, path, **kw: client.database.download(
+        "cdn_ip_v1", "mmdb", path, **kw
+    ),
+    "database.download_bytes": lambda client, _path, **kw: client.database.download_bytes(
+        "cdn_ip_v1", "mmdb", **kw
+    ),
 }
 
 
@@ -214,16 +228,34 @@ def test_a_per_call_timeout_bounds_a_trickling_body_and_leaves_the_clients_own_a
     )
 
 
-@pytest.mark.parametrize("call", CLIENT_TIMEOUT_ONLY)
-def test_the_clients_timeout_bounds_a_trickling_body_on_a_database_call(
-    make_client: ClientFactory, call: str
+@pytest.mark.parametrize("call", TRANSFERS)
+def test_a_transfer_refuses_a_per_call_timeout(
+    make_client: ClientFactory, call: str, tmp_path: Path
 ) -> None:
-    bound = LoopBound()
-    with SlowBody(trickle=TRICKLE) as server:
-        client = make_client(base_url=server.url, timeout=CALL_TIMEOUT, retries=0)
-        elapsed = _timed(lambda: CLIENT_TIMEOUT_ONLY[call](client), bound)
+    """A transfer is exempt from the deadline, so the option is not in its signature and
+    Python refuses it for us. Accepted and quietly ignored, a caller would be told
+    nothing; honored, a bound that suits a JSON call would abandon a healthy download."""
+    stub = Stub({})
+    client = make_client(transport=stub.transport, retries=0)
+    path = tmp_path / "dataset.mmdb"
 
-    assert elapsed < CLIENT_TIMEOUT / 2, f"took {elapsed:.2f}s"
+    with pytest.raises(TypeError, match="timeout"):
+        TRANSFERS[call](client, path, timeout=CALL_TIMEOUT)
+
+    assert stub.calls == []
+    assert not path.exists()
+
+
+@pytest.mark.parametrize("name", JSON_DATABASE_CALLS)
+def test_every_json_database_call_takes_a_per_call_timeout(
+    make_client: ClientFactory, name: str
+) -> None:
+    """The other half of the refusal above, which without this would pass just as well on
+    a surface that had never been given a per-call timeout at all."""
+    timeout = inspect.signature(getattr(make_client().client.database, name)).parameters["timeout"]
+
+    assert timeout.kind is inspect.Parameter.KEYWORD_ONLY
+    assert timeout.default is None
 
 
 def test_a_body_that_stalls_after_its_headers_is_bounded(make_client: ClientFactory) -> None:

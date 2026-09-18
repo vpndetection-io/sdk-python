@@ -320,39 +320,55 @@ class AsyncDatabaseApi:
 
     `list` is a method here, which shadows the builtin for everything else in the class
     body, so the return annotations name `builtins.list` explicitly.
+
+    Every call here that asks the API a question takes `timeout`, in seconds, bounding
+    each ATTEMPT of that call alone and overriding the client's. The two transfers take
+    none and refuse one rather than ignoring it: a dataset runs to gigabytes and minutes,
+    so any bound that suits a JSON call would abandon a healthy download.
     """
 
     def __init__(self, owner: AsyncVPNDetection) -> None:
         self._owner = owner
 
-    async def list(self) -> builtins.list[Database]:
-        """Every dataset your organization is licensed to download."""
+    async def list(self, *, timeout: float | None = None) -> builtins.list[Database]:
+        """Every dataset your organization is licensed to download.
+
+        `timeout` bounds each attempt at this call alone, in place of the client's.
+        """
 
         async def call() -> builtins.list[Database]:
-            res = await request_async(list_databases, self._client, self._owner._timeout)
+            res = await request_async(list_databases, self._client, self._bound(timeout))
             return parse_body(unwrap(res), databases_of)
 
         return await self._retrying(call)
 
-    async def metadata(self, dataset_id: str) -> DatabaseMetadata:
-        """What is inside one dataset: schema, samples, row count and sizes."""
+    async def metadata(self, dataset_id: str, *, timeout: float | None = None) -> DatabaseMetadata:
+        """What is inside one dataset: schema, samples, row count and sizes.
+
+        `timeout` bounds each attempt at this call alone, in place of the client's.
+        """
 
         async def call() -> DatabaseMetadata:
             res = await request_async(
-                database_metadata, self._client, self._owner._timeout, id=dataset_id
+                database_metadata, self._client, self._bound(timeout), id=dataset_id
             )
             return parse_body(unwrap(res), DatabaseMetadata.from_dict)
 
         return await self._retrying(call)
 
-    async def checksums(self, dataset_id: str, format: Format) -> dict[str, str]:
-        """Every checksum published for one dataset file, keyed by algorithm."""
+    async def checksums(
+        self, dataset_id: str, format: Format, *, timeout: float | None = None
+    ) -> dict[str, str]:
+        """Every checksum published for one dataset file, keyed by algorithm.
+
+        `timeout` bounds each attempt at this call alone, in place of the client's.
+        """
 
         async def call() -> dict[str, str]:
             res = await request_async(
                 database_checksum,
                 self._client,
-                self._owner._timeout,
+                self._bound(timeout),
                 id=dataset_id,
                 format_=DatabaseFormat(format),
             )
@@ -360,31 +376,41 @@ class AsyncDatabaseApi:
 
         return await self._retrying(call)
 
-    async def downloads(self, limit: int = DEFAULT_DOWNLOADS_LIMIT) -> builtins.list[Download]:
-        """Your organization's recent download attempts, newest first."""
+    async def downloads(
+        self, limit: int = DEFAULT_DOWNLOADS_LIMIT, *, timeout: float | None = None
+    ) -> builtins.list[Download]:
+        """Your organization's recent download attempts, newest first.
+
+        `timeout` bounds each attempt at this call alone, in place of the client's.
+        """
 
         async def call() -> builtins.list[Download]:
             res = await request_async(
-                list_downloads, self._client, self._owner._timeout, limit=limit
+                list_downloads, self._client, self._bound(timeout), limit=limit
             )
             return parse_body(unwrap(res), downloads_of)
 
         return await self._retrying(call)
 
-    async def download_url(self, dataset_id: str, format: Format) -> str:
+    async def download_url(
+        self, dataset_id: str, format: Format, *, timeout: float | None = None
+    ) -> str:
         """The time-limited URL for one dataset file.
 
         The API answers `302` to object storage. The URL is returned rather than the
         bytes so the caller decides how to transfer a file that routinely runs to
         gigabytes; the link authorizes the START of a transfer, so one already running is
         not interrupted when it lapses.
+
+        `timeout` bounds each attempt at MINTING the link, which is an ordinary API
+        request, and says nothing about the transfer you then run with it.
         """
 
         async def call() -> str:
             res = await request_async(
                 download_database,
                 self._client,
-                self._owner._timeout,
+                self._bound(timeout),
                 id=dataset_id,
                 format_=DatabaseFormat(format),
             )
@@ -461,6 +487,9 @@ class AsyncDatabaseApi:
     @property
     def _client(self) -> AuthenticatedClient:
         return self._owner._client
+
+    def _bound(self, timeout: float | None) -> float | None:
+        return self._owner._bound(timeout)
 
     async def _retrying(self, call: Callable[[], Awaitable[T]]) -> T:
         return await self._owner._retrying(call, self._owner._retries)
