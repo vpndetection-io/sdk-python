@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import asyncio
 import dataclasses
 import inspect
 import time
 from collections.abc import Callable
 from typing import Any
 
+import attrs
 import httpx
 import pytest
 from helpers import (
@@ -23,12 +25,39 @@ from helpers import (
 )
 
 from vpndetection import (
+    DATABASE_FORMATS,
+    LICENSE_TYPES,
+    STANDINGS,
     AsyncVPNDetection,
+    ClassDetail,
     DeviceAuthorization,
+    OauthMetadata,
+    ProxyDetail,
+    Result,
+    TokenResponse,
+    VpnDetail,
     VPNDetection,
     VPNDetectionError,
     is_bogon,
 )
+from vpndetection._generated.models.class_detail import ClassDetail as WireClassDetail
+from vpndetection._generated.models.database_format import DatabaseFormat
+from vpndetection._generated.models.database_license_type_type_1 import DatabaseLicenseTypeType1
+from vpndetection._generated.models.database_license_type_type_2_type_1 import (
+    DatabaseLicenseTypeType2Type1,
+)
+from vpndetection._generated.models.database_license_type_type_3_type_1 import (
+    DatabaseLicenseTypeType3Type1,
+)
+from vpndetection._generated.models.device_authorization import (
+    DeviceAuthorization as WireDeviceAuthorization,
+)
+from vpndetection._generated.models.lookup_response import LookupResponse as WireLookupResponse
+from vpndetection._generated.models.oauth_metadata import OauthMetadata as WireOauthMetadata
+from vpndetection._generated.models.proxy_detail import ProxyDetail as WireProxyDetail
+from vpndetection._generated.models.standing import Standing
+from vpndetection._generated.models.token_response import TokenResponse as WireTokenResponse
+from vpndetection._generated.models.vpn_detail import VpnDetail as WireVpnDetail
 
 # Enough addresses for seven chunks of the batch endpoint's 1000, so a concurrency bound
 # has something to bound: one request per chunk, and only the chunks overlap.
@@ -209,6 +238,100 @@ def test_a_body_that_stalls_after_its_headers_is_bounded(make_client: ClientFact
 def test_the_default_timeout_is_thirty_seconds() -> None:
     for client in (VPNDetection, AsyncVPNDetection):
         assert inspect.signature(client).parameters["timeout"].default == 30
+
+
+@pytest.mark.parametrize("client", [VPNDetection, AsyncVPNDetection])
+@pytest.mark.parametrize("timeout", [0, -1, 0.0, float("nan"), float("inf"), "30", True])
+def test_a_timeout_no_attempt_can_meet_is_refused_when_the_client_is_built(
+    client: type[VPNDetection | AsyncVPNDetection], timeout: Any
+) -> None:
+    """Accepted, each of these failed every call instead, after the retries' backoff."""
+    with pytest.raises(ValueError, match="timeout"):
+        client(timeout=timeout)
+
+
+@pytest.mark.parametrize("timeout", [None, 0.25, 1, 30])
+def test_a_usable_timeout_builds_a_client(timeout: float | None) -> None:
+    VPNDetection(timeout=timeout).close()
+    asyncio.run(AsyncVPNDetection(timeout=timeout).aclose())
+
+
+@pytest.mark.parametrize("timeout", [0, -1, float("nan"), float("inf"), "30", True])
+@pytest.mark.parametrize("call", PER_CALL_TIMEOUT)
+def test_a_per_call_timeout_no_attempt_can_meet_is_refused_before_any_request(
+    make_client: ClientFactory, call: str, timeout: Any
+) -> None:
+    stub = Stub({})
+    client = make_client(transport=stub.transport, retries=0)
+    clock = FakeClock(LoopBound())
+    client.oauth.use_clock(clock)
+
+    with pytest.raises(ValueError, match="timeout"):
+        PER_CALL_TIMEOUT[call](client, timeout=timeout)
+
+    assert stub.calls == []
+    # The poll waits before its first request, so a check made only there comes too late.
+    assert clock.waits == []
+
+
+@pytest.mark.parametrize("ip", ["10.0.0.1", "1.1.1.1"])
+def test_a_per_call_timeout_is_refused_even_when_the_answer_needs_no_request(
+    make_client: ClientFactory, ip: str
+) -> None:
+    """A bogon, and an address already cached."""
+    stub = Stub({"1.1.1.1": {"body": {"ip": "1.1.1.1", "is_vpn": False}}})
+    client = make_client(transport=stub.transport)
+    client.lookup("1.1.1.1")
+
+    with pytest.raises(ValueError, match="timeout"):
+        client.lookup(ip, timeout=-1)
+    with pytest.raises(ValueError, match="timeout"):
+        client.lookup_batch([ip], timeout=-1)
+
+    assert len(stub.calls) == 1
+
+
+def test_the_runtime_vocabularies_are_the_pinned_specs() -> None:
+    """`Format` is written by hand, so it is the one that can fall behind a re-pin; the
+    generated enums come from the pinned spec, which splits the license type into three
+    identical ones, and all three are held to the one list."""
+    assert sorted(DATABASE_FORMATS) == sorted(member.value for member in DatabaseFormat)
+    assert sorted(STANDINGS) == sorted(member.value for member in Standing)
+    for generated in (
+        DatabaseLicenseTypeType1,
+        DatabaseLicenseTypeType2Type1,
+        DatabaseLicenseTypeType3Type1,
+    ):
+        assert sorted(LICENSE_TYPES) == sorted(member.value for member in generated)
+
+
+@pytest.mark.parametrize(
+    ("wire", "ours"),
+    [
+        (WireLookupResponse, Result),
+        (WireVpnDetail, VpnDetail),
+        (WireClassDetail, ClassDetail),
+        (WireProxyDetail, ProxyDetail),
+        (WireOauthMetadata, OauthMetadata),
+        (WireDeviceAuthorization, DeviceAuthorization),
+        (WireTokenResponse, TokenResponse),
+    ],
+)
+def test_every_field_the_pinned_spec_serves_is_on_the_model(wire: Any, ours: Any) -> None:
+    """The staleness pin on the hand-written models.
+
+    They parse the keys they name and nothing else, so a field a re-pin adds reaches the
+    generated code and `raw` while the typed model never hears of it. The generated classes
+    come from the same pinned spec, which makes them the list to check against. The
+    generator suffixes a name that shadows a builtin with `_`, and spells `mslm:apikey` and
+    `mslm:apikey_id` as `mslmapikey` and `mslmapikey_id`, which the model names `apikey` and
+    `apikey_id`.
+    """
+    renamed = {"mslmapikey": "apikey", "mslmapikey_id": "apikey_id"}
+    served = {renamed.get(f.name, f.name).rstrip("_") for f in attrs.fields(wire)}
+    modeled = {f.name for f in dataclasses.fields(ours)}
+    missing = served - {"additional_properties"} - modeled
+    assert missing == set(), f"{ours.__name__} lacks what the spec serves: {sorted(missing)}"
 
 
 @pytest.mark.parametrize("status", [405, 409, 422])

@@ -39,6 +39,7 @@ from ._core import (
     build_async_transfer_client,
     build_client,
     check_concurrency,
+    check_timeout,
     checksums_of,
     chunked,
     databases_of,
@@ -114,6 +115,7 @@ class AsyncVPNDetection:
         timeout: float | None = DEFAULT_TIMEOUT,
         transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:
+        timeout = check_timeout(timeout)
         self._client = build_client(api_key, base_url, timeout, transport)
         self._transfer = build_async_transfer_client(timeout, transport)
         self._cache = Cache(cache_max_size, cache_ttl) if cache else None
@@ -140,6 +142,8 @@ class AsyncVPNDetection:
         A bogon is answered locally and never reaches the network. Everything else is
         served, then cached for this instance.
         """
+        # Here as well as in _bound: a bogon or a cached answer returns before any request.
+        check_timeout(timeout)
         if is_bogon(ip):
             return bogon_result(ip)
         if self._cache is not None:
@@ -225,6 +229,7 @@ class AsyncVPNDetection:
         `concurrency` below 1 is refused as `bad_request` before anything is sent.
         """
         check_concurrency(concurrency)
+        check_timeout(timeout)
         unique = list(dict.fromkeys(ips))
         answers: dict[str, Result | VPNDetectionError] = {}
         pending: list[str] = []
@@ -292,9 +297,9 @@ class AsyncVPNDetection:
     ) -> None:
         await self.aclose()
 
-    # A per-call timeout, or the client's own when the call gave none.
+    # A per-call timeout, checked, or the client's own when the call gave none.
     def _bound(self, timeout: float | None) -> float | None:
-        return self._timeout if timeout is None else timeout
+        return self._timeout if timeout is None else check_timeout(timeout)
 
     async def _retrying(self, call: Callable[[], Awaitable[T]], retries: int) -> T:
         attempt = 0
@@ -531,6 +536,8 @@ class AsyncOauthApi:
     ) -> TokenResponse:
         """Wait for the person to approve a device sign-in; see `OauthApi.poll_device_token`.
         Cancel the task to stop waiting."""
+        # Refused before the first wait, not after it.
+        check_timeout(timeout)
         interval = device.interval if device.interval >= 1 else 5
         deadline = self._clock.now() + device.expires_in
         while True:

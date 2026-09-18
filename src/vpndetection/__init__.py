@@ -32,6 +32,9 @@ from .errors import (
     VPNDetectionError,
 )
 from .models import (
+    DATABASE_FORMATS,
+    LICENSE_TYPES,
+    STANDINGS,
     ClassDetail,
     DeviceAuthorization,
     Flag,
@@ -43,10 +46,13 @@ from .models import (
     VpnDetail,
 )
 
-__version__ = "5.2.0"
+__version__ = "5.3.0"
 
 __all__ = [
+    "DATABASE_FORMATS",
     "DEFAULT_BASE_URL",
+    "LICENSE_TYPES",
+    "STANDINGS",
     "AsyncDatabaseApi",
     "AsyncOauthApi",
     "AsyncVPNDetection",

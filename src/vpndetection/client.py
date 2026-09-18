@@ -35,6 +35,7 @@ from ._core import (
     build_client,
     build_transfer_client,
     check_concurrency,
+    check_timeout,
     checksums_of,
     chunked,
     databases_of,
@@ -97,7 +98,8 @@ class VPNDetection:
     call that is retried can take longer in total; None means no bound, and a database
     transfer is exempt. `lookup`, `my_ip`, `my_entitlement` and `lookup_batch` also take
     `retries` and `timeout`, and every `oauth` request takes `timeout`, which override the
-    client's for that call alone.
+    client's for that call alone. Any other `timeout` that is not a finite number greater
+    than 0 is a `ValueError` where it is set, rather than a failure of every request.
 
     Holds an HTTP connection pool, so use it as a context manager or call `close()` when
     you are done with it.
@@ -122,6 +124,7 @@ class VPNDetection:
         timeout: float | None = DEFAULT_TIMEOUT,
         transport: httpx.BaseTransport | None = None,
     ) -> None:
+        timeout = check_timeout(timeout)
         self._client = build_client(api_key, base_url, timeout, transport)
         self._transfer = build_transfer_client(timeout, transport)
         self._cache = Cache(cache_max_size, cache_ttl) if cache else None
@@ -150,6 +153,8 @@ class VPNDetection:
         A bogon is answered locally and never reaches the network. Everything else is
         served, then cached for this instance.
         """
+        # Here as well as in _bound: a bogon or a cached answer returns before any request.
+        check_timeout(timeout)
         if is_bogon(ip):
             return bogon_result(ip)
         if self._cache is not None:
@@ -236,6 +241,7 @@ class VPNDetection:
         anything is sent.
         """
         check_concurrency(concurrency)
+        check_timeout(timeout)
         unique = list(dict.fromkeys(ips))
         answers: dict[str, Result | VPNDetectionError] = {}
         pending: list[str] = []
@@ -300,9 +306,9 @@ class VPNDetection:
                     self._cache.put(ip, answer)
         return answers
 
-    # A per-call timeout, or the client's own when the call gave none.
+    # A per-call timeout, checked, or the client's own when the call gave none.
     def _bound(self, timeout: float | None) -> float | None:
-        return self._timeout if timeout is None else timeout
+        return self._timeout if timeout is None else check_timeout(timeout)
 
     def _retrying(self, call: Callable[[], T], retries: int) -> T:
         attempt = 0
@@ -563,6 +569,8 @@ class OauthApi:
         Blocks the calling thread until one of those; the sync client has no way to cancel
         it sooner.
         """
+        # Refused before the first wait, not after it.
+        check_timeout(timeout)
         interval = device.interval if device.interval >= 1 else 5
         deadline = self._clock.now() + device.expires_in
         while True:

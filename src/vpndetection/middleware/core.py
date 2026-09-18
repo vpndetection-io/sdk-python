@@ -12,7 +12,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Generic, Literal, TypeVar
 
-from .._core import DEFAULT_BASE_URL
+from .._core import DEFAULT_BASE_URL, check_timeout
 from ..aio import AsyncVPNDetection
 from ..bogon import is_bogon
 from ..client import VPNDetection
@@ -92,7 +92,8 @@ class Options(Generic[Req]):
     #: How long a lookup may hold the request, in seconds. Defaults to 2.5, a much
     #: tighter bound than a client's own. Applied to each lookup rather than to the
     #: client, so it holds for a ``client`` you pass in without changing that client's
-    #: timeout for anything else it does.
+    #: timeout for anything else it does. Anything that is not a finite number above
+    #: 0 is a ``ValueError`` when the middleware is built.
     timeout: float = DEFAULT_TIMEOUT
     #: Retry attempts for a transient failure. Defaults to 0, unlike the client's 2.
     retries: int = DEFAULT_RETRIES
@@ -116,6 +117,7 @@ class Options(Generic[Req]):
 class _Base(Generic[Req]):
     def __init__(self, options: Options[Req], default_ip_selector: IpSelector[Req]) -> None:
         validate(options.block_condition)
+        check_timeout(options.timeout)
         self._options = options
         self._condition = options.block_condition
         self._selector = options.ip_selector or default_ip_selector

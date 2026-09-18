@@ -179,6 +179,10 @@ client = VPNDetection(timeout=30)
 result = client.lookup("45.83.91.1", timeout=2)
 ```
 
+`None` means no bound on the client, and the client's own on a call. Anything else that is not a number greater than 0 raises `ValueError` where it is set, before any request is made.
+
+**Changed in 5.3.0:** a timeout of 0 or less, NaN, infinity or a string used to be accepted, and then failed every call.
+
 Note that `rate_limited` and `quota_exceeded` both arrive as HTTP 429 and are not the same thing. A rate limit is when the API faces extreme traffic bursts and so retrying later works; but a spent quota needs your allowance raised or the window to roll over. The library retries rate limits for you, but not if your quota is exceeded.
 
 ### Database downloads
@@ -192,6 +196,8 @@ url = client.database.download_url("vpn_ip_extended_v1", "mmdb")
 raw = client.database.download_bytes("cdn_ip_v1", "csvgz")
 written = client.database.download("vpn_ip_extended_v1", "mmdb", "./vpn_ip_extended_v1.mmdb")
 ```
+
+`DATABASE_FORMATS`, `STANDINGS` and `LICENSE_TYPES` hold the published formats and the values a family's `standing` and `license_type` can take, at runtime, for checking one that came from a flag or a form before you make a call.
 
 `download_bytes` holds the whole file in memory, and the catalog runs from `cdn_ip_v1` at 10 KB to `resproxy_ip_90d_v1` at 1.79 GB, so use `download` for anything you have not measured.
 

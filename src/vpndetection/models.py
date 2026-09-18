@@ -4,13 +4,18 @@ from __future__ import annotations
 
 import datetime
 from dataclasses import dataclass, field
-from typing import Any, Literal, TypeVar
+from typing import Any, Literal, TypeVar, get_args
 
+from ._generated.models.database_license_type_type_1 import DatabaseLicenseTypeType1
 from ._generated.models.lookup_response import LookupResponse
+from ._generated.models.standing import Standing
 from ._generated.types import Unset
 from .errors import VPNDetectionError
 
 __all__ = [
+    "DATABASE_FORMATS",
+    "LICENSE_TYPES",
+    "STANDINGS",
     "ClassDetail",
     "DeviceAuthorization",
     "Flag",
@@ -34,6 +39,20 @@ Flag = Literal[
 ]
 
 Format = Literal["csvgz", "mmdb"]
+
+DATABASE_FORMATS: tuple[Format, ...] = get_args(Format)
+"""Every `Format`, at runtime.
+
+A `Literal` is erased to nothing a program can check against, so a format read from a flag,
+a form or a config file has these to be tested against before a call.
+"""
+
+STANDINGS: tuple[str, ...] = tuple(member.value for member in Standing)
+"""Every `standing` a database family can carry, at runtime, read off the pinned spec."""
+
+LICENSE_TYPES: tuple[str, ...] = tuple(member.value for member in DatabaseLicenseTypeType1)
+"""Every `license_type`, at runtime, read off the pinned spec. `None`, for no license, is not
+one of them."""
 
 
 @dataclass(frozen=True, slots=True)

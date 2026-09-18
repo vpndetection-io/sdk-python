@@ -7,6 +7,7 @@ import asyncio
 import contextlib
 import contextvars
 import json
+import math
 import os
 import threading
 import time
@@ -393,6 +394,28 @@ def parse_body(body: dict[str, Any], parse: Callable[[dict[str, Any]], T]) -> T:
         return parse(body)
     except (KeyError, TypeError, ValueError) as exc:
         raise VPNDetectionError("server_error", f"malformed response from the API: {exc}") from exc
+
+
+def check_timeout(timeout: float | None) -> float | None:
+    """`timeout`, once it is a bound an attempt can meet: a finite number of seconds above 0.
+
+    Refused where it is set, on the client or the call, because nothing downstream refuses
+    it: 0, a negative number or NaN failed every request as a retried `network` error after
+    the backoff, a string as a bare `TypeError`, and infinity overflows the sync client's
+    wait. None passes through: no bound on the client, the client's own on a call.
+    """
+    if timeout is None:
+        return None
+    if (
+        isinstance(timeout, bool)
+        or not isinstance(timeout, int | float)
+        or not math.isfinite(timeout)
+        or timeout <= 0
+    ):
+        raise ValueError(
+            f"timeout must be a number of seconds greater than 0, or None, not {timeout!r}"
+        )
+    return timeout
 
 
 def check_concurrency(concurrency: int | None) -> None:

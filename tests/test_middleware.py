@@ -221,3 +221,14 @@ def test_the_timeout_bounds_a_lookup_through_an_async_client_passed_in() -> None
 def test_an_async_client_is_refused_by_the_sync_core() -> None:
     with pytest.raises(TypeError, match="use AsyncCore"):
         Core(Options(client=AsyncVPNDetection()), SELECTORS.default)
+
+
+@pytest.mark.parametrize("timeout", [0, -1, float("nan"), float("inf"), "30", True])
+def test_a_timeout_no_lookup_can_meet_is_refused_when_the_middleware_is_built(
+    timeout: Any,
+) -> None:
+    """Otherwise every lookup fails, and the middleware fails open on every request."""
+    with pytest.raises(ValueError, match="timeout"):
+        Core(Options(timeout=timeout), SELECTORS.default)
+    with pytest.raises(ValueError, match="timeout"):
+        AsyncCore(Options(timeout=timeout), SELECTORS.default)
