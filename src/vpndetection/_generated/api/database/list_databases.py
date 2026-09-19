@@ -56,7 +56,7 @@ def sync_detailed(
 ) -> Response[Error | ListDatabasesResponse200]:
     """List
 
-     Every database this organization may SEE, with where its licence stands.
+     Every database this organization may SEE, with where its license stands.
     Not just the ones you hold: a customer with one grant should be able to
     tell what else is published without asking. `standing` is the
     difference - `licensed`, `expired`, or `unlicensed` for one never
@@ -85,7 +85,7 @@ def sync(
 ) -> Error | ListDatabasesResponse200 | None:
     """List
 
-     Every database this organization may SEE, with where its licence stands.
+     Every database this organization may SEE, with where its license stands.
     Not just the ones you hold: a customer with one grant should be able to
     tell what else is published without asking. `standing` is the
     difference - `licensed`, `expired`, or `unlicensed` for one never
@@ -110,7 +110,7 @@ async def asyncio_detailed(
 ) -> Response[Error | ListDatabasesResponse200]:
     """List
 
-     Every database this organization may SEE, with where its licence stands.
+     Every database this organization may SEE, with where its license stands.
     Not just the ones you hold: a customer with one grant should be able to
     tell what else is published without asking. `standing` is the
     difference - `licensed`, `expired`, or `unlicensed` for one never
@@ -137,7 +137,7 @@ async def asyncio(
 ) -> Error | ListDatabasesResponse200 | None:
     """List
 
-     Every database this organization may SEE, with where its licence stands.
+     Every database this organization may SEE, with where its license stands.
     Not just the ones you hold: a customer with one grant should be able to
     tell what else is published without asking. `standing` is the
     difference - `licensed`, `expired`, or `unlicensed` for one never
