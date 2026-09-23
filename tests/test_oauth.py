@@ -205,6 +205,36 @@ def test_a_2xx_that_lacks_a_member_or_does_not_parse_is_the_ordinary_error(
     _assert_outcome(outcome, {"type": "client", "kind": "server_error", "status": 200}, operation)
 
 
+# No corpus case: every response there decodes. One member left out per case, since a body
+# missing all of them at once passes against a decoder that defaults any single one.
+@pytest.mark.parametrize(
+    ("operation", "member"),
+    [
+        (operation, member)
+        for operation, members in (
+            ("metadata", ["issuer", "authorization_endpoint", "token_endpoint"]),
+            (
+                "deviceAuthorization",
+                ["device_code", "user_code", "verification_uri", "expires_in", "interval"],
+            ),
+            ("exchangeDeviceCode", ["access_token", "token_type", "expires_in"]),
+        )
+        for member in members
+    ],
+)
+def test_an_answer_missing_any_one_required_member_is_the_ordinary_error(
+    make_client: ClientFactory, operation: str, member: str
+) -> None:
+    body = {name: value for name, value in EVERY_REQUIRED_MEMBER.items() if name != member}
+    bound = LoopBound()
+    stub = OauthStub([{"status": 200, "body": body}], bound)
+    client = make_client(base_url=BASE_URL, transport=stub.transport, retries=0)
+
+    outcome = settle(lambda: _call(client.oauth, operation, _ARGS[operation]), bound)
+
+    _assert_outcome(outcome, {"type": "client", "kind": "server_error", "status": 200}, member)
+
+
 @pytest.mark.parametrize("case", CORPUS["errors"]["cases"], ids=lambda case: case["name"])
 def test_a_failed_answer_is_an_oauth_refusal_only_when_it_is_one(
     make_client: ClientFactory, case: dict[str, Any]
