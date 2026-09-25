@@ -31,8 +31,10 @@ from ._core import (
     OAUTH_REVOKE_PATH,
     OAUTH_TOKEN_PATH,
     TRANSFER_CHUNK_BYTES,
+    Abandoned,
     AsyncClock,
     Cache,
+    Flights,
     as_error,
     assert_whole_transfer,
     batch_answers,
@@ -44,6 +46,7 @@ from ._core import (
     chunked,
     databases_of,
     downloads_of,
+    landed_error,
     oauth_body,
     oauth_request_async,
     parse_body,
@@ -119,6 +122,9 @@ class AsyncVPNDetection:
         self._client = build_client(api_key, base_url, timeout, transport)
         self._transfer = build_async_transfer_client(timeout, transport)
         self._cache = Cache(cache_max_size, cache_ttl) if cache else None
+        # Only a client that caches shares a request: without a cache every lookup is
+        # served, as `cache=False` promises.
+        self._flights = Flights(lambda: asyncio.get_running_loop().create_future())
         self._concurrency = concurrency
         self._retries = retries
         self._timeout = timeout
@@ -140,25 +146,59 @@ class AsyncVPNDetection:
         """Classify one address.
 
         A bogon is answered locally and never reaches the network. Everything else is
-        served, then cached for this instance.
+        served, then cached for this instance. Calls that miss the cache while a request
+        for their address is in flight, a batch's included, await that request rather than
+        sending their own, and take its answer, sent under the options of the call that led
+        it. A caller cancelled while it leads one hands it on: a waiter asks again.
         """
         # Here as well as in _bound: a bogon or a cached answer returns before any request.
         check_timeout(timeout)
         if is_bogon(ip):
             return bogon_result(ip)
-        if self._cache is not None:
+        if self._cache is None:
+            return await self._serve(ip, retries, timeout)
+        while True:
             hit = self._cache.get(ip)
             if hit is not None:
                 return hit
+            led, joined = self._flights.board([ip])
+            if ip in led:
+                return await self._lead(ip, led[ip], retries, timeout)
+            try:
+                # Shielded, so a waiter cancelled cancels only itself.
+                result: Result = await asyncio.shield(joined[ip])
+                return result
+            except VPNDetectionError as err:
+                raise landed_error(err) from None
+            except Abandoned:
+                continue
 
+    async def _lead(
+        self, ip: str, flight: Any, retries: int | None, timeout: float | None
+    ) -> Result:
+        assert self._cache is not None
+        try:
+            # A request that landed between the miss and boarding cached its answer before
+            # it left the board, so it is found here.
+            result = self._cache.get(ip)
+            if result is None:
+                result = await self._serve(ip, retries, timeout)
+        except VPNDetectionError as err:
+            self._flights.land(ip, flight, err)
+            raise
+        except BaseException:
+            self._flights.land(ip, flight, Abandoned())
+            raise
+        self._cache.put(ip, result)
+        self._flights.land(ip, flight, result)
+        return result
+
+    async def _serve(self, ip: str, retries: int | None, timeout: float | None) -> Result:
         async def call() -> Result:
             res = await request_async(lookup_ip, self._client, self._bound(timeout), ip=ip)
             return parse_body(unwrap(res), to_result)
 
-        result = await self._retrying(call, self._retries if retries is None else retries)
-        if self._cache is not None:
-            self._cache.put(ip, result)
-        return result
+        return await self._retrying(call, self._retries if retries is None else retries)
 
     async def my_ip(self, *, retries: int | None = None, timeout: float | None = None) -> Result:
         """Classify the address this client is calling from.
@@ -242,25 +282,58 @@ class AsyncVPNDetection:
                 answers[ip] = hit
                 continue
             pending.append(ip)
-        if pending:
-            workers = self._concurrency if concurrency is None else concurrency
-            gate = asyncio.Semaphore(max(1, workers))
+        # Each address with a request in flight awaits it, and the rest are boarded before
+        # any chunk is built. A request that landed since the cache was read cached its
+        # answer first, so a led address is looked up there once more before it is sent.
+        led, joined = self._flights.board(pending) if self._cache is not None else ({}, {})
+        send: list[str] = []
+        for ip in pending:
+            if ip in joined:
+                continue
+            hit = self._cache.get(ip) if ip in led and self._cache is not None else None
+            if hit is not None:
+                self._flights.land(ip, led[ip], hit)
+                answers[ip] = hit
+                continue
+            send.append(ip)
+        try:
+            if send:
+                workers = self._concurrency if concurrency is None else concurrency
+                gate = asyncio.Semaphore(max(1, workers))
 
-            async def one(chunk: list[str]) -> dict[str, Result | VPNDetectionError]:
-                async with gate:
-                    return await self._lookup_chunk(chunk, retries, timeout)
+                async def one(chunk: list[str]) -> dict[str, Result | VPNDetectionError]:
+                    async with gate:
+                        return await self._lookup_chunk(chunk, retries, timeout, led)
 
-            for chunk_answers in await asyncio.gather(
-                *(one(chunk) for chunk in chunked(pending, BATCH_MAX))
-            ):
-                answers.update(chunk_answers)
+                for chunk_answers in await asyncio.gather(
+                    *(one(chunk) for chunk in chunked(send, BATCH_MAX))
+                ):
+                    answers.update(chunk_answers)
+        finally:
+            for ip, flight in led.items():
+                self._flights.land(ip, flight, Abandoned())
+        for ip, flight in joined.items():
+            try:
+                answers[ip] = await asyncio.shield(flight)
+            except VPNDetectionError as err:
+                answers[ip] = landed_error(err)
+            except Abandoned:
+                # Its leader stopped before the answer landed, so this one goes alone.
+                try:
+                    answers[ip] = await self.lookup(ip, retries=retries, timeout=timeout)
+                except VPNDetectionError as err:
+                    answers[ip] = err
         return {ip: answers[ip] for ip in unique}
 
     # One POST /batch, mapped back onto the addresses it was asked about. A chunk-level
     # failure - the call refused, the transport failing, the retries exhausted - becomes
     # every address's error, exactly as it would have been had each been looked up alone.
     async def _lookup_chunk(
-        self, chunk: list[str], retries: int | None, timeout: float | None
+        self,
+        chunk: list[str],
+        retries: int | None,
+        timeout: float | None,
+        led: dict[str, Any],
     ) -> dict[str, Result | VPNDetectionError]:
         async def call() -> dict[str, Any]:
             res = await request_async(
@@ -274,12 +347,14 @@ class AsyncVPNDetection:
         try:
             body = await self._retrying(call, self._retries if retries is None else retries)
         except VPNDetectionError as err:
-            return {ip: err for ip in chunk}
-        answers = batch_answers(chunk, body)
-        if self._cache is not None:
-            for ip, answer in answers.items():
-                if isinstance(answer, Result):
-                    self._cache.put(ip, answer)
+            answers: dict[str, Result | VPNDetectionError] = {ip: err for ip in chunk}
+        else:
+            answers = batch_answers(chunk, body)
+        for ip, answer in answers.items():
+            if self._cache is not None and isinstance(answer, Result):
+                self._cache.put(ip, answer)
+            if ip in led:
+                self._flights.land(ip, led[ip], answer)
         return answers
 
     async def aclose(self) -> None:

@@ -523,6 +523,67 @@ class Cache:
             self._entries[ip] = result
 
 
+class Abandoned(Exception):
+    """A request's leader stopped before its answer landed; a waiter asks again."""
+
+
+class Flights:
+    """The addresses with a request in flight, so concurrent misses share one.
+
+    A lookup that misses joins the request in flight for its address or leads one; a batch
+    joins those and boards the rest before it builds its chunks, so a lookup arriving
+    meanwhile awaits the batch. The registry is ours rather than a coalescing cache's
+    because a batch has to know which addresses it leads before it sends any. `make` builds
+    what a waiter blocks or awaits on: a `concurrent.futures.Future` for the sync client,
+    the running loop's future for the async one.
+    """
+
+    def __init__(self, make: Callable[[], Any]) -> None:
+        self._make = make
+        self._lock = threading.Lock()
+        self._flights: dict[str, Any] = {}
+
+    def board(self, ips: list[str]) -> tuple[dict[str, Any], dict[str, Any]]:
+        led: dict[str, Any] = {}
+        joined: dict[str, Any] = {}
+        with self._lock:
+            for ip in ips:
+                flight = self._flights.get(ip)
+                if flight is not None:
+                    joined[ip] = flight
+                    continue
+                flight = self._make()
+                self._flights[ip] = flight
+                led[ip] = flight
+        return led, joined
+
+    def land(self, ip: str, flight: Any, answer: Result | BaseException) -> None:
+        """Hands every waiter the answer and takes the address off the board. Cache a
+        served answer FIRST: a caller that missed just before it landed finds no flight
+        after this, and reads the cache again before it sends."""
+        with self._lock:
+            if self._flights.get(ip) is flight:
+                del self._flights[ip]
+        if flight.done():
+            return
+        if isinstance(answer, BaseException):
+            flight.set_exception(answer)
+            # Retrieved here, so an answer nobody joined logs no warning when collected.
+            flight.exception()
+        else:
+            flight.set_result(answer)
+
+
+def landed_error(err: VPNDetectionError) -> VPNDetectionError:
+    """One waiter's own copy of a shared failure, so raising it in one thread or task
+    never grows the traceback another raises. Built by hand: `copy.copy` calls the
+    constructor with `args` alone, which lacks the kind."""
+    clone = type(err).__new__(type(err), *err.args)
+    clone.__dict__.update(err.__dict__)
+    clone.__cause__ = err.__cause__
+    return clone
+
+
 # The generated client bakes the API key into every request it builds. None of the OAuth
 # endpoints reads one, and on the token endpoint an `Authorization` header reads as client
 # authentication, which these public clients do not have. So it comes off here, in the one

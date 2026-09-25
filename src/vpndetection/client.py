@@ -6,7 +6,7 @@ import builtins
 import os
 import time
 from collections.abc import Callable, Iterable
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 from types import TracebackType
 from typing import Any, Self, TypeVar
 
@@ -27,8 +27,10 @@ from ._core import (
     OAUTH_REVOKE_PATH,
     OAUTH_TOKEN_PATH,
     TRANSFER_CHUNK_BYTES,
+    Abandoned,
     Cache,
     Clock,
+    Flights,
     as_error,
     assert_whole_transfer,
     batch_answers,
@@ -40,6 +42,7 @@ from ._core import (
     chunked,
     databases_of,
     downloads_of,
+    landed_error,
     oauth_body,
     oauth_request,
     parse_body,
@@ -129,6 +132,9 @@ class VPNDetection:
         self._client = build_client(api_key, base_url, timeout, transport)
         self._transfer = build_transfer_client(timeout, transport)
         self._cache = Cache(cache_max_size, cache_ttl) if cache else None
+        # Only a client that caches shares a request: without a cache every lookup is
+        # served, as `cache=False` promises.
+        self._flights = Flights(Future)
         self._concurrency = concurrency
         self._retries = retries
         self._timeout = timeout
@@ -152,25 +158,56 @@ class VPNDetection:
         """Classify one address.
 
         A bogon is answered locally and never reaches the network. Everything else is
-        served, then cached for this instance.
+        served, then cached for this instance. Calls that miss the cache while a request
+        for their address is in flight, a batch's included, await that request rather than
+        sending their own, and take its answer, sent under the options of the call that led
+        it.
         """
         # Here as well as in _bound: a bogon or a cached answer returns before any request.
         check_timeout(timeout)
         if is_bogon(ip):
             return bogon_result(ip)
-        if self._cache is not None:
+        if self._cache is None:
+            return self._serve(ip, retries, timeout)
+        while True:
             hit = self._cache.get(ip)
             if hit is not None:
                 return hit
+            led, joined = self._flights.board([ip])
+            if ip in led:
+                return self._lead(ip, led[ip], retries, timeout)
+            try:
+                result: Result = joined[ip].result()
+                return result
+            except VPNDetectionError as err:
+                raise landed_error(err) from None
+            except Abandoned:
+                continue
 
+    def _lead(self, ip: str, flight: Any, retries: int | None, timeout: float | None) -> Result:
+        assert self._cache is not None
+        try:
+            # A request that landed between the miss and boarding cached its answer before
+            # it left the board, so it is found here.
+            result = self._cache.get(ip)
+            if result is None:
+                result = self._serve(ip, retries, timeout)
+        except VPNDetectionError as err:
+            self._flights.land(ip, flight, err)
+            raise
+        except BaseException:
+            self._flights.land(ip, flight, Abandoned())
+            raise
+        self._cache.put(ip, result)
+        self._flights.land(ip, flight, result)
+        return result
+
+    def _serve(self, ip: str, retries: int | None, timeout: float | None) -> Result:
         def call() -> Result:
             res = request(lookup_ip, self._client, self._bound(timeout), ip=ip)
             return parse_body(unwrap(res), to_result)
 
-        result = self._retrying(call, self._retries if retries is None else retries)
-        if self._cache is not None:
-            self._cache.put(ip, result)
-        return result
+        return self._retrying(call, self._retries if retries is None else retries)
 
     def my_ip(self, *, retries: int | None = None, timeout: float | None = None) -> Result:
         """Classify the address this client is calling from.
@@ -227,9 +264,11 @@ class VPNDetection:
     ) -> dict[str, Result | VPNDetectionError]:
         """Classify many addresses in as few requests as possible.
 
-        Bogons are answered locally and cached answers are reused; everything else goes
-        to the batch endpoint in chunks of up to 1000 addresses, with at most
-        `concurrency` chunks in flight. Keyed by address rather than positional, so
+        Bogons are answered locally and cached answers are reused, and an address with a
+        request already in flight, a lookup's or another batch's, awaits that request;
+        everything else goes to the batch endpoint in chunks of up to 1000 addresses, with
+        at most `concurrency` chunks in flight, and a lookup arriving meanwhile awaits this
+        batch's answer for its address. Keyed by address rather than positional, so
         duplicates in the input collapse to a single entry and the caller never has to
         line two lists up. An address that fails carries its error as its value, so one
         bad entry cannot lose the rest of the answers: the API reports a per-entry
@@ -255,15 +294,44 @@ class VPNDetection:
                 answers[ip] = hit
                 continue
             pending.append(ip)
-        if pending:
-            workers = self._concurrency if concurrency is None else concurrency
-            with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
-                futures = [
-                    pool.submit(self._lookup_chunk, chunk, retries, timeout)
-                    for chunk in chunked(pending, BATCH_MAX)
-                ]
-            for future in futures:
-                answers.update(future.result())
+        # Each address with a request in flight awaits it, and the rest are boarded before
+        # any chunk is built. A request that landed since the cache was read cached its
+        # answer first, so a led address is looked up there once more before it is sent.
+        led, joined = self._flights.board(pending) if self._cache is not None else ({}, {})
+        send: list[str] = []
+        for ip in pending:
+            if ip in joined:
+                continue
+            hit = self._cache.get(ip) if ip in led and self._cache is not None else None
+            if hit is not None:
+                self._flights.land(ip, led[ip], hit)
+                answers[ip] = hit
+                continue
+            send.append(ip)
+        try:
+            if send:
+                workers = self._concurrency if concurrency is None else concurrency
+                with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
+                    futures = [
+                        pool.submit(self._lookup_chunk, chunk, retries, timeout, led)
+                        for chunk in chunked(send, BATCH_MAX)
+                    ]
+                for future in futures:
+                    answers.update(future.result())
+        finally:
+            for ip, flight in led.items():
+                self._flights.land(ip, flight, Abandoned())
+        for ip, flight in joined.items():
+            try:
+                answers[ip] = flight.result()
+            except VPNDetectionError as err:
+                answers[ip] = landed_error(err)
+            except Abandoned:
+                # Its leader stopped before the answer landed, so this one goes alone.
+                try:
+                    answers[ip] = self.lookup(ip, retries=retries, timeout=timeout)
+                except VPNDetectionError as err:
+                    answers[ip] = err
         return {ip: answers[ip] for ip in unique}
 
     def close(self) -> None:
@@ -285,7 +353,11 @@ class VPNDetection:
     # failure - the call refused, the transport failing, the retries exhausted - becomes
     # every address's error, exactly as it would have been had each been looked up alone.
     def _lookup_chunk(
-        self, chunk: list[str], retries: int | None, timeout: float | None
+        self,
+        chunk: list[str],
+        retries: int | None,
+        timeout: float | None,
+        led: dict[str, Any],
     ) -> dict[str, Result | VPNDetectionError]:
         def call() -> dict[str, Any]:
             res = request(
@@ -299,12 +371,14 @@ class VPNDetection:
         try:
             body = self._retrying(call, self._retries if retries is None else retries)
         except VPNDetectionError as err:
-            return {ip: err for ip in chunk}
-        answers = batch_answers(chunk, body)
-        if self._cache is not None:
-            for ip, answer in answers.items():
-                if isinstance(answer, Result):
-                    self._cache.put(ip, answer)
+            answers: dict[str, Result | VPNDetectionError] = {ip: err for ip in chunk}
+        else:
+            answers = batch_answers(chunk, body)
+        for ip, answer in answers.items():
+            if self._cache is not None and isinstance(answer, Result):
+                self._cache.put(ip, answer)
+            if ip in led:
+                self._flights.land(ip, led[ip], answer)
         return answers
 
     # A per-call timeout, checked, or the client's own when the call gave none.
