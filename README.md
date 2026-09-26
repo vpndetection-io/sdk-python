@@ -1,4 +1,4 @@
-# [<img src="https://s3.vpndetection.io/vpndetection-public/brand/mark.svg" alt="VPNDetection" width="24"/>](https://vpndetection.io/) VPNDetection Python Client Library
+# [<img src="https://s3.vpndetection.io/vpndetection-public/brand/mark.svg" alt="VPNDetection" height="28"/>](https://vpndetection.io/) VPNDetection Python Client Library
 
 [![PyPI](https://img.shields.io/pypi/v/vpndetection.svg)](https://pypi.org/project/vpndetection/)
 [![license](https://img.shields.io/pypi/l/vpndetection.svg)](LICENSE)
