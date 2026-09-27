@@ -16,7 +16,7 @@ def _get_kwargs(
     redirect_uri: str,
     response_type: OauthAuthorizeResponseType,
     code_challenge: str,
-    code_challenge_method: OauthAuthorizeCodeChallengeMethod | Unset = UNSET,
+    code_challenge_method: OauthAuthorizeCodeChallengeMethod,
     scope: str | Unset = UNSET,
     state: str | Unset = UNSET,
     resource: str | Unset = UNSET,
@@ -33,10 +33,7 @@ def _get_kwargs(
 
     params["code_challenge"] = code_challenge
 
-    json_code_challenge_method: str | Unset = UNSET
-    if not isinstance(code_challenge_method, Unset):
-        json_code_challenge_method = code_challenge_method.value
-
+    json_code_challenge_method = code_challenge_method.value
     params["code_challenge_method"] = json_code_challenge_method
 
     params["scope"] = scope
@@ -65,6 +62,9 @@ def _parse_response(
     if response.status_code == 400:
         return None
 
+    if response.status_code == 429:
+        return None
+
     if client.raise_on_unexpected_status:
         raise errors.UnexpectedStatus(response.status_code, response.content)
     else:
@@ -89,7 +89,7 @@ def sync_detailed(
     redirect_uri: str,
     response_type: OauthAuthorizeResponseType,
     code_challenge: str,
-    code_challenge_method: OauthAuthorizeCodeChallengeMethod | Unset = UNSET,
+    code_challenge_method: OauthAuthorizeCodeChallengeMethod,
     scope: str | Unset = UNSET,
     state: str | Unset = UNSET,
     resource: str | Unset = UNSET,
@@ -98,6 +98,14 @@ def sync_detailed(
 
      The browser entry point for the authorization-code flow. This is a
     redirect target, not something to call from code.
+
+    Any client may sign in without registering first by using a Client ID
+    Metadata Document: make `client_id` an https URL that serves your
+    client's metadata as JSON, naming that same URL as its `client_id`,
+    with `token_endpoint_auth_method` `none` and your `redirect_uris`. An
+    https redirect URI must be on the same origin as the `client_id`; a
+    loopback one (`http://127.0.0.1`, `http://[::1]`, `http://localhost`)
+    matches on any port. Such a client is granted `apikeys.use` at most.
 
     An unknown `client_id` or an unregistered `redirect_uri` is shown to the
     USER and never redirected, because sending an error to an address we
@@ -110,7 +118,7 @@ def sync_detailed(
         redirect_uri (str):
         response_type (OauthAuthorizeResponseType):
         code_challenge (str):
-        code_challenge_method (OauthAuthorizeCodeChallengeMethod | Unset):
+        code_challenge_method (OauthAuthorizeCodeChallengeMethod):
         scope (str | Unset):
         state (str | Unset):
         resource (str | Unset):
@@ -148,7 +156,7 @@ async def asyncio_detailed(
     redirect_uri: str,
     response_type: OauthAuthorizeResponseType,
     code_challenge: str,
-    code_challenge_method: OauthAuthorizeCodeChallengeMethod | Unset = UNSET,
+    code_challenge_method: OauthAuthorizeCodeChallengeMethod,
     scope: str | Unset = UNSET,
     state: str | Unset = UNSET,
     resource: str | Unset = UNSET,
@@ -157,6 +165,14 @@ async def asyncio_detailed(
 
      The browser entry point for the authorization-code flow. This is a
     redirect target, not something to call from code.
+
+    Any client may sign in without registering first by using a Client ID
+    Metadata Document: make `client_id` an https URL that serves your
+    client's metadata as JSON, naming that same URL as its `client_id`,
+    with `token_endpoint_auth_method` `none` and your `redirect_uris`. An
+    https redirect URI must be on the same origin as the `client_id`; a
+    loopback one (`http://127.0.0.1`, `http://[::1]`, `http://localhost`)
+    matches on any port. Such a client is granted `apikeys.use` at most.
 
     An unknown `client_id` or an unregistered `redirect_uri` is shown to the
     USER and never redirected, because sending an error to an address we
@@ -169,7 +185,7 @@ async def asyncio_detailed(
         redirect_uri (str):
         response_type (OauthAuthorizeResponseType):
         code_challenge (str):
-        code_challenge_method (OauthAuthorizeCodeChallengeMethod | Unset):
+        code_challenge_method (OauthAuthorizeCodeChallengeMethod):
         scope (str | Unset):
         state (str | Unset):
         resource (str | Unset):

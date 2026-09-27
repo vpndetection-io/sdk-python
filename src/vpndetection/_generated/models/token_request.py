@@ -20,7 +20,9 @@ class TokenRequest:
         device_code (str | Unset): Required by the device code grant.
         code (str | Unset): Required by the authorization code grant.
         code_verifier (str | Unset): Required by the authorization code grant.
-        redirect_uri (str | Unset): Authorization code grant: the `redirect_uri` the code was issued against, exactly.
+        redirect_uri (str | Unset): Required by the authorization code grant: the `redirect_uri` the code was issued
+            against, exactly.
+        resource (str | Unset): Authorization code grant, optional: RFC 8707, and it must name what was authorized.
         refresh_token (str | Unset): Required by the refresh token grant.
     """
 
@@ -30,6 +32,7 @@ class TokenRequest:
     code: str | Unset = UNSET
     code_verifier: str | Unset = UNSET
     redirect_uri: str | Unset = UNSET
+    resource: str | Unset = UNSET
     refresh_token: str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -45,6 +48,8 @@ class TokenRequest:
         code_verifier = self.code_verifier
 
         redirect_uri = self.redirect_uri
+
+        resource = self.resource
 
         refresh_token = self.refresh_token
 
@@ -64,6 +69,8 @@ class TokenRequest:
             field_dict["code_verifier"] = code_verifier
         if redirect_uri is not UNSET:
             field_dict["redirect_uri"] = redirect_uri
+        if resource is not UNSET:
+            field_dict["resource"] = resource
         if refresh_token is not UNSET:
             field_dict["refresh_token"] = refresh_token
 
@@ -84,6 +91,8 @@ class TokenRequest:
 
         redirect_uri = d.pop("redirect_uri", UNSET)
 
+        resource = d.pop("resource", UNSET)
+
         refresh_token = d.pop("refresh_token", UNSET)
 
         token_request = cls(
@@ -93,6 +102,7 @@ class TokenRequest:
             code=code,
             code_verifier=code_verifier,
             redirect_uri=redirect_uri,
+            resource=resource,
             refresh_token=refresh_token,
         )
 

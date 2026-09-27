@@ -24,6 +24,8 @@ class OauthMetadata:
         response_types_supported (list[str] | Unset):
         grant_types_supported (list[str] | Unset):
         code_challenge_methods_supported (list[str] | Unset):
+        client_id_metadata_document_supported (bool | Unset): Any client may sign in with an https `client_id` serving
+            its own metadata.
         token_endpoint_auth_methods_supported (list[str] | Unset): Always `none`. Every client is public and has no
             secret.
         authorization_response_iss_parameter_supported (bool | Unset): RFC 9207. A redirect back from the authorization
@@ -40,6 +42,7 @@ class OauthMetadata:
     response_types_supported: list[str] | Unset = UNSET
     grant_types_supported: list[str] | Unset = UNSET
     code_challenge_methods_supported: list[str] | Unset = UNSET
+    client_id_metadata_document_supported: bool | Unset = UNSET
     token_endpoint_auth_methods_supported: list[str] | Unset = UNSET
     authorization_response_iss_parameter_supported: bool | Unset = UNSET
     service_documentation: str | Unset = UNSET
@@ -72,6 +75,8 @@ class OauthMetadata:
         if not isinstance(self.code_challenge_methods_supported, Unset):
             code_challenge_methods_supported = self.code_challenge_methods_supported
 
+        client_id_metadata_document_supported = self.client_id_metadata_document_supported
+
         token_endpoint_auth_methods_supported: list[str] | Unset = UNSET
         if not isinstance(self.token_endpoint_auth_methods_supported, Unset):
             token_endpoint_auth_methods_supported = self.token_endpoint_auth_methods_supported
@@ -103,6 +108,10 @@ class OauthMetadata:
             field_dict["grant_types_supported"] = grant_types_supported
         if code_challenge_methods_supported is not UNSET:
             field_dict["code_challenge_methods_supported"] = code_challenge_methods_supported
+        if client_id_metadata_document_supported is not UNSET:
+            field_dict["client_id_metadata_document_supported"] = (
+                client_id_metadata_document_supported
+            )
         if token_endpoint_auth_methods_supported is not UNSET:
             field_dict["token_endpoint_auth_methods_supported"] = (
                 token_endpoint_auth_methods_supported
@@ -139,6 +148,10 @@ class OauthMetadata:
             list[str], d.pop("code_challenge_methods_supported", UNSET)
         )
 
+        client_id_metadata_document_supported = d.pop(
+            "client_id_metadata_document_supported", UNSET
+        )
+
         token_endpoint_auth_methods_supported = cast(
             list[str], d.pop("token_endpoint_auth_methods_supported", UNSET)
         )
@@ -159,6 +172,7 @@ class OauthMetadata:
             response_types_supported=response_types_supported,
             grant_types_supported=grant_types_supported,
             code_challenge_methods_supported=code_challenge_methods_supported,
+            client_id_metadata_document_supported=client_id_metadata_document_supported,
             token_endpoint_auth_methods_supported=token_endpoint_auth_methods_supported,
             authorization_response_iss_parameter_supported=authorization_response_iss_parameter_supported,
             service_documentation=service_documentation,

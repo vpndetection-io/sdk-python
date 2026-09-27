@@ -79,10 +79,14 @@ def sync_detailed(
     `slow_down`, which means widen your interval and keep it widened.
 
     `authorization_code` exchanges a code from `/oauth/authorize`, with the
-    `code_verifier` matching the challenge you sent.
+    `code_verifier` matching the challenge you sent and the same
+    `redirect_uri`. A code works once: presenting it again also revokes
+    what the first exchange issued.
 
     `refresh_token` exchanges a refresh token. The presented token is
     consumed whatever happens next, so store the new one before using it.
+    Presenting a consumed refresh token again ends the whole authorization,
+    since it means the token was copied.
 
     Args:
         body (TokenRequest):
@@ -121,10 +125,14 @@ def sync(
     `slow_down`, which means widen your interval and keep it widened.
 
     `authorization_code` exchanges a code from `/oauth/authorize`, with the
-    `code_verifier` matching the challenge you sent.
+    `code_verifier` matching the challenge you sent and the same
+    `redirect_uri`. A code works once: presenting it again also revokes
+    what the first exchange issued.
 
     `refresh_token` exchanges a refresh token. The presented token is
     consumed whatever happens next, so store the new one before using it.
+    Presenting a consumed refresh token again ends the whole authorization,
+    since it means the token was copied.
 
     Args:
         body (TokenRequest):
@@ -158,10 +166,14 @@ async def asyncio_detailed(
     `slow_down`, which means widen your interval and keep it widened.
 
     `authorization_code` exchanges a code from `/oauth/authorize`, with the
-    `code_verifier` matching the challenge you sent.
+    `code_verifier` matching the challenge you sent and the same
+    `redirect_uri`. A code works once: presenting it again also revokes
+    what the first exchange issued.
 
     `refresh_token` exchanges a refresh token. The presented token is
     consumed whatever happens next, so store the new one before using it.
+    Presenting a consumed refresh token again ends the whole authorization,
+    since it means the token was copied.
 
     Args:
         body (TokenRequest):
@@ -198,10 +210,14 @@ async def asyncio(
     `slow_down`, which means widen your interval and keep it widened.
 
     `authorization_code` exchanges a code from `/oauth/authorize`, with the
-    `code_verifier` matching the challenge you sent.
+    `code_verifier` matching the challenge you sent and the same
+    `redirect_uri`. A code works once: presenting it again also revokes
+    what the first exchange issued.
 
     `refresh_token` exchanges a refresh token. The presented token is
     consumed whatever happens next, so store the new one before using it.
+    Presenting a consumed refresh token again ends the whole authorization,
+    since it means the token was copied.
 
     Args:
         body (TokenRequest):

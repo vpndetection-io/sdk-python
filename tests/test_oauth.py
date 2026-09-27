@@ -63,10 +63,6 @@ DEVICE = DeviceAuthorization(
     interval=5,
 )
 
-# In the corpus's production document, but no longer advertised or in the pinned spec, so it
-# is not a member of OauthMetadata.
-NOT_A_MEMBER = {"client_id_metadata_document_supported"}
-
 
 @pytest.fixture(autouse=True)
 def no_backoff(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
@@ -160,8 +156,6 @@ def test_a_2xx_decodes_on_presence(
 
     assert not isinstance(got, BaseException), f"settled with {got!r}"
     for name, value in case["expect"]["present"].items():
-        if name in NOT_A_MEMBER:
-            continue
         member = getattr(got, name)
         assert (list(member) if isinstance(member, tuple) else member) == value, name
     for name in case["expect"]["absent"]:

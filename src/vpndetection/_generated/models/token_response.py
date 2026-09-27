@@ -20,13 +20,16 @@ class TokenResponse:
         expires_in (int): Seconds until the access token expires.
         refresh_token (str | Unset): Always returned. A refresh consumes the token it presents, so keep this one.
         scope (str | Unset): What was actually granted, which may be narrower than what was asked for.
-        mslmapikey_id (str | Unset): Not part of OAuth. The ID of the API key the person picked when they
-            approved, returned by every grant while this authorization may still
-            read that key back. Absent when no key was picked, or when the
-            person's role no longer allows reading keys back.
-        mslmapikey (str | Unset): Not part of OAuth. The API key itself, so a device ends up holding an
-            ordinary key. Returned by the device code and authorization code
-            grants only, never by a refresh, and only alongside
+        mslmapikey_id (str | Unset): Not part of OAuth, and only for our own clients. The ID of the API
+            key the person picked when they approved, returned by every grant
+            while this authorization may still read that key back. Absent when
+            no key was picked, or when the person's role no longer allows
+            reading keys back.
+        mslmapikey (str | Unset): Not part of OAuth, and only for our own clients: a client that signed
+            in with a Client ID Metadata Document never receives a key. The API
+            key itself, so a device ends up holding an ordinary key. Returned by
+            the device code and authorization code grants only, never by a
+            refresh, and only alongside
             `mslm:apikey_id`. Absent when that key's secret cannot be read back,
             which is the case for a key created before keys could be shown again
             in the console; a rotated key can be.
