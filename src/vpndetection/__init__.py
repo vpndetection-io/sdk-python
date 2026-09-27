@@ -46,7 +46,7 @@ from .models import (
     VpnDetail,
 )
 
-__version__ = "5.4.2"
+__version__ = "5.5.0"
 
 __all__ = [
     "DATABASE_FORMATS",
