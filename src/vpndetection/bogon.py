@@ -17,15 +17,33 @@ def is_bogon(ip: str) -> bool:
 
     These can never be VPN or proxy infrastructure, so the client answers them itself
     and they never cost a request. Anything that is not a valid address is False, so
-    the API gets to be the one that rejects it.
+    the API gets to be the one that rejects it. An IPv4-mapped address
+    (``::ffff:8.8.8.8``) is judged as the IPv4 address it carries.
     """
     try:
         addr = ipaddress.ip_address(ip)
     except ValueError:
         return False
+    if addr.version == 6 and addr.ipv4_mapped is not None:
+        addr = addr.ipv4_mapped
     value = int(addr)
     ranges = _v6_ranges() if addr.version == 6 else _v4_ranges()
     return any(value & mask == net for net, mask in ranges)
+
+
+def unmapped(ip: str) -> str:
+    """The IPv4 address an IPv4-mapped IPv6 address carries, dotted, and any other
+    string as given. A server listening on ``::`` sees an IPv4 visitor in the mapped
+    form, which read whole is inside ``::ffff:0:0/96`` and so would be answered as a
+    bogon with no request made.
+    """
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return ip
+    if addr.version == 6 and addr.ipv4_mapped is not None:
+        return str(addr.ipv4_mapped)
+    return ip
 
 
 def bogon_result(ip: str) -> Result:

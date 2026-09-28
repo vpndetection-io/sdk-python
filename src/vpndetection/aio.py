@@ -73,7 +73,7 @@ from ._generated.models.database_format import DatabaseFormat
 from ._generated.models.database_metadata import DatabaseMetadata
 from ._generated.models.download import Download
 from ._generated.models.entitlement import Entitlement
-from .bogon import bogon_result, is_bogon
+from .bogon import bogon_result, is_bogon, unmapped
 from .errors import OauthError, OauthExpiredTokenError, VPNDetectionError
 from .models import (
     DeviceAuthorization,
@@ -153,6 +153,7 @@ class AsyncVPNDetection:
         """
         # Here as well as in _bound: a bogon or a cached answer returns before any request.
         check_timeout(timeout)
+        ip = unmapped(ip)
         if is_bogon(ip):
             return bogon_result(ip)
         if self._cache is None:
@@ -270,7 +271,8 @@ class AsyncVPNDetection:
         """
         check_concurrency(concurrency)
         check_timeout(timeout)
-        unique = list(dict.fromkeys(ips))
+        asked = list(dict.fromkeys(ips))
+        unique = list(dict.fromkeys(unmapped(ip) for ip in asked))
         answers: dict[str, Result | VPNDetectionError] = {}
         pending: list[str] = []
         for ip in unique:
@@ -323,7 +325,7 @@ class AsyncVPNDetection:
                     answers[ip] = await self.lookup(ip, retries=retries, timeout=timeout)
                 except VPNDetectionError as err:
                     answers[ip] = err
-        return {ip: answers[ip] for ip in unique}
+        return {ip: answers[unmapped(ip)] for ip in asked}
 
     # One POST /batch, mapped back onto the addresses it was asked about. A chunk-level
     # failure - the call refused, the transport failing, the retries exhausted - becomes

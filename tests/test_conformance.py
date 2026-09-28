@@ -22,6 +22,38 @@ def test_is_bogon_matches_the_canonical_ranges() -> None:
         assert is_bogon(case["ip"]) is case["expect"], f"{case['ip']} ({case['why']})"
 
 
+# A server listening on :: sees an IPv4 visitor as ::ffff:a.b.c.d, which read whole is
+# inside ::ffff:0:0/96: through 5.5.0 each was answered as a bogon with no request made.
+def test_an_ipv4_mapped_address_is_the_ipv4_address_it_carries(
+    make_client: ClientFactory,
+) -> None:
+    for case in TESTDATA["ipv4Mapped"]:
+        ip, carries, bogon = case["ip"], case["carries"], case["expect"]
+        assert is_bogon(ip) is bogon, f"{ip} ({case['why']})"
+        routes = {carries: {"body": {"ip": carries, "is_vpn": True}}}
+
+        stub = Stub(routes)
+        client = make_client(transport=stub.transport)
+        result = client.lookup(ip)
+        assert result.is_bogon is bogon, ip
+        assert result.ip == carries, ip
+        client.lookup(carries)
+        assert len(stub.calls) == (0 if bogon else 1), f"{ip}: one request, cached as {carries}"
+
+        # The stub knows only the carried address, so the mapped form alone answers only
+        # if the carried one was sent.
+        batch_stub = Stub(routes)
+        uncached = make_client(transport=batch_stub.transport, cache=False)
+        alone = uncached.lookup_batch([ip])
+        assert list(alone) == [ip], ip
+        answer = alone[ip]
+        assert isinstance(answer, Result) and answer.ip == carries, f"{ip}: {answer!r}"
+        asked = list(dict.fromkeys([ip, carries]))
+        both = uncached.lookup_batch(asked)
+        assert list(both) == asked, ip
+        assert len(batch_stub.calls) == (0 if bogon else 2), ip
+
+
 def test_a_bogon_is_answered_locally_in_the_full_max_shape(make_client: ClientFactory) -> None:
     stub = Stub({})
     client = make_client(transport=stub.transport)
