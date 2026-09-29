@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.5.2 - 2026-09-29
+
+### Fixes
+
+- Recognize 26 more reserved ranges as bogons, as the API does ([`7897696`](https://github.com/vpndetection-io/sdk-python/commit/7897696b8ccdef1df6a2c4fd196d68684f7d89ed))
+
 ## 5.5.1 - 2026-09-28
 
 ### Fixes
