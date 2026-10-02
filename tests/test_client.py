@@ -38,6 +38,7 @@ from vpndetection import (
     VpnDetail,
     VPNDetection,
     VPNDetectionError,
+    _core,
     is_bogon,
 )
 from vpndetection._generated.models.class_detail import ClassDetail as WireClassDetail
@@ -273,7 +274,9 @@ def test_the_default_timeout_is_thirty_seconds() -> None:
 
 
 @pytest.mark.parametrize("client", [VPNDetection, AsyncVPNDetection])
-@pytest.mark.parametrize("timeout", [0, -1, 0.0, float("nan"), float("inf"), "30", True])
+@pytest.mark.parametrize(
+    "timeout", [0, -1, 0.0, float("nan"), float("inf"), 9223372037, 1e300, "30", True]
+)
 def test_a_timeout_no_attempt_can_meet_is_refused_when_the_client_is_built(
     client: type[VPNDetection | AsyncVPNDetection], timeout: Any
 ) -> None:
@@ -282,13 +285,13 @@ def test_a_timeout_no_attempt_can_meet_is_refused_when_the_client_is_built(
         client(timeout=timeout)
 
 
-@pytest.mark.parametrize("timeout", [None, 0.25, 1, 30])
+@pytest.mark.parametrize("timeout", [None, 0.25, 1, 30, 9223372036])
 def test_a_usable_timeout_builds_a_client(timeout: float | None) -> None:
     VPNDetection(timeout=timeout).close()
     asyncio.run(AsyncVPNDetection(timeout=timeout).aclose())
 
 
-@pytest.mark.parametrize("timeout", [0, -1, float("nan"), float("inf"), "30", True])
+@pytest.mark.parametrize("timeout", [0, -1, float("nan"), float("inf"), 1e300, "30", True])
 @pytest.mark.parametrize("call", PER_CALL_TIMEOUT)
 def test_a_per_call_timeout_no_attempt_can_meet_is_refused_before_any_request(
     make_client: ClientFactory, call: str, timeout: Any
@@ -306,9 +309,10 @@ def test_a_per_call_timeout_no_attempt_can_meet_is_refused_before_any_request(
     assert clock.waits == []
 
 
+@pytest.mark.parametrize("timeout", [-1, 1e300])
 @pytest.mark.parametrize("ip", ["10.0.0.1", "1.1.1.1"])
 def test_a_per_call_timeout_is_refused_even_when_the_answer_needs_no_request(
-    make_client: ClientFactory, ip: str
+    make_client: ClientFactory, ip: str, timeout: float
 ) -> None:
     """A bogon, and an address already cached."""
     stub = Stub({"1.1.1.1": {"body": {"ip": "1.1.1.1", "is_vpn": False}}})
@@ -316,9 +320,9 @@ def test_a_per_call_timeout_is_refused_even_when_the_answer_needs_no_request(
     client.lookup("1.1.1.1")
 
     with pytest.raises(ValueError, match="timeout"):
-        client.lookup(ip, timeout=-1)
+        client.lookup(ip, timeout=timeout)
     with pytest.raises(ValueError, match="timeout"):
-        client.lookup_batch([ip], timeout=-1)
+        client.lookup_batch([ip], timeout=timeout)
 
     assert len(stub.calls) == 1
 
@@ -411,6 +415,36 @@ def test_a_rate_limit_is_retried_and_honors_retry_after(make_client: ClientFacto
 
     assert caught.value.kind == "rate_limited"
     assert len(stub.calls) == 3
+
+
+@pytest.mark.parametrize(
+    "retry_after", ["2147484", "9223372036854775807", "1e400", "Fri, 31 Dec 9999 23:59:59 GMT"]
+)
+def test_a_retry_after_past_the_ceiling_waits_the_backoff_and_stays_a_throttle(
+    make_client: ClientFactory, monkeypatch: pytest.MonkeyPatch, retry_after: str
+) -> None:
+    """As given, 2147484 held the call for 24.8 days, and the rest raised a raw
+    OverflowError from the sync client's sleep and held the async one for good."""
+    monkeypatch.setattr(_core, "_BACKOFF_BASE", 0.0)
+    headers = {"Retry-After": retry_after}
+    stub = Stub(
+        {"9.9.9.9": {"status": 429, "body": {"error": "rate limit exceeded"}, "headers": headers}}
+    )
+    client = make_client(transport=stub.transport, cache=False, retries=1)
+
+    outcome = settle(lambda: client.lookup("9.9.9.9"), LoopBound(), within=5.0)
+
+    assert isinstance(outcome, VPNDetectionError), f"settled with {outcome!r}"
+    assert outcome.kind == "rate_limited"
+    assert len(stub.calls) == 2
+
+
+def test_a_retry_after_is_waited_as_given_up_to_the_ceiling() -> None:
+    def throttled(seconds: float) -> VPNDetectionError:
+        return VPNDetectionError("rate_limited", "rate limit exceeded", 429, seconds)
+
+    assert _core.retry_delay(throttled(2147483.647), 0, 1) == 2147483.647
+    assert _core.retry_delay(throttled(2147483.648), 0, 1) == _core._BACKOFF_BASE
 
 
 def test_a_result_cannot_be_mutated(make_client: ClientFactory) -> None:

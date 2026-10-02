@@ -16,7 +16,7 @@ from pathlib import Path
 
 import httpx
 import pytest
-from helpers import ClientAdapter, ClientFactory
+from helpers import ClientAdapter, ClientFactory, LoopBound, settle
 
 from vpndetection import VPNDetectionError, _core
 
@@ -297,6 +297,34 @@ def test_a_storage_5xx_before_the_body_is_retried(
 
     assert served.paths().count("/blob") == 2, "object storage should see the 503 and its retry"
     assert outcome == SMALL
+
+
+@pytest.mark.parametrize("retry_after", ["2147484", "9223372036854775807"])
+def test_a_storage_retry_after_past_the_ceiling_waits_the_backoff(
+    make_client: ClientFactory, monkeypatch: pytest.MonkeyPatch, retry_after: str
+) -> None:
+    """Object storage's 429 is bounded like the API's: as given, one held the transfer for
+    24.8 days, and the other raised a raw OverflowError from the sync client's sleep."""
+    monkeypatch.setattr(_core, "_BACKOFF_BASE", 0.0)
+    requests: list[httpx.Request] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if request.url.path == "/api/v1/database/download":
+            return httpx.Response(302, headers={"Location": BLOB})
+        return httpx.Response(429, headers={"Retry-After": retry_after})
+
+    client = make_client(
+        api_key=API_KEY, base_url=API, transport=httpx.MockTransport(handle), retries=1
+    )
+
+    outcome = settle(
+        lambda: client.database.download_bytes("cdn_ip_v1", "csvgz"), LoopBound(), within=5.0
+    )
+
+    assert [r.url.path for r in requests].count("/blob") == 2, "storage's 429 and its retry"
+    assert isinstance(outcome, VPNDetectionError), f"settled with {outcome!r}"
+    assert outcome.kind == "rate_limited"
 
 
 @pytest.mark.parametrize("method", ["download", "download_bytes"])

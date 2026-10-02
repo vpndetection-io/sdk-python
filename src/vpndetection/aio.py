@@ -30,6 +30,7 @@ from ._core import (
     OAUTH_METADATA_PATH,
     OAUTH_REVOKE_PATH,
     OAUTH_TOKEN_PATH,
+    POLL_DEADLINE_CAP,
     TRANSFER_CHUNK_BYTES,
     Abandoned,
     AsyncClock,
@@ -645,9 +646,14 @@ class AsyncOauthApi:
         # Refused before the first wait, not after it.
         check_timeout(timeout)
         interval = device.interval if device.interval >= 1 else 5
-        deadline = self._clock.now() + device.expires_in
+        # Capped where a deadline stops meaning anything, since the clock is a float and
+        # `expires_in` is the server's integer, of any size.
+        deadline = self._clock.now() + min(device.expires_in, POLL_DEADLINE_CAP)
         while True:
-            await self._clock.sleep(interval)
+            # No wait runs past the deadline: an interval ending after it waits only the
+            # time left, and the expiry follows with nothing sent. In full, an interval of
+            # 2147483647 held a poll with 2 s left for 68 years (5.5.2).
+            await self._clock.sleep(min(interval, max(deadline - self._clock.now(), 0)))
             if self._clock.now() >= deadline:
                 raise OauthExpiredTokenError()
             try:

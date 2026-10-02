@@ -296,6 +296,86 @@ def test_poll_device_token_waits_widens_and_ends_as_the_corpus_says(
     _assert_outcome(outcome, {**expect, "type": expect["outcome"]}, case["name"])
 
 
+def test_the_poll_sleeps_the_fraction_left_before_its_deadline(make_client: ClientFactory) -> None:
+    """On the real clock, which the corpus's seam replaces. The second wait is the ~0.99 s
+    left, so the deadline passes with one request sent; a sleep that dropped the fraction
+    would poll again at once, and this stub approves that second poll."""
+    bound = LoopBound()
+    replies = [
+        {"status": 400, "body": {"error": "authorization_pending"}},
+        {"status": 200, "body": EVERY_REQUIRED_MEMBER},
+    ]
+    stub = OauthStub(replies, bound, limit=2)
+    client = make_client(base_url=BASE_URL, transport=stub.transport)
+    device = DeviceAuthorization(**{**_device_fields(), "expires_in": 2, "interval": 1})
+
+    outcome = settle(lambda: client.oauth.poll_device_token("vpndetection-cli", device), bound)
+
+    assert isinstance(outcome, OauthExpiredTokenError), f"settled with {outcome!r}"
+    assert outcome.status is None, "the local deadline, not the server's"
+    assert len(stub.requests) == 1
+
+
+def test_the_real_clock_sleeps_past_what_time_sleep_can_count_in_parts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`time.sleep` raises OverflowError past WAIT_CEILING, and a poll's wait is the server's
+    `interval` or `expires_in`, of any size."""
+    waits: list[float] = []
+    monkeypatch.setattr(time, "sleep", waits.append)
+
+    _core.Clock().sleep(_core.WAIT_CEILING * 2.5)
+
+    assert waits == [_core.WAIT_CEILING, _core.WAIT_CEILING, _core.WAIT_CEILING / 2]
+
+
+def test_a_poll_whose_request_outlives_the_deadline_waits_nothing_more(
+    make_client: ClientFactory,
+) -> None:
+    """The request itself takes the clock 10 s past the deadline, so the time left is
+    negative, and `time.sleep` raises ValueError for a negative wait."""
+    bound = LoopBound()
+    clock = FakeClock(bound)
+    stub = OauthStub([{"status": 400, "body": {"error": "authorization_pending"}}], bound, limit=1)
+
+    def slow(request: httpx.Request) -> httpx.Response:
+        clock._elapsed += 10
+        return stub._handle(request)
+
+    client = make_client(base_url=BASE_URL, transport=httpx.MockTransport(slow))
+    client.oauth.use_clock(clock)
+    device = DeviceAuthorization(**{**_device_fields(), "expires_in": 5, "interval": 1})
+
+    outcome = settle(lambda: client.oauth.poll_device_token("vpndetection-cli", device), bound)
+
+    assert isinstance(outcome, OauthExpiredTokenError), f"settled with {outcome!r}"
+    assert clock.waits == [1, 0]
+
+
+def test_an_expires_in_past_any_float_still_polls(make_client: ClientFactory) -> None:
+    """The server's integer, of any size: added to the clock whole, 10**400 raised a raw
+    OverflowError before the first wait."""
+    bound = LoopBound()
+    stub = OauthStub([{"status": 200, "body": EVERY_REQUIRED_MEMBER}], bound, limit=1)
+    client = make_client(base_url=BASE_URL, transport=stub.transport)
+    clock = FakeClock(bound)
+    client.oauth.use_clock(clock)
+    device = DeviceAuthorization(**{**_device_fields(), "expires_in": 10**400, "interval": 1})
+
+    outcome = settle(lambda: client.oauth.poll_device_token("vpndetection-cli", device), bound)
+
+    assert isinstance(outcome, TokenResponse), f"settled with {outcome!r}"
+    assert clock.waits == [1]
+
+
+def _device_fields() -> dict[str, Any]:
+    return {
+        "device_code": "mo_dc_x",
+        "user_code": "BCDF-GHJK",
+        "verification_uri": "https://app.example.test/device",
+    }
+
+
 def test_cancelling_a_poll_during_its_first_wait_ends_it_at_once() -> None:
     bound = LoopBound()
     stub = OauthStub([{"status": 400, "body": {"error": "authorization_pending"}}], bound, limit=1)
