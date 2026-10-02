@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.5.3 - 2026-10-02
+
+### Fixes
+
+- Bound the poll's wait, a long Retry-After and a timeout past 292 years ([`147e07b`](https://github.com/vpndetection-io/sdk-python/commit/147e07b8d55f10f35a58b46833be063a603e93dd))
+
 ## 5.5.2 - 2026-09-29
 
 ### Fixes
