@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.6.0 - 2026-10-03
+
+### Features
+
+- Add Guard, a block condition one view applies to the attached answer ([`feba979`](https://github.com/vpndetection-io/sdk-python/commit/feba979ad967533bf8935888ca5d0c53d56bf5e3))
+
 ## 5.5.3 - 2026-10-02
 
 ### Fixes
