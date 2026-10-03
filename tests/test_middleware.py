@@ -21,6 +21,7 @@ from vpndetection import AsyncVPNDetection, VPNDetection, VPNDetectionError
 from vpndetection.middleware import (
     AsyncCore,
     Core,
+    Guard,
     Lookup,
     Options,
     RequestView,
@@ -232,3 +233,60 @@ def test_a_timeout_no_lookup_can_meet_is_refused_when_the_middleware_is_built(
         Core(Options(timeout=timeout), SELECTORS.default)
     with pytest.raises(ValueError, match="timeout"):
         AsyncCore(Options(timeout=timeout), SELECTORS.default)
+
+
+# A per-view check judges the answer the middleware attached, so it must reach the
+# same verdict and the same plan-gap warning as the middleware's own condition, without
+# a request of its own.
+@pytest.mark.parametrize("case", MIDDLEWARE["conditions"], ids=lambda c: c["name"])
+def test_corpus_conditions_through_a_guard(case: dict[str, Any]) -> None:
+    warnings: list[str] = []
+    guard = Guard(case["condition"], on_warn=warnings.append)
+    found = Lookup(blocked=False, ip=PUBLIC_IP, result=_result_for(case))
+    assert guard.blocks(found) is case["expect"]["blocked"], case["why"]
+    assert len(warnings) == (1 if case["expect"]["missing"] else 0), case["why"]
+    for member in case["expect"]["missing"]:
+        assert member in warnings[0], case["why"]
+
+
+@pytest.mark.parametrize("case", MIDDLEWARE["invalidConditions"], ids=lambda c: c["name"])
+def test_a_guard_refuses_a_condition_that_constrains_nothing(case: dict[str, Any]) -> None:
+    with pytest.raises(ValueError, match="constrains nothing"):
+        Guard(case["condition"])
+
+
+def test_a_guard_needs_a_condition() -> None:
+    with pytest.raises(ValueError, match="needs a condition"):
+        Guard(None)  # type: ignore[arg-type]
+
+
+def test_a_guard_passes_a_failed_lookup_unless_it_fails_closed() -> None:
+    failed = Lookup(blocked=False, ip=PUBLIC_IP, error=VPNDetectionError("network", "down"))
+    assert Guard({"is_vpn": True}).blocks(failed) is False
+    assert Guard({"is_vpn": True}, fail_closed=True).blocks(failed) is True
+
+
+def test_a_guard_warns_once_by_its_name_or_raises() -> None:
+    found = Lookup(blocked=False, ip=PUBLIC_IP, result=to_result({"ip": PUBLIC_IP, "is_vpn": True}))
+    warnings: list[str] = []
+    guard = Guard({"is_hosting": True}, on_warn=warnings.append, name="block_if on checkout")
+    assert guard.blocks(found) is False
+    assert guard.blocks(found) is False
+    assert len(warnings) == 1
+    assert warnings[0].startswith("block_if on checkout names is_hosting")
+
+    with pytest.raises(ValueError, match="does not include"):
+        Guard({"is_hosting": True}, on_missing_field="raise").blocks(found)
+
+    def fail(_: str) -> None:
+        raise AssertionError("ignore must not warn")
+
+    quiet = Guard({"is_hosting": True}, on_missing_field="ignore", on_warn=fail)
+    assert quiet.blocks(found) is False
+
+
+def test_a_guard_warns_through_the_logger_by_default(caplog: pytest.LogCaptureFixture) -> None:
+    found = Lookup(blocked=False, ip=PUBLIC_IP, result=to_result({"ip": PUBLIC_IP, "is_vpn": True}))
+    with caplog.at_level("WARNING", logger="vpndetection"):
+        Guard({"is_hosting": True}).blocks(found)
+    assert ["block condition names is_hosting" in r.message for r in caplog.records] == [True]

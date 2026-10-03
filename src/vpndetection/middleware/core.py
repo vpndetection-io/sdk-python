@@ -23,6 +23,7 @@ from .condition import Conditions, matches, missing_members, validate
 __all__ = [
     "AsyncCore",
     "Core",
+    "Guard",
     "IpSelector",
     "Lookup",
     "Options",
@@ -128,16 +129,8 @@ class _Base(Generic[Req]):
         """Whether a condition was configured at all."""
         return self._condition is not None
 
-    # A misconfiguration is the same on every request, so saying so once is a warning
-    # and saying so a million times is an outage of its own.
     def _warn(self, message: str) -> None:
-        if message in self._warned:
-            return
-        self._warned.add(message)
-        if self._options.on_warn is not None:
-            self._options.on_warn(message)
-        else:
-            _log.warning("%s", message)
+        _warn_once(self._warned, self._options.on_warn, message)
 
     def _resolve(self, request: Req) -> str | Lookup:
         ip = (self._selector(request) or "").strip()
@@ -174,19 +167,11 @@ class _Base(Generic[Req]):
         return Lookup(blocked=self._options.fail_closed, ip=ip, error=error)
 
     def _report_missing(self, result: Result) -> None:
-        if self._options.on_missing_field == "ignore" or self._condition is None:
+        if self._condition is None:
             return
-        missing = missing_members(self._condition, result)
-        if not missing:
-            return
-        message = (
-            f"block_condition names {', '.join(missing)}, which your plan does not "
-            'include, so those terms can never match. An absent member means "not in '
-            'your plan", not "checked, and no".'
+        _report_missing(
+            "block_condition", self._condition, result, self._options.on_missing_field, self._warn
         )
-        if self._options.on_missing_field == "raise":
-            raise ValueError(f"vpndetection: {message}")
-        self._warn(message)
 
 
 class Core(_Base[Req]):
@@ -250,6 +235,88 @@ class AsyncCore(_Base[Req]):
         except Exception as error:  # noqa: BLE001 - a failed lookup must never propagate
             return self._failed(resolved, error)
         return self._decide(resolved, result)
+
+
+class Guard:
+    """A block condition for one view, judged against the answer a middleware already
+    attached to the request.
+
+    A middleware is one instance for the whole application, so its ``block_condition``
+    refuses on every view. An adapter's per-view check holds one of these instead: it
+    reads the attached :class:`Lookup` and makes no request of its own, so a visitor is
+    still looked up once however many views judge them.
+    """
+
+    def __init__(
+        self,
+        condition: Conditions,
+        *,
+        fail_closed: bool = False,
+        on_missing_field: MissingFieldAction = "warn",
+        on_warn: Callable[[str], None] | None = None,
+        name: str = "block condition",
+    ) -> None:
+        if condition is None:
+            raise ValueError("vpndetection: a per-view check needs a condition to block on")
+        validate(condition)
+        self._condition = condition
+        self._fail_closed = fail_closed
+        self._on_missing_field = on_missing_field
+        self._on_warn = on_warn
+        self._name = name
+        self._warned: set[str] = set()
+
+    def blocks(self, lookup: Lookup) -> bool:
+        """Whether this view refuses the visitor the middleware classified.
+
+        A failed lookup carries no answer to judge, so it blocks only with
+        ``fail_closed``. A condition naming a member the plan does not serve is reported
+        once, as the middleware reports its own.
+        """
+        if lookup.result is None:
+            return self._fail_closed
+        _report_missing(
+            self._name,
+            self._condition,
+            lookup.result,
+            self._on_missing_field,
+            lambda message: _warn_once(self._warned, self._on_warn, message),
+        )
+        return matches(self._condition, lookup.result)
+
+
+def _report_missing(
+    name: str,
+    condition: Conditions,
+    result: Result,
+    action: MissingFieldAction,
+    warn: Callable[[str], None],
+) -> None:
+    if action == "ignore":
+        return
+    missing = missing_members(condition, result)
+    if not missing:
+        return
+    message = (
+        f"{name} names {', '.join(missing)}, which your plan does not include, so those "
+        'terms can never match. An absent member means "not in your plan", not "checked, '
+        'and no".'
+    )
+    if action == "raise":
+        raise ValueError(f"vpndetection: {message}")
+    warn(message)
+
+
+# A misconfiguration is the same on every request, so saying so once is a warning and
+# saying so a million times is an outage of its own.
+def _warn_once(warned: set[str], on_warn: Callable[[str], None] | None, message: str) -> None:
+    if message in warned:
+        return
+    warned.add(message)
+    if on_warn is not None:
+        on_warn(message)
+    else:
+        _log.warning("%s", message)
 
 
 @dataclass(frozen=True, slots=True)
