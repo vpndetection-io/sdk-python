@@ -43,11 +43,6 @@ def _parse_response(
 
         return response_401
 
-    if response.status_code == 403:
-        response_403 = Error.from_dict(response.json())
-
-        return response_403
-
     if response.status_code == 404:
         response_404 = Error.from_dict(response.json())
 
@@ -86,7 +81,8 @@ def sync_detailed(
     `updated` and `entries` without downloading anything.
 
     No `format` parameter - one document describes every format the database
-    is built in.
+    is built in. Needs no license: it answers for every database `list`
+    returns, whatever its `standing`.
 
     Args:
         id (str):
@@ -121,7 +117,8 @@ def sync(
     `updated` and `entries` without downloading anything.
 
     No `format` parameter - one document describes every format the database
-    is built in.
+    is built in. Needs no license: it answers for every database `list`
+    returns, whatever its `standing`.
 
     Args:
         id (str):
@@ -151,7 +148,8 @@ async def asyncio_detailed(
     `updated` and `entries` without downloading anything.
 
     No `format` parameter - one document describes every format the database
-    is built in.
+    is built in. Needs no license: it answers for every database `list`
+    returns, whatever its `standing`.
 
     Args:
         id (str):
@@ -184,7 +182,8 @@ async def asyncio(
     `updated` and `entries` without downloading anything.
 
     No `format` parameter - one document describes every format the database
-    is built in.
+    is built in. Needs no license: it answers for every database `list`
+    returns, whatever its `standing`.
 
     Args:
         id (str):
