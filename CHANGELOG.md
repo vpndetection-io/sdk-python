@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.6.1 - 2026-10-04
+
+### Fixes
+
+- Re-pin the spec to 2026.10.03: metadata needs no license ([`ed0b251`](https://github.com/vpndetection-io/sdk-python/commit/ed0b25152f520b1b7782a39152601d7a20ea1d36))
+
 ## 5.6.0 - 2026-10-03
 
 ### Features
