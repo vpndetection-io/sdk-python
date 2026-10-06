@@ -4,17 +4,21 @@ unwrapping, the retry policy, and the per-instance cache."""
 from __future__ import annotations
 
 import asyncio
+import base64
 import contextlib
 import contextvars
+import hashlib
 import json
 import math
 import os
+import secrets
 import threading
 import time
 from collections.abc import Awaitable, Callable, Iterator
 from pathlib import Path
 from types import ModuleType
 from typing import IO, Any, TypeVar, cast
+from urllib.parse import quote
 
 import httpx
 from cachetools import TTLCache
@@ -24,7 +28,7 @@ from ._generated.models.database import Database
 from ._generated.models.download import Download
 from ._generated.types import Response
 from .errors import VPNDetectionError, error_from_response, oauth_error_from
-from .models import Result, to_result
+from .models import Pkce, Result, to_result
 
 DEFAULT_BASE_URL = "https://api.vpndetection.io"
 DEFAULT_CONCURRENCY = 8
@@ -42,6 +46,7 @@ OAUTH_METADATA_PATH = "/.well-known/oauth-authorization-server"
 OAUTH_DEVICE_AUTHORIZATION_PATH = "/oauth/device_authorization"
 OAUTH_TOKEN_PATH = "/oauth/token"
 OAUTH_REVOKE_PATH = "/oauth/revoke"
+OAUTH_AUTHORIZE_PATH = "/oauth/authorize"
 DEVICE_CODE_GRANT = "urn:ietf:params:oauth:grant-type:device_code"
 
 # One chunk of a transfer, and therefore the ceiling on what a download of any size
@@ -333,6 +338,58 @@ async def oauth_request_async(
     http = client.get_async_httpx_client()
     req = _oauth_build(http, method, path, form, bound)
     return oauth_checked(await exchange_async(http, req, bound))
+
+
+def authorization_url(
+    base_url: str,
+    client_id: str,
+    redirect_uri: str,
+    code_challenge: str,
+    optional: dict[str, str | None],
+) -> str:
+    """The authorization code flow's URL, built with no request: the five parameters every
+    one carries, then `scope`, `state` and `resource` when given and not empty.
+
+    Each value is percent-encoded over UTF-8 with only A-Z a-z 0-9 - . _ ~ left literal, so
+    a space is %20 and never +. A required value that is empty, or has no UTF-8 (a lone
+    surrogate), is refused.
+    """
+    required = {
+        "client_id": client_id,
+        "redirect_uri": redirect_uri,
+        "code_challenge": code_challenge,
+    }
+    for name, value in required.items():
+        if not isinstance(value, str) or not value:
+            raise ValueError(f"{name} must be a non-empty string, not {value!r}")
+    params = [
+        ("response_type", "code"),
+        *required.items(),
+        ("code_challenge_method", "S256"),
+        *((name, value) for name, value in optional.items() if value),
+    ]
+    encoded = []
+    for name, value in params:
+        try:
+            encoded.append(f"{name}={quote(value, safe='')}")
+        except UnicodeEncodeError as exc:
+            raise ValueError(f"{name} has no UTF-8 to send: {value!r}") from exc
+    return f"{base_url.rstrip('/')}{OAUTH_AUTHORIZE_PATH}?{'&'.join(encoded)}"
+
+
+def create_pkce() -> Pkce:
+    """A fresh PKCE pair, from 32 bytes of the system's secure random source."""
+    verifier = _base64url(secrets.token_bytes(32))
+    return Pkce(verifier=verifier, challenge=pkce_challenge(verifier))
+
+
+def pkce_challenge(verifier: str) -> str:
+    """The `S256` challenge for a PKCE verifier: its SHA-256, as unpadded base64url."""
+    return _base64url(hashlib.sha256(verifier.encode("utf-8")).digest())
+
+
+def _base64url(raw: bytes) -> str:
+    return base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii")
 
 
 def oauth_checked(res: httpx.Response) -> httpx.Response:

@@ -158,8 +158,25 @@ class OauthAdapter:
     def exchange_refresh_token(self, client_id: str, refresh_token: str, **kwargs: Any) -> Any:
         return self._call("exchange_refresh_token", client_id, refresh_token, **kwargs)
 
+    def exchange_authorization_code(
+        self, client_id: str, code: str, code_verifier: str, redirect_uri: str, **kwargs: Any
+    ) -> Any:
+        return self._call(
+            "exchange_authorization_code", client_id, code, code_verifier, redirect_uri, **kwargs
+        )
+
     def revoke(self, client_id: str, token: str, **kwargs: Any) -> Any:
         return self._call("revoke", client_id, token, **kwargs)
+
+    # These three make no request, so they are plain methods on both clients.
+    def authorization_url(self, *args: Any, **kwargs: Any) -> Any:
+        return self._client.oauth.authorization_url(*args, **kwargs)
+
+    def create_pkce(self) -> Any:
+        return self._client.oauth.create_pkce()
+
+    def pkce_challenge(self, verifier: str) -> Any:
+        return self._client.oauth.pkce_challenge(verifier)
 
     def poll_device_token(self, client_id: str, device: Any, **kwargs: Any) -> Any:
         return self._call("poll_device_token", client_id, device, **kwargs)

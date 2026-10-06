@@ -231,6 +231,26 @@ client = VPNDetection(tokens.apikey)
 
 A refusal raises `OauthAccessDeniedError` and a code that ran out raises `OauthExpiredTokenError`, and client IDs are issued on request from support@vpndetection.io. `client.oauth.revoke("your-client-id", tokens.refresh_token)` signs the machine out.
 
+### Sign in with OAuth (authorization code)
+
+An app that can take a browser redirect signs the person in there instead, with a PKCE pair made for that one sign-in:
+
+```python
+from vpndetection import VPNDetection
+
+signin = VPNDetection()
+redirect_uri = "http://127.0.0.1:8765/callback"
+pkce = signin.oauth.create_pkce()
+
+url = signin.oauth.authorization_url(
+    "your-client-id", redirect_uri, pkce.challenge, scope="apikeys.use", state="your-state"
+)
+# Open url in the browser. Its redirect to redirect_uri carries code and state.
+tokens = signin.oauth.exchange_authorization_code("your-client-id", code, pkce.verifier, redirect_uri)
+```
+
+Check that `state` came back as you sent it before you exchange `code`, which works once. The client ID can also be the https URL of a client metadata document your app serves, and such an app is never handed a key, so `tokens.apikey` stays `None`.
+
 ### Fields your plan does not include
 
 Only `ip` and `is_vpn` come back on every plan. The rest are `None` when your plan does not include them, which means "not in your plan" rather than "checked, and no".

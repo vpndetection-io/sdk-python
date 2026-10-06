@@ -1,6 +1,6 @@
 """The `oauth` accessor against the shared corpus's oauth section, on both clients.
 
-Nothing here reads `oauth.deferred`: those operations are not in this release. Every call
+The authorization code flow's vectors, under `oauth.deferred`, are read here too. Every call
 under test runs through `settle`, so a loop that never ends fails its test instead of
 hanging the suite.
 """
@@ -8,6 +8,7 @@ hanging the suite.
 from __future__ import annotations
 
 import asyncio
+import re
 import time
 import urllib.parse
 from collections.abc import Iterator
@@ -82,7 +83,9 @@ def test_no_oauth_request_carries_the_api_key(make_client: ClientFactory) -> Non
     outcome = settle(lambda: _every_operation(client.oauth), bound)
 
     assert outcome is None, f"settled with {outcome!r}"
-    assert len(stub.requests) == 6
+    assert len(stub.requests) == 7
+    url = client.oauth.authorization_url("vpndetection-cli", "http://127.0.0.1/cb", "c" * 43)
+    assert key not in url, "the authorization URL carried the API key"
     for req in stub.requests:
         label = f"{req.method} {req.url.path}"
         for name in case["forbiddenHeaders"]:
@@ -98,7 +101,9 @@ def test_no_oauth_request_carries_the_api_key(make_client: ClientFactory) -> Non
     assert stub.requests[-1].headers["authorization"] == f"Bearer {key}"
 
 
-@pytest.mark.parametrize("case", CORPUS["forms"]["cases"], ids=lambda case: case["name"])
+@pytest.mark.parametrize(
+    "case", CORPUS["forms"]["cases"] + CORPUS["deferred"]["forms"], ids=lambda case: case["name"]
+)
 def test_each_operation_requests_its_endpoint_with_exactly_its_form_fields(
     make_client: ClientFactory, case: dict[str, Any]
 ) -> None:
@@ -244,7 +249,11 @@ def test_a_failed_answer_is_an_oauth_refusal_only_when_it_is_one(
     _assert_outcome(outcome, case["expect"], case["name"])
 
 
-@pytest.mark.parametrize("case", CORPUS["retries"]["cases"], ids=lambda case: case["name"])
+@pytest.mark.parametrize(
+    "case",
+    CORPUS["retries"]["cases"] + CORPUS["deferred"]["retries"],
+    ids=lambda case: case["name"],
+)
 def test_only_what_consumes_nothing_is_retried(
     make_client: ClientFactory, case: dict[str, Any]
 ) -> None:
@@ -399,11 +408,68 @@ def test_cancelling_a_poll_during_its_first_wait_ends_it_at_once() -> None:
     assert stub.requests == [], "no request after the cancel"
 
 
+@pytest.mark.parametrize(
+    "case", CORPUS["deferred"]["authorizationUrl"], ids=lambda case: case["name"]
+)
+def test_an_authorization_url_is_built_exactly_as_the_corpus_spells_it(
+    make_client: ClientFactory, case: dict[str, Any]
+) -> None:
+    stub = OauthStub([{"status": 200, "body": EVERY_REQUIRED_MEMBER}], LoopBound())
+    client = make_client(base_url=case["baseUrl"], transport=stub.transport)
+
+    url = client.oauth.authorization_url(
+        case["clientId"],
+        case["redirectUri"],
+        case["codeChallenge"],
+        scope=case.get("scope"),
+        state=case.get("state"),
+        resource=case.get("resource"),
+    )
+
+    assert url == case["expect"]
+    assert stub.requests == [], "requests sent"
+
+
+def test_an_authorization_url_leaves_out_an_empty_option_and_refuses_an_empty_value(
+    make_client: ClientFactory,
+) -> None:
+    case = CORPUS["deferred"]["authorizationUrl"][0]
+    oauth = make_client(base_url=BASE_URL).oauth
+    args = (case["clientId"], case["redirectUri"], case["codeChallenge"])
+
+    url = oauth.authorization_url(*args, scope="", state="", resource="")
+
+    assert url == case["expect"].replace(case["baseUrl"], BASE_URL)
+    with pytest.raises(ValueError, match="client_id"):
+        oauth.authorization_url("", case["redirectUri"], case["codeChallenge"])
+    with pytest.raises(ValueError, match="code_challenge"):
+        oauth.authorization_url(case["clientId"], case["redirectUri"], "\ud800")
+
+
+def test_a_pkce_pair_is_fresh_and_its_challenge_is_the_s256_one(
+    make_client: ClientFactory,
+) -> None:
+    pkce = CORPUS["deferred"]["pkce"]
+    oauth = make_client().oauth
+
+    first = oauth.create_pkce()
+
+    assert oauth.pkce_challenge(pkce["verifier"]) == pkce["challenge"]
+    assert re.fullmatch(pkce["generatedVerifierPattern"], first.verifier)
+    assert first.challenge == oauth.pkce_challenge(first.verifier)
+    assert first.method == pkce["method"]
+    assert oauth.create_pkce().verifier != first.verifier, "two pairs share a verifier"
+    assert first.verifier not in repr(first)
+
+
 def _every_operation(oauth: OauthAdapter) -> None:
     oauth.metadata()
     oauth.device_authorization("vpndetection-cli", scope="account.read")
     oauth.exchange_device_code("vpndetection-cli", "mo_dc_x")
     oauth.exchange_refresh_token("vpndetection-cli", "mo_rt_x")
+    oauth.exchange_authorization_code(
+        "vpndetection-cli", "mo_ac_x", "v" * 43, "http://127.0.0.1/cb"
+    )
     oauth.revoke("vpndetection-cli", "mo_rt_x")
     oauth.poll_device_token("vpndetection-cli", DEVICE)
 
@@ -428,6 +494,10 @@ def _call(oauth: OauthAdapter, operation: str, args: dict[str, str]) -> Any:
         return oauth.exchange_device_code(args["clientId"], args["deviceCode"])
     if operation == "exchangeRefreshToken":
         return oauth.exchange_refresh_token(args["clientId"], args["refreshToken"])
+    if operation == "exchangeAuthorizationCode":
+        return oauth.exchange_authorization_code(
+            args["clientId"], args["code"], args["codeVerifier"], args["redirectUri"]
+        )
     if operation == "revoke":
         return oauth.revoke(args["clientId"], args["token"])
     raise AssertionError(f"the corpus names an operation this suite does not know: {operation}")

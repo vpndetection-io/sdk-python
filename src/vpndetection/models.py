@@ -249,6 +249,17 @@ class DeviceAuthorization:
 
 
 @dataclass(frozen=True, slots=True)
+class Pkce:
+    """One sign-in's PKCE pair: `challenge` goes in the authorization URL, `verifier` to the
+    code exchange. The verifier is left out of the repr, so logging the pair does not leak it.
+    """
+
+    verifier: str = field(repr=False)
+    challenge: str
+    method: Literal["S256"] = "S256"
+
+
+@dataclass(frozen=True, slots=True)
 class TokenResponse:
     """What a token exchange answers.
 

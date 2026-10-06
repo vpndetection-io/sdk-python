@@ -34,6 +34,7 @@ from ._core import (
     Flights,
     as_error,
     assert_whole_transfer,
+    authorization_url,
     batch_answers,
     build_client,
     build_transfer_client,
@@ -41,6 +42,7 @@ from ._core import (
     check_timeout,
     checksums_of,
     chunked,
+    create_pkce,
     databases_of,
     downloads_of,
     landed_error,
@@ -48,6 +50,7 @@ from ._core import (
     oauth_request,
     parse_body,
     part_file,
+    pkce_challenge,
     redirect_location,
     request,
     retry_delay,
@@ -76,6 +79,7 @@ from .models import (
     DeviceAuthorization,
     Format,
     OauthMetadata,
+    Pkce,
     Result,
     TokenResponse,
     to_device_authorization,
@@ -131,6 +135,7 @@ class VPNDetection:
     ) -> None:
         timeout = check_timeout(timeout)
         self._client = build_client(api_key, base_url, timeout, transport)
+        self._base_url = base_url
         self._transfer = build_transfer_client(timeout, transport)
         self._cache = Cache(cache_max_size, cache_ttl) if cache else None
         # Only a client that caches shares a request: without a cache every lookup is
@@ -576,7 +581,8 @@ class DatabaseApi:
 
 class OauthApi:
     """Signing a person in with the OAuth device flow, so a program running on their own
-    machine can be handed one of their API keys instead of asking them to paste it.
+    machine can be handed one of their API keys instead of asking them to paste it, or
+    through a browser redirect with the authorization code flow.
 
     No request here carries this client's API key, and none needs one: build the client
     with no key to sign in, then a second one with the key the sign-in hands over. The
@@ -648,6 +654,58 @@ class OauthApi:
             "client_id": client_id,
         }
         return self._exchange(form, timeout)
+
+    def exchange_authorization_code(
+        self,
+        client_id: str,
+        code: str,
+        code_verifier: str,
+        redirect_uri: str,
+        *,
+        timeout: float | None = None,
+    ) -> TokenResponse:
+        """Trade the `code` a sign-in's redirect brought back for tokens, once: the server
+        spends the code on first read, before it checks `code_verifier`, the PKCE verifier
+        whose challenge went into the authorization URL. `redirect_uri` is that URL's, exactly.
+        """
+        form = {
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": redirect_uri,
+            "client_id": client_id,
+            "code_verifier": code_verifier,
+        }
+        return self._exchange(form, timeout)
+
+    def authorization_url(
+        self,
+        client_id: str,
+        redirect_uri: str,
+        code_challenge: str,
+        *,
+        scope: str | None = None,
+        state: str | None = None,
+        resource: str | None = None,
+    ) -> str:
+        """The URL to open in the person's browser for the authorization code flow. Makes no
+        request. Once they decide, the server redirects to `redirect_uri` with a `code` for
+        `exchange_authorization_code` (and `state`, when one was given), or with an `error`.
+        """
+        return authorization_url(
+            self._owner._base_url,
+            client_id,
+            redirect_uri,
+            code_challenge,
+            {"scope": scope, "state": state, "resource": resource},
+        )
+
+    def create_pkce(self) -> Pkce:
+        """A fresh PKCE pair for one sign-in, from the system's secure random source."""
+        return create_pkce()
+
+    def pkce_challenge(self, verifier: str) -> str:
+        """The `S256` challenge for a PKCE verifier: its SHA-256, as unpadded base64url."""
+        return pkce_challenge(verifier)
 
     def revoke(self, client_id: str, token: str, *, timeout: float | None = None) -> None:
         """End a token. A refresh token ends the whole sign-in and every token it issued, so
