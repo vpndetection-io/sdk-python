@@ -74,7 +74,9 @@ def sync_detailed(
     """Rotate
 
      Replaces the secret behind a key, keeping its id, name and settings.
-    The previous secret stops working immediately.
+    The previous secret stops working immediately. The new secret comes
+    back in the answer, so this needs `apikeys.reveal` as well as
+    `apikeys.manage`.
 
     Args:
         id (UUID):
@@ -106,7 +108,9 @@ def sync(
     """Rotate
 
      Replaces the secret behind a key, keeping its id, name and settings.
-    The previous secret stops working immediately.
+    The previous secret stops working immediately. The new secret comes
+    back in the answer, so this needs `apikeys.reveal` as well as
+    `apikeys.manage`.
 
     Args:
         id (UUID):
@@ -133,7 +137,9 @@ async def asyncio_detailed(
     """Rotate
 
      Replaces the secret behind a key, keeping its id, name and settings.
-    The previous secret stops working immediately.
+    The previous secret stops working immediately. The new secret comes
+    back in the answer, so this needs `apikeys.reveal` as well as
+    `apikeys.manage`.
 
     Args:
         id (UUID):
@@ -163,7 +169,9 @@ async def asyncio(
     """Rotate
 
      Replaces the secret behind a key, keeping its id, name and settings.
-    The previous secret stops working immediately.
+    The previous secret stops working immediately. The new secret comes
+    back in the answer, so this needs `apikeys.reveal` as well as
+    `apikeys.manage`.
 
     Args:
         id (UUID):
