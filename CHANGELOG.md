@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.7.1 - 2026-10-10
+
+### Fixes
+
+- Re-pin the spec to 2026.10.09: rotating a key needs apikeys.reveal ([`43b0e17`](https://github.com/vpndetection-io/sdk-python/commit/43b0e17da8b6de44bba8c8e8558ecc819a905fce))
+
 ## 5.7.0 - 2026-10-06
 
 ### Features
