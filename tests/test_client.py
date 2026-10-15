@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import dataclasses
+import datetime
 import inspect
 import time
 from collections.abc import Callable
@@ -59,6 +60,7 @@ from vpndetection._generated.models.proxy_detail import ProxyDetail as WireProxy
 from vpndetection._generated.models.standing import Standing
 from vpndetection._generated.models.token_response import TokenResponse as WireTokenResponse
 from vpndetection._generated.models.vpn_detail import VpnDetail as WireVpnDetail
+from vpndetection.errors import error_from_response
 
 # Enough addresses for seven chunks of the batch endpoint's 1000, so a concurrency bound
 # has something to bound: one request per chunk, and only the chunks overlap.
@@ -418,7 +420,7 @@ def test_a_rate_limit_is_retried_and_honors_retry_after(make_client: ClientFacto
 
 
 @pytest.mark.parametrize(
-    "retry_after", ["2147484", "9223372036854775807", "1e400", "Fri, 31 Dec 9999 23:59:59 GMT"]
+    "retry_after", ["2147484", "9223372036854775807", "9" * 400, "Fri, 31 Dec 9999 23:59:59 GMT"]
 )
 def test_a_retry_after_past_the_ceiling_waits_the_backoff_and_stays_a_throttle(
     make_client: ClientFactory, monkeypatch: pytest.MonkeyPatch, retry_after: str
@@ -437,6 +439,71 @@ def test_a_retry_after_past_the_ceiling_waits_the_backoff_and_stays_a_throttle(
     assert isinstance(outcome, VPNDetectionError), f"settled with {outcome!r}"
     assert outcome.kind == "rate_limited"
     assert len(stub.calls) == 2
+
+
+@pytest.mark.parametrize(
+    "retry_after",
+    [
+        "-1",
+        "x",
+        "tomorrow",
+        "+1",
+        "0x10",
+        "1_0",
+        "1e3",
+        "1.5",
+        "inf",
+        "1e400",
+        "2026-10-15T06:00:00Z",
+        "Thu, 15 Oct 2026 06:00:00 +0500",
+        "Thu, 15 Oct 2026 06:00:00 PST",
+        "15 Oct 2026 06:00:00 GMT",
+        "Thu, 15 Oct 26 06:00:00 GMT",
+        "Tue, 31 Nov 2026 10:00:00 GMT",
+        "Thu, 15 Oct 2026 25:61:61 GMT",
+    ],
+)
+def test_a_retry_after_that_is_neither_seconds_nor_an_http_date_is_a_spent_quota(
+    make_client: ClientFactory, retry_after: str
+) -> None:
+    """`float()` and `email.utils` read `+1` as a second, `1_0` as ten, `1e3` as a thousand
+    and a date in any zone (5.7.1). RFC 9110 admits digits, or a date in one of three
+    forms, in GMT."""
+    headers = {"Retry-After": retry_after}
+    stub = Stub(
+        {"9.9.9.9": {"status": 429, "body": {"error": "rate limit exceeded"}, "headers": headers}}
+    )
+    # No retries, so a value misread as a long wait fails here rather than holding the run.
+    client = make_client(transport=stub.transport, cache=False, retries=0)
+
+    outcome = settle(lambda: client.lookup("9.9.9.9"), LoopBound(), within=5.0)
+
+    assert isinstance(outcome, VPNDetectionError), f"settled with {outcome!r}"
+    assert outcome.kind == "quota_exceeded"
+    assert outcome.retry_after_seconds is None
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
+        lambda when: when.strftime("%a, %d %b %Y %H:%M:%S GMT"),
+        lambda when: when.strftime("%A, %d-%b-%y %H:%M:%S GMT"),
+        lambda when: when.strftime("%a %b ") + f"{when.day:2d}" + when.strftime(" %H:%M:%S %Y"),
+    ],
+    ids=["imf-fixdate", "rfc850", "asctime"],
+)
+def test_a_retry_after_date_is_read_in_each_of_rfc_9110s_three_forms(
+    form: Callable[[datetime.datetime], str],
+) -> None:
+    # Computed as the case runs: a date made up front can have passed by the time it is read.
+    when = datetime.datetime.now(datetime.UTC) + datetime.timedelta(seconds=100)
+    headers = httpx.Headers({"Retry-After": form(when)})
+
+    err = error_from_response(429, headers, None)
+
+    assert err.kind == "rate_limited"
+    assert err.retry_after_seconds is not None
+    assert 98 <= err.retry_after_seconds <= 101
 
 
 def test_a_retry_after_is_waited_as_given_up_to_the_ceiling() -> None:

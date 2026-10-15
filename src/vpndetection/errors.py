@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import datetime
-import email.utils
 import math
+import re
 from typing import Any, Literal
 
 import httpx
@@ -161,21 +161,65 @@ def _message_of(body: Any) -> str | None:
     return None
 
 
+# `Retry-After` is a count of seconds or an HTTP date in one of RFC 9110's three forms,
+# always GMT, and nothing else: `float()` also read `+1`, `1_0`, `1e3` and `1.5` as counts,
+# and `email.utils` read a date in any zone, without its day name or with a two-digit year,
+# so `1_0` held a call ten seconds and a `PST` date eight hours (5.7.1, measured 2026-10-15).
+_SECONDS = re.compile(r"[0-9]+")
+_MONTH = r"(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"
+_CLOCK = r"([0-9]{2}):([0-9]{2}):([0-9]{2})"
+_IMF_FIXDATE = re.compile(
+    rf"(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun), ([0-9]{{2}}) {_MONTH} ([0-9]{{4}}) {_CLOCK} GMT"
+)
+_RFC850_DATE = re.compile(
+    rf"(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), ([0-9]{{2}})-{_MONTH}-([0-9]{{2}}) {_CLOCK} GMT"
+)
+_ASCTIME_DATE = re.compile(
+    rf"(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun) {_MONTH} ([0-9]{{2}}| [0-9]) {_CLOCK} ([0-9]{{4}})"
+)
+_MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+
 def _parse_retry_after(value: str | None) -> float | None:
-    if value is None or value.strip() == "":
+    if value is None:
         return None
-    try:
-        seconds = float(value)
-    except ValueError:
-        pass
-    else:
-        return seconds if seconds >= 0 else None
-    # The header also permits an HTTP date.
-    try:
-        when = email.utils.parsedate_to_datetime(value)
-    except (TypeError, ValueError):
+    value = value.strip(" \t")
+    if _SECONDS.fullmatch(value):
+        # A count of any length: float() reads one past its range as inf, never raising.
+        return float(value)
+    when = _http_date(value)
+    if when is None:
         return None
-    if when.tzinfo is None:
-        when = when.replace(tzinfo=datetime.UTC)
     delta = (when - datetime.datetime.now(datetime.UTC)).total_seconds()
     return max(0.0, math.ceil(delta))
+
+
+# The moment an HTTP date names, or None for anything else, a day no calendar has included.
+def _http_date(value: str) -> datetime.datetime | None:
+    if match := _IMF_FIXDATE.fullmatch(value):
+        day, month, year, hour, minute, second = match.groups()
+        full_year = int(year)
+    elif match := _RFC850_DATE.fullmatch(value):
+        day, month, year, hour, minute, second = match.groups()
+        # RFC 9110: a two-digit year more than 50 years ahead is the most recent past one.
+        this_year = datetime.datetime.now(datetime.UTC).year
+        full_year = this_year - this_year % 100 + int(year)
+        if full_year > this_year + 50:
+            full_year -= 100
+    elif match := _ASCTIME_DATE.fullmatch(value):
+        month, day, hour, minute, second, year = match.groups()
+        full_year = int(year)
+    else:
+        return None
+    try:
+        return datetime.datetime(
+            full_year,
+            _MONTHS.index(month) + 1,
+            int(day),
+            int(hour),
+            int(minute),
+            int(second),
+            tzinfo=datetime.UTC,
+        )
+    except ValueError:
+        return None
