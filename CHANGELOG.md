@@ -2,6 +2,14 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.7.2 - 2026-10-15
+
+### Fixes
+
+- Read Retry-After as whole seconds or an HTTP date, nothing else ([`65e7850`](https://github.com/vpndetection-io/sdk-python/commit/65e785016e8196388be4ec49d9a40b2293a6f928))
+- Trim the key and the base URL, and refuse a key no header can carry ([`3dd5e91`](https://github.com/vpndetection-io/sdk-python/commit/3dd5e917740454491b943e0b245c69f7a3da7717))
+- Classify a 4xx by status, and fail an unreadable 2xx with its status ([`04f9f06`](https://github.com/vpndetection-io/sdk-python/commit/04f9f067361ee5e8a1ce61b9f4b8842740eb67e3))
+
 ## 5.7.1 - 2026-10-10
 
 ### Fixes
