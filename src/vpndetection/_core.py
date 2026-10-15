@@ -14,7 +14,7 @@ import os
 import secrets
 import threading
 import time
-from collections.abc import Awaitable, Callable, Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from types import ModuleType
 from typing import IO, Any, TypeVar, cast
@@ -26,7 +26,6 @@ from cachetools import TTLCache
 from ._generated.client import AuthenticatedClient, Client
 from ._generated.models.database import Database
 from ._generated.models.download import Download
-from ._generated.types import Response
 from .errors import VPNDetectionError, error_from_response, oauth_error_from
 from .models import Pkce, Result, to_result
 
@@ -202,71 +201,94 @@ def part_file(destination: str | os.PathLike[str]) -> Iterator[IO[bytes]]:
         raise
 
 
-def send(call: Callable[[], Response[Any]]) -> Response[Any]:
-    """One generated endpoint call.
-
-    The generated code eagerly parses the body of every DOCUMENTED status as JSON, so a
-    429 or a 400 carrying an intermediary's HTML error page raises straight out of it.
-    That is a failed request rather than a bug in the caller's code, so it becomes the
-    one error type here.
-
-    `KeyError` is caught for the same reason and was missed at first: the generated
-    `from_dict` reads required properties by subscript, so a 200 whose body is valid
-    JSON but is MISSING a required key raises `KeyError` rather than `ValueError`, and
-    that reached a caller as a bare traceback instead of a typed error. Both are the
-    same fault - the API said something this client cannot read.
-    """
-    try:
-        return call()
-    except (ValueError, KeyError) as exc:
-        raise VPNDetectionError(
-            "server_error", f"the API answered with a body this client could not read: {exc}"
-        ) from exc
-
-
-async def send_async(call: Callable[[], Awaitable[Response[Any]]]) -> Response[Any]:
-    """`send`, awaited."""
-    try:
-        return await call()
-    except (ValueError, KeyError) as exc:
-        raise VPNDetectionError(
-            "server_error", f"the API answered with a body this client could not read: {exc}"
-        ) from exc
-
-
 def request(
-    endpoint: ModuleType, client: AuthenticatedClient, bound: float | None, **params: Any
-) -> Response[Any]:
-    """`send` for one generated endpoint, one attempt of it finished within `bound` seconds,
-    or unbounded when that is None.
+    endpoint: ModuleType,
+    client: AuthenticatedClient,
+    bound: float | None,
+    *,
+    decode: bool = True,
+    **params: Any,
+) -> httpx.Response:
+    """One attempt at one generated endpoint, finished within `bound` seconds, or unbounded
+    when that is None, and its answer checked by `decoded` unless `decode` is False.
 
     Assembled from the endpoint module's `_get_kwargs` and `_build_response` because its
     `sync_detailed` cannot take a timeout. The generated client's `with_timeout` is no way
     round that: it rewrites the timeout of the one httpx client every concurrent call
     shares, and leaves it rewritten.
     """
-
-    def call() -> Response[Any]:
-        http = client.get_httpx_client()
-        req = http.build_request(**endpoint._get_kwargs(**params), timeout=httpx.Timeout(bound))
-        res = exchange(http, req, bound)
-        return cast(Response[Any], endpoint._build_response(client=client, response=res))
-
-    return send(call)
+    http = client.get_httpx_client()
+    req = http.build_request(**endpoint._get_kwargs(**params), timeout=httpx.Timeout(bound))
+    res = exchange(http, req, bound)
+    return decoded(endpoint, client, res) if decode else res
 
 
 async def request_async(
-    endpoint: ModuleType, client: AuthenticatedClient, bound: float | None, **params: Any
-) -> Response[Any]:
+    endpoint: ModuleType,
+    client: AuthenticatedClient,
+    bound: float | None,
+    *,
+    decode: bool = True,
+    **params: Any,
+) -> httpx.Response:
     """`request`, awaited."""
+    http = client.get_async_httpx_client()
+    req = http.build_request(**endpoint._get_kwargs(**params), timeout=httpx.Timeout(bound))
+    res = await exchange_async(http, req, bound)
+    return decoded(endpoint, client, res) if decode else res
 
-    async def call() -> Response[Any]:
-        http = client.get_async_httpx_client()
-        req = http.build_request(**endpoint._get_kwargs(**params), timeout=httpx.Timeout(bound))
-        res = await exchange_async(http, req, bound)
-        return cast(Response[Any], endpoint._build_response(client=client, response=res))
 
-    return await send_async(call)
+def decoded(
+    endpoint: ModuleType, client: AuthenticatedClient, res: httpx.Response
+) -> httpx.Response:
+    """`res`, once the generated decoder has read it, where it is a 2xx.
+
+    The generated code eagerly decodes the body of every DOCUMENTED status into its model,
+    and raises doing it: a body that is not JSON is a `ValueError` out of `json()`, an
+    object missing a required key a `KeyError`, and `null` or a list where an object
+    belongs a `TypeError`. On a 2xx each is the server sending an answer this client cannot
+    read, so each is the one error type here, a retried `server_error` carrying the status.
+    A member the API never sends as null is refused as null too, at any depth, where the
+    generated decoder hands it on (`check_required`).
+
+    Any other status is left to `unwrap`, which classifies it by the status alone, whatever
+    its body. Decoded too, a proxy's HTML page on a 401, an empty 403 or an HTML 429 was a
+    retried `server_error` with no status, sent three times, and `null` on a 200 a raw
+    `TypeError` (5.7.1, measured 2026-10-15).
+    """
+    if 200 <= res.status_code < 300:
+        try:
+            check_required(endpoint._build_response(client=client, response=res).parsed)
+        except (AttributeError, KeyError, TypeError, ValueError) as exc:
+            raise malformed(exc, res.status_code) from exc
+    return res
+
+
+def check_required(value: Any) -> None:
+    """Raises TypeError where a generated model holds None in a member the spec requires
+    and never sends as null, at any depth: `from_dict` reads a required member by
+    subscript, so one the body sent as null was handed on as None."""
+    if isinstance(value, list | tuple):
+        for item in value:
+            check_required(item)
+        return
+    fields = getattr(type(value), "__attrs_attrs__", None)
+    if fields is None:
+        return
+    for field in fields:
+        member = getattr(value, field.name)
+        kind = str(field.type)
+        if member is None and "None" not in kind and "Unset" not in kind:
+            raise TypeError(f"{type(value).__name__}.{field.name} is null")
+        check_required(member)
+    for member in getattr(value, "additional_properties", {}).values():
+        check_required(member)
+
+
+def malformed(exc: Exception, status: int) -> VPNDetectionError:
+    return VPNDetectionError(
+        "server_error", f"the API answered with a body this client could not read: {exc}", status
+    )
 
 
 def exchange(http: httpx.Client, req: httpx.Request, bound: float | None) -> httpx.Response:
@@ -446,7 +468,7 @@ class AsyncClock:
         await asyncio.sleep(seconds)
 
 
-def unwrap(res: Response[Any]) -> dict[str, Any]:
+def unwrap(res: httpx.Response) -> dict[str, Any]:
     """The response body as it came off the wire, or the failure it describes."""
     body = _decode(res.content)
     status = int(res.status_code)
@@ -468,13 +490,23 @@ def as_error(exc: VPNDetectionError | httpx.HTTPError) -> VPNDetectionError:
     return VPNDetectionError("network", str(exc) or type(exc).__name__)
 
 
-def parse_body(body: dict[str, Any], parse: Callable[[dict[str, Any]], T]) -> T:
-    """A served body through its generated model, with a malformed one reported as the
-    server's failure rather than as a traceback out of the generated code."""
+def parse_body(res: httpx.Response, parse: Callable[[dict[str, Any]], T]) -> T:
+    """A served answer through its model, with a malformed one reported as the server's
+    failure, carrying its status, rather than as a traceback out of the generated code."""
+    body = unwrap(res)
+    return parse_entry(body, parse, res.status_code)
+
+
+def parse_entry(body: Any, parse: Callable[[dict[str, Any]], T], status: int) -> T:
+    """`parse_body` for a body already decoded: an answer, or one entry of a batch's."""
+    if not isinstance(body, dict):
+        raise VPNDetectionError("server_error", "the API answered with a non-object body", status)
     try:
-        return parse(body)
-    except (KeyError, TypeError, ValueError) as exc:
-        raise VPNDetectionError("server_error", f"malformed response from the API: {exc}") from exc
+        value = parse(body)
+        check_required(value)
+    except (AttributeError, KeyError, TypeError, ValueError) as exc:
+        raise malformed(exc, status) from exc
+    return value
 
 
 def check_api_key(api_key: str | None) -> str | None:
@@ -545,6 +577,23 @@ def entry_error(entry: dict[str, Any]) -> VPNDetectionError:
     return error_from_response(int(entry["status"]), httpx.Headers(), {"error": entry.get("error")})
 
 
+def batch_body(res: httpx.Response) -> dict[str, Any]:
+    """A chunk's answer, once it holds `results` or `errors` and neither is anything but a
+    map. Anything else is the whole chunk unreadable, a retried `server_error` carrying the
+    status. Each entry is read on its own by `batch_answers`, so one it cannot read is that
+    address's error alone: decoded whole by the generated model, as through 5.7.1, one entry
+    of `null` or `[]` failed every address of its chunk (measured 2026-10-15)."""
+    body = unwrap(res)
+    members = [body.get(name) for name in ("results", "errors")]
+    if all(m is None for m in members) or any(
+        m is not None and not isinstance(m, dict) for m in members
+    ):
+        raise VPNDetectionError(
+            "server_error", "the batch answer held neither results nor errors", res.status_code
+        )
+    return body
+
+
 def batch_answers(chunk: list[str], body: dict[str, Any]) -> dict[str, Result | VPNDetectionError]:
     """One chunk's answer, mapped back onto the addresses it was asked about.
 
@@ -557,11 +606,14 @@ def batch_answers(chunk: list[str], body: dict[str, Any]) -> dict[str, Result | 
     for ip in chunk:
         if ip in results:
             try:
-                out[ip] = parse_body(results[ip], to_result)
+                out[ip] = parse_entry(results[ip], to_result, 200)
             except VPNDetectionError as err:
                 out[ip] = err
         elif ip in errors:
-            out[ip] = entry_error(errors[ip])
+            try:
+                out[ip] = entry_error(errors[ip])
+            except (AttributeError, KeyError, TypeError, ValueError) as exc:
+                out[ip] = malformed(exc, 200)
         else:
             out[ip] = VPNDetectionError(
                 "server_error", f"the batch answer did not include {ip}", 200
@@ -569,7 +621,7 @@ def batch_answers(chunk: list[str], body: dict[str, Any]) -> dict[str, Result | 
     return out
 
 
-def redirect_location(res: Response[Any]) -> str:
+def redirect_location(res: httpx.Response) -> str:
     """Where a `302` points, or whatever the API said instead."""
     location: str | None = _headers(res).get("location")
     if int(res.status_code) == 302 and location:
@@ -746,7 +798,7 @@ def _deadline_passed(bound: float) -> VPNDetectionError:
 # The generated Response declares a plain MutableMapping, but always carries httpx's
 # case-insensitive Headers. Rebuilding one keeps a header lookup case-blind whichever it
 # turns out to be, which matters for `Retry-After`.
-def _headers(res: Response[Any]) -> httpx.Headers:
+def _headers(res: httpx.Response) -> httpx.Headers:
     return httpx.Headers(res.headers)
 
 

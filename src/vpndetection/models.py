@@ -149,6 +149,17 @@ def to_result(body: dict[str, Any]) -> Result:
     a plan that includes a field and answers `false` would lose it.
     """
     parsed = LookupResponse.from_dict(body)
+    # The generated model takes any value it finds, so `"ip": null` or `"is_vpn": "yes"`
+    # came back as the answer, from a lookup and a batch entry alike (5.7.1, measured
+    # 2026-10-15). Each is the server's failure, raised for the caller to report as one.
+    if not isinstance(parsed.ip, str) or parsed.ip == "":
+        raise TypeError(f"the answer's ip is not an address: {parsed.ip!r}")
+    for flag in _FLAGS:
+        value = getattr(parsed, flag)
+        if not isinstance(value, bool) and not (
+            flag != "is_vpn" and isinstance(value, Unset | None)
+        ):
+            raise TypeError(f"the answer's {flag} is not a boolean: {value!r}")
     return Result(
         ip=parsed.ip,
         is_vpn=parsed.is_vpn,
@@ -171,6 +182,18 @@ def to_result(body: dict[str, Any]) -> Result:
         raw=body,
     )
 
+
+# The flags a lookup answers, `is_vpn` the one every plan serves.
+_FLAGS = (
+    "is_vpn",
+    "is_hosting",
+    "is_relay",
+    "is_tor",
+    "is_cdn",
+    "is_resproxy",
+    "is_dcproxy",
+    "is_mobproxy",
+)
 
 T = TypeVar("T")
 

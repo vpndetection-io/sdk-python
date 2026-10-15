@@ -36,6 +36,7 @@ from ._core import (
     assert_whole_transfer,
     authorization_url,
     batch_answers,
+    batch_body,
     build_client,
     build_transfer_client,
     check_concurrency,
@@ -55,7 +56,6 @@ from ._core import (
     request,
     retry_delay,
     storage_refusal,
-    unwrap,
 )
 from ._generated.api.database import (
     database_checksum,
@@ -212,7 +212,7 @@ class VPNDetection:
     def _serve(self, ip: str, retries: int | None, timeout: float | None) -> Result:
         def call() -> Result:
             res = request(lookup_ip, self._client, self._bound(timeout), ip=ip)
-            return parse_body(unwrap(res), to_result)
+            return parse_body(res, to_result)
 
         return self._retrying(call, self._retries if retries is None else retries)
 
@@ -230,7 +230,7 @@ class VPNDetection:
 
         def call() -> Result:
             res = request(lookup_my_ip, self._client, self._bound(timeout))
-            return parse_body(unwrap(res), to_result)
+            return parse_body(res, to_result)
 
         return self._retrying(call, self._retries if retries is None else retries)
 
@@ -257,7 +257,7 @@ class VPNDetection:
 
         def call() -> Entitlement:
             res = request(my_entitlement, self._client, self._bound(timeout))
-            return parse_body(unwrap(res), Entitlement.from_dict)
+            return parse_body(res, Entitlement.from_dict)
 
         return self._retrying(call, self._retries if retries is None else retries)
 
@@ -372,9 +372,10 @@ class VPNDetection:
                 lookup_batch,
                 self._client,
                 self._bound(timeout),
+                decode=False,
                 body=BatchLookupRequest(ips=list(chunk)),
             )
-            return unwrap(res)
+            return batch_body(res)
 
         try:
             body = self._retrying(call, self._retries if retries is None else retries)
@@ -430,7 +431,7 @@ class DatabaseApi:
 
         def call() -> builtins.list[Database]:
             res = request(list_databases, self._client, self._bound(timeout))
-            return parse_body(unwrap(res), databases_of)
+            return parse_body(res, databases_of)
 
         return self._retrying(call)
 
@@ -442,7 +443,7 @@ class DatabaseApi:
 
         def call() -> DatabaseMetadata:
             res = request(database_metadata, self._client, self._bound(timeout), id=dataset_id)
-            return parse_body(unwrap(res), DatabaseMetadata.from_dict)
+            return parse_body(res, DatabaseMetadata.from_dict)
 
         return self._retrying(call)
 
@@ -465,7 +466,7 @@ class DatabaseApi:
                 id=dataset_id,
                 format_=DatabaseFormat(format),
             )
-            return parse_body(unwrap(res), checksums_of)
+            return parse_body(res, checksums_of)
 
         return self._retrying(call)
 
@@ -479,7 +480,7 @@ class DatabaseApi:
 
         def call() -> builtins.list[Download]:
             res = request(list_downloads, self._client, self._bound(timeout), limit=limit)
-            return parse_body(unwrap(res), downloads_of)
+            return parse_body(res, downloads_of)
 
         return self._retrying(call)
 

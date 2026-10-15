@@ -40,6 +40,7 @@ from ._core import (
     assert_whole_transfer,
     authorization_url,
     batch_answers,
+    batch_body,
     build_async_transfer_client,
     build_client,
     check_concurrency,
@@ -59,7 +60,6 @@ from ._core import (
     request_async,
     retry_delay,
     storage_refusal,
-    unwrap,
 )
 from ._generated.api.database import (
     database_checksum,
@@ -203,7 +203,7 @@ class AsyncVPNDetection:
     async def _serve(self, ip: str, retries: int | None, timeout: float | None) -> Result:
         async def call() -> Result:
             res = await request_async(lookup_ip, self._client, self._bound(timeout), ip=ip)
-            return parse_body(unwrap(res), to_result)
+            return parse_body(res, to_result)
 
         return await self._retrying(call, self._retries if retries is None else retries)
 
@@ -221,7 +221,7 @@ class AsyncVPNDetection:
 
         async def call() -> Result:
             res = await request_async(lookup_my_ip, self._client, self._bound(timeout))
-            return parse_body(unwrap(res), to_result)
+            return parse_body(res, to_result)
 
         return await self._retrying(call, self._retries if retries is None else retries)
 
@@ -248,7 +248,7 @@ class AsyncVPNDetection:
 
         async def call() -> Entitlement:
             res = await request_async(my_entitlement, self._client, self._bound(timeout))
-            return parse_body(unwrap(res), Entitlement.from_dict)
+            return parse_body(res, Entitlement.from_dict)
 
         return await self._retrying(call, self._retries if retries is None else retries)
 
@@ -348,9 +348,10 @@ class AsyncVPNDetection:
                 lookup_batch,
                 self._client,
                 self._bound(timeout),
+                decode=False,
                 body=BatchLookupRequest(ips=list(chunk)),
             )
-            return unwrap(res)
+            return batch_body(res)
 
         try:
             body = await self._retrying(call, self._retries if retries is None else retries)
@@ -421,7 +422,7 @@ class AsyncDatabaseApi:
 
         async def call() -> builtins.list[Database]:
             res = await request_async(list_databases, self._client, self._bound(timeout))
-            return parse_body(unwrap(res), databases_of)
+            return parse_body(res, databases_of)
 
         return await self._retrying(call)
 
@@ -435,7 +436,7 @@ class AsyncDatabaseApi:
             res = await request_async(
                 database_metadata, self._client, self._bound(timeout), id=dataset_id
             )
-            return parse_body(unwrap(res), DatabaseMetadata.from_dict)
+            return parse_body(res, DatabaseMetadata.from_dict)
 
         return await self._retrying(call)
 
@@ -455,7 +456,7 @@ class AsyncDatabaseApi:
                 id=dataset_id,
                 format_=DatabaseFormat(format),
             )
-            return parse_body(unwrap(res), checksums_of)
+            return parse_body(res, checksums_of)
 
         return await self._retrying(call)
 
@@ -471,7 +472,7 @@ class AsyncDatabaseApi:
             res = await request_async(
                 list_downloads, self._client, self._bound(timeout), limit=limit
             )
-            return parse_body(unwrap(res), downloads_of)
+            return parse_body(res, downloads_of)
 
         return await self._retrying(call)
 
