@@ -86,6 +86,12 @@ def build_client(
     are interchangeable where the endpoints use them, so the keyless one is built as
     `Client` and the cast lives here instead of at every call site.
     """
+    api_key = check_api_key(api_key)
+    # httpx drops one trailing slash when it joins a path onto the base URL and keeps the
+    # rest, so a second or third reached the API as `//8.8.8.8`, which prod answers with a
+    # redirect this client does not follow: every call failed (5.5.2 and 5.7.1, measured
+    # 2026-10-15).
+    base_url = base_url.rstrip("/")
     httpx_args: dict[str, Any] = {}
     if transport is not None:
         httpx_args["transport"] = transport
@@ -469,6 +475,26 @@ def parse_body(body: dict[str, Any], parse: Callable[[dict[str, Any]], T]) -> T:
         return parse(body)
     except (KeyError, TypeError, ValueError) as exc:
         raise VPNDetectionError("server_error", f"malformed response from the API: {exc}") from exc
+
+
+def check_api_key(api_key: str | None) -> str | None:
+    """`api_key` without the blanks around it, or None when nothing else is left.
+
+    Refused where it is SET when a control character remains, or a character outside
+    ASCII, which httpx cannot put in a header: a CR, LF or NUL failed every call as a
+    retried `network` error with nothing sent, a C1 control or any other non-ASCII
+    character as a `server_error`, while a tab or DEL went out on the wire. Untrimmed, a
+    key of blanks or one padded with them failed every call the same way, with nothing
+    sent (5.7.1, measured 2026-10-15).
+    """
+    if api_key is None:
+        return None
+    if not isinstance(api_key, str):
+        raise TypeError(f"api_key must be a string or None, not {type(api_key).__name__}")
+    key = api_key.strip()
+    if any(ord(char) < 0x20 or ord(char) >= 0x7F for char in key):
+        raise ValueError("api_key holds a control character or one outside ASCII")
+    return key or None
 
 
 def check_timeout(timeout: float | None) -> float | None:
