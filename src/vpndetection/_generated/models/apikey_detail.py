@@ -20,7 +20,7 @@ class ApikeyDetail:
     Attributes:
         id (UUID):
         name (str):
-        key_prefix (str): The leading, non-secret part, so a key is recognisable without storing it.
+        key_prefix (str): The leading, non-secret part, so a key is recognizable without storing it.
         created (datetime.datetime):
         expires (datetime.datetime | None | Unset):
         last_used_at (datetime.datetime | None | Unset):

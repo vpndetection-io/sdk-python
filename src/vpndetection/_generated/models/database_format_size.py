@@ -18,7 +18,7 @@ class DatabaseFormatSize:
         format_ (DatabaseFormat): A file format a database version is published in.
         bytes_ (int | None): Size of the published file, or null when it has not been published
             yet. int64 because it is not hypothetical: resproxy_ip_14d's MMDB is
-            4.58 GB, so a 32-bit field cannot carry the catalogue and `list`
+            4.58 GB, so a 32-bit field cannot carry the catalog and `list`
             throws for every caller rather than for that one entry.
     """
 

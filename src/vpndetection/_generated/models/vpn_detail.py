@@ -31,7 +31,7 @@ class VpnDetail:
                 valid server response. `scrape` - the operator published the address
                 through its own API, client or configuration. `registry` - public
                 registration or naming records attribute it to the operator.
-                `infer` - the address was extrapolated from confirmed neighbours in
+                `infer` - the address was extrapolated from confirmed neighbors in
                 the same block.
                  Example: scan.
     """

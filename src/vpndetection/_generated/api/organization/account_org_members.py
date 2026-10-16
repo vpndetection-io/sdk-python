@@ -61,7 +61,7 @@ def sync_detailed(
     """Members
 
      Read-only. Adding or removing a member is an invitation flow with email
-    in the middle rather than a POST, and modelling it as one here would
+    in the middle rather than a POST, and modeling it as one here would
     promise something this API does not do.
 
     Raises:
@@ -88,7 +88,7 @@ def sync(
     """Members
 
      Read-only. Adding or removing a member is an invitation flow with email
-    in the middle rather than a POST, and modelling it as one here would
+    in the middle rather than a POST, and modeling it as one here would
     promise something this API does not do.
 
     Raises:
@@ -111,7 +111,7 @@ async def asyncio_detailed(
     """Members
 
      Read-only. Adding or removing a member is an invitation flow with email
-    in the middle rather than a POST, and modelling it as one here would
+    in the middle rather than a POST, and modeling it as one here would
     promise something this API does not do.
 
     Raises:
@@ -136,7 +136,7 @@ async def asyncio(
     """Members
 
      Read-only. Adding or removing a member is an invitation flow with email
-    in the middle rather than a POST, and modelling it as one here would
+    in the middle rather than a POST, and modeling it as one here would
     promise something this API does not do.
 
     Raises:

@@ -48,9 +48,7 @@ class BatchLookupResponse:
     @classmethod
     def from_dict(cls, src_dict: Mapping[str, Any]) -> Self:
         from ..models.batch_lookup_response_errors import BatchLookupResponseErrors
-        from ..models.batch_lookup_response_results import (
-            BatchLookupResponseResults,
-        )
+        from ..models.batch_lookup_response_results import BatchLookupResponseResults
 
         d = dict(src_dict)
         results = BatchLookupResponseResults.from_dict(d.pop("results"))

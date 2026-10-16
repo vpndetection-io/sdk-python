@@ -15,7 +15,7 @@ T = TypeVar("T", bound="AccountCreateApikeyRequest")
 class AccountCreateApikeyRequest:
     """
     Attributes:
-        name (str): A label you will recognise later. Shown wherever the key is listed.
+        name (str): A label you will recognize later. Shown wherever the key is listed.
         allowed_scopes (list[str] | Unset): What the new key may do. Omit for a key that carries no named scope, which
             is the safe default.
     """

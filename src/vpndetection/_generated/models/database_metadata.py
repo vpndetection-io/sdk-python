@@ -97,9 +97,7 @@ class DatabaseMetadata:
     @classmethod
     def from_dict(cls, src_dict: Mapping[str, Any]) -> Self:
         from ..models.database_metadata_sample import DatabaseMetadataSample
-        from ..models.database_metadata_sample_size import (
-            DatabaseMetadataSampleSize,
-        )
+        from ..models.database_metadata_sample_size import DatabaseMetadataSampleSize
         from ..models.database_metadata_schema import DatabaseMetadataSchema
         from ..models.database_metadata_size import DatabaseMetadataSize
 
