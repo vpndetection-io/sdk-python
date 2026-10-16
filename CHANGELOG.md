@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.7.3 - 2026-10-16
+
+### Fixes
+
+- Re-pin the spec to 2026.10.15: descriptions in US spelling ([`f8795fc`](https://github.com/vpndetection-io/sdk-python/commit/f8795fcb1353b678ab9aeeae9fe04cfdc53f5aef))
+
 ## 5.7.2 - 2026-10-15
 
 ### Fixes
