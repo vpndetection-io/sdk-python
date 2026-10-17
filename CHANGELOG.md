@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.8.0 - 2026-10-17
+
+### Features
+
+- Re-pin the spec to 2026.10.16: dynamic client registration ([`ba70f10`](https://github.com/vpndetection-io/sdk-python/commit/ba70f108b023480203ed2e2afa0c6f9113c651eb))
+
 ## 5.7.3 - 2026-10-16
 
 ### Fixes
