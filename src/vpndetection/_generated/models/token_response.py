@@ -26,7 +26,8 @@ class TokenResponse:
             no key was picked, or when the person's role no longer allows
             reading keys back.
         mslmapikey (str | Unset): Not part of OAuth, and only for our own clients: a client that signed
-            in with a Client ID Metadata Document never receives a key. The API
+            in with a Client ID Metadata Document or registered itself never
+            receives a key. The API
             key itself, so a device ends up holding an ordinary key. Returned by
             the device code and authorization code grants only, never by a
             refresh, and only alongside

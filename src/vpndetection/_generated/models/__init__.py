@@ -16,6 +16,8 @@ from .batch_lookup_response import BatchLookupResponse
 from .batch_lookup_response_errors import BatchLookupResponseErrors
 from .batch_lookup_response_results import BatchLookupResponseResults
 from .class_detail import ClassDetail
+from .client_registration import ClientRegistration
+from .client_registration_request import ClientRegistrationRequest
 from .database import Database
 from .database_checksum_response_200 import DatabaseChecksumResponse200
 from .database_format import DatabaseFormat
@@ -79,6 +81,8 @@ __all__ = (
     "BatchLookupResponseErrors",
     "BatchLookupResponseResults",
     "ClassDetail",
+    "ClientRegistration",
+    "ClientRegistrationRequest",
     "Database",
     "DatabaseChecksumResponse200",
     "DatabaseFormat",

@@ -105,13 +105,18 @@ def sync_detailed(
     with `token_endpoint_auth_method` `none` and your `redirect_uris`. An
     https redirect URI must be on the same origin as the `client_id`; a
     loopback one (`http://127.0.0.1`, `http://[::1]`, `http://localhost`)
-    matches on any port. Such a client is granted `apikeys.use` at most.
+    matches on any port. Such a client is granted `apikeys.use` at most. A
+    client registered at `/oauth/register` uses the `client_id` it was
+    given and one of the `redirect_uris` it registered.
 
     An unknown `client_id` or an unregistered `redirect_uri` is shown to the
-    USER and never redirected, because sending an error to an address we
-    have not verified belongs to you is how an open redirector works.
-    Everything else comes back to your `redirect_uri` with `error`, your
-    `state`, and `iss`.
+    person and never redirected, because sending an error to an address we
+    have not verified belongs to you is how an open redirector works. Any
+    other error in the request is shown to the person too: anyone can make a
+    client, so its `redirect_uri` is verified only as its own (RFC 9700
+    section 4.11.2). Only the person's answer comes back to your
+    `redirect_uri`: a `code`, or `error` `access_denied`, each with your
+    `state` and `iss`.
 
     Args:
         client_id (str):
@@ -172,13 +177,18 @@ async def asyncio_detailed(
     with `token_endpoint_auth_method` `none` and your `redirect_uris`. An
     https redirect URI must be on the same origin as the `client_id`; a
     loopback one (`http://127.0.0.1`, `http://[::1]`, `http://localhost`)
-    matches on any port. Such a client is granted `apikeys.use` at most.
+    matches on any port. Such a client is granted `apikeys.use` at most. A
+    client registered at `/oauth/register` uses the `client_id` it was
+    given and one of the `redirect_uris` it registered.
 
     An unknown `client_id` or an unregistered `redirect_uri` is shown to the
-    USER and never redirected, because sending an error to an address we
-    have not verified belongs to you is how an open redirector works.
-    Everything else comes back to your `redirect_uri` with `error`, your
-    `state`, and `iss`.
+    person and never redirected, because sending an error to an address we
+    have not verified belongs to you is how an open redirector works. Any
+    other error in the request is shown to the person too: anyone can make a
+    client, so its `redirect_uri` is verified only as its own (RFC 9700
+    section 4.11.2). Only the person's answer comes back to your
+    `redirect_uri`: a `code`, or `error` `access_denied`, each with your
+    `state` and `iss`.
 
     Args:
         client_id (str):
