@@ -46,7 +46,7 @@ client = VPNDetection(os.environ["VPNDETECTION_API_KEY"])
 
 result = client.lookup("45.83.91.1")
 print(result.is_vpn)          # True
-print(result.vpn.provider)    # 'mullvad'
+print(result.vpn.provider)    # 'nordvpn'
 print(result.is_hosting)      # True
 print(result.hosting.provider)
 ```
