@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.9.0 - 2026-10-18
+
+### Features
+
+- Re-pin the spec to 2026.10.18: is_pubproxy and the pubproxy detail ([`9935f6c`](https://github.com/vpndetection-io/sdk-python/commit/9935f6c0571754e05a50b21051ab1c977c965b15))
+
 ## 5.8.0 - 2026-10-17
 
 ### Features
