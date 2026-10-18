@@ -22,6 +22,7 @@ __all__ = [
     "Format",
     "OauthMetadata",
     "ProxyDetail",
+    "PubproxyDetail",
     "Result",
     "TokenResponse",
     "VpnDetail",
@@ -36,6 +37,7 @@ Flag = Literal[
     "is_resproxy",
     "is_dcproxy",
     "is_mobproxy",
+    "is_pubproxy",
 ]
 
 Format = Literal["csvgz", "mmdb"]
@@ -93,6 +95,23 @@ class ProxyDetail:
 
 
 @dataclass(frozen=True, slots=True)
+class PubproxyDetail:
+    """The address in Public Proxy IP, open proxies anyone can connect through, over a
+    rolling 90 day window. It covers both ends of a proxy: the address it listens on
+    (`entry`) and the address its traffic leaves from (`exit`).
+
+    `protocols` is empty where only the address is known, and `last_usable` is the
+    empty string when no request through a proxy on the address was answered.
+    """
+
+    entry: bool | None = None
+    exit: bool | None = None
+    protocols: tuple[str, ...] | None = None
+    last_seen: datetime.date | None = None
+    last_usable: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class Result:
     """What a lookup answers.
 
@@ -118,6 +137,7 @@ class Result:
     is_resproxy: bool | None = None
     is_dcproxy: bool | None = None
     is_mobproxy: bool | None = None
+    is_pubproxy: bool | None = None
 
     vpn: VpnDetail | None = None
     hosting: ClassDetail | None = None
@@ -127,6 +147,7 @@ class Result:
     resproxy: ProxyDetail | None = None
     dcproxy: ProxyDetail | None = None
     mobproxy: ProxyDetail | None = None
+    pubproxy: PubproxyDetail | None = None
 
     raw: dict[str, Any] = field(default_factory=dict)
 
@@ -171,6 +192,7 @@ def to_result(body: dict[str, Any]) -> Result:
         is_resproxy=_opt(parsed.is_resproxy),
         is_dcproxy=_opt(parsed.is_dcproxy),
         is_mobproxy=_opt(parsed.is_mobproxy),
+        is_pubproxy=_opt(parsed.is_pubproxy),
         vpn=_vpn(parsed.vpn),
         hosting=_class(parsed.hosting),
         relay=_class(parsed.relay),
@@ -179,6 +201,7 @@ def to_result(body: dict[str, Any]) -> Result:
         resproxy=_proxy(parsed.resproxy),
         dcproxy=_proxy(parsed.dcproxy),
         mobproxy=_proxy(parsed.mobproxy),
+        pubproxy=_pubproxy(parsed.pubproxy),
         raw=body,
     )
 
@@ -193,6 +216,7 @@ _FLAGS = (
     "is_resproxy",
     "is_dcproxy",
     "is_mobproxy",
+    "is_pubproxy",
 )
 
 T = TypeVar("T")
@@ -233,6 +257,19 @@ def _proxy(value: Any) -> ProxyDetail | None:
         hits=_opt(value.hits),
         hits_days_pct=_opt(value.hits_days_pct),
         providers_num=_opt(value.providers_num),
+    )
+
+
+def _pubproxy(value: Any) -> PubproxyDetail | None:
+    if isinstance(value, Unset):
+        return None
+    protocols = _opt(value.protocols)
+    return PubproxyDetail(
+        entry=_opt(value.entry),
+        exit=_opt(value.exit_),
+        protocols=None if protocols is None else tuple(protocols),
+        last_seen=_opt(value.last_seen),
+        last_usable=_opt(value.last_usable),
     )
 
 

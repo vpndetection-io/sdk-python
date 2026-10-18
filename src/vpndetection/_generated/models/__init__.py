@@ -58,6 +58,7 @@ from .oauth_error import OauthError
 from .oauth_metadata import OauthMetadata
 from .oauth_revoke_response_200 import OauthRevokeResponse200
 from .proxy_detail import ProxyDetail
+from .pubproxy_detail import PubproxyDetail
 from .revoke_request import RevokeRequest
 from .standing import Standing
 from .token_request import TokenRequest
@@ -121,6 +122,7 @@ __all__ = (
     "OauthMetadata",
     "OauthRevokeResponse200",
     "ProxyDetail",
+    "PubproxyDetail",
     "RevokeRequest",
     "Standing",
     "TokenRequest",

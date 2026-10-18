@@ -11,6 +11,7 @@ from ..types import UNSET, Unset
 if TYPE_CHECKING:
     from ..models.class_detail import ClassDetail
     from ..models.proxy_detail import ProxyDetail
+    from ..models.pubproxy_detail import PubproxyDetail
     from ..models.vpn_detail import VpnDetail
 
 
@@ -30,12 +31,15 @@ class LookupResponse:
                 VPN dataset, so an unattributed range with no provider is still
                 `true`.
             is_hosting (bool | Unset): Whether the address belongs to a hosting or cloud provider. Starter and above.
-            is_relay (bool | Unset): Whether the address is a privacy relay egress. Starter and above.
+            is_relay (bool | Unset): Whether the address is privacy relay or enterprise web gateway egress, such as iCloud
+                Private Relay or Zscaler. Starter and above.
             is_tor (bool | Unset): Whether the address is a Tor node. Starter and above.
             is_cdn (bool | Unset): Whether the address belongs to a CDN. Starter and above.
             is_resproxy (bool | Unset): Whether the address was seen in a residential proxy pool. Scale and above.
             is_dcproxy (bool | Unset): Whether the address was seen in a datacenter proxy pool. Scale and above.
             is_mobproxy (bool | Unset): Whether the address was seen in a mobile proxy pool. Scale and above.
+            is_pubproxy (bool | Unset): Whether a public proxy, one anyone can connect through, listens on the address or
+                sends its traffic out from it. Scale and above.
             vpn (VpnDetail | Unset): What is known about the VPN attribution. Every key is present when the
                 object is populated, empty values included; the object is `{}` when
                 `is_vpn` is false. `confidence` and `method` are max only, so on a lower
@@ -61,6 +65,11 @@ class LookupResponse:
             mobproxy (ProxyDetail | Unset): The shared detail shape for the residential, datacenter and mobile proxy
                 families, measured over a rolling 90 day window. Every key is present
                 when the object is populated; the object is `{}` when its flag is false.
+            pubproxy (PubproxyDetail | Unset): The address in Public Proxy IP, open proxies anyone can connect
+                through, over a rolling 90 day window. It covers both ends of a proxy:
+                the address it listens on and the address its traffic leaves from.
+                Every key is present when the object is populated; the object is `{}`
+                when `is_pubproxy` is false.
     """
 
     ip: str
@@ -72,6 +81,7 @@ class LookupResponse:
     is_resproxy: bool | Unset = UNSET
     is_dcproxy: bool | Unset = UNSET
     is_mobproxy: bool | Unset = UNSET
+    is_pubproxy: bool | Unset = UNSET
     vpn: VpnDetail | Unset = UNSET
     hosting: ClassDetail | Unset = UNSET
     relay: ClassDetail | Unset = UNSET
@@ -80,6 +90,7 @@ class LookupResponse:
     resproxy: ProxyDetail | Unset = UNSET
     dcproxy: ProxyDetail | Unset = UNSET
     mobproxy: ProxyDetail | Unset = UNSET
+    pubproxy: PubproxyDetail | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -100,6 +111,8 @@ class LookupResponse:
         is_dcproxy = self.is_dcproxy
 
         is_mobproxy = self.is_mobproxy
+
+        is_pubproxy = self.is_pubproxy
 
         vpn: dict[str, Any] | Unset = UNSET
         if not isinstance(self.vpn, Unset):
@@ -133,6 +146,10 @@ class LookupResponse:
         if not isinstance(self.mobproxy, Unset):
             mobproxy = self.mobproxy.to_dict()
 
+        pubproxy: dict[str, Any] | Unset = UNSET
+        if not isinstance(self.pubproxy, Unset):
+            pubproxy = self.pubproxy.to_dict()
+
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update(
@@ -155,6 +172,8 @@ class LookupResponse:
             field_dict["is_dcproxy"] = is_dcproxy
         if is_mobproxy is not UNSET:
             field_dict["is_mobproxy"] = is_mobproxy
+        if is_pubproxy is not UNSET:
+            field_dict["is_pubproxy"] = is_pubproxy
         if vpn is not UNSET:
             field_dict["vpn"] = vpn
         if hosting is not UNSET:
@@ -171,6 +190,8 @@ class LookupResponse:
             field_dict["dcproxy"] = dcproxy
         if mobproxy is not UNSET:
             field_dict["mobproxy"] = mobproxy
+        if pubproxy is not UNSET:
+            field_dict["pubproxy"] = pubproxy
 
         return field_dict
 
@@ -178,6 +199,7 @@ class LookupResponse:
     def from_dict(cls, src_dict: Mapping[str, Any]) -> Self:
         from ..models.class_detail import ClassDetail
         from ..models.proxy_detail import ProxyDetail
+        from ..models.pubproxy_detail import PubproxyDetail
         from ..models.vpn_detail import VpnDetail
 
         d = dict(src_dict)
@@ -198,6 +220,8 @@ class LookupResponse:
         is_dcproxy = d.pop("is_dcproxy", UNSET)
 
         is_mobproxy = d.pop("is_mobproxy", UNSET)
+
+        is_pubproxy = d.pop("is_pubproxy", UNSET)
 
         _vpn = d.pop("vpn", UNSET)
         vpn: VpnDetail | Unset
@@ -255,6 +279,13 @@ class LookupResponse:
         else:
             mobproxy = ProxyDetail.from_dict(_mobproxy)
 
+        _pubproxy = d.pop("pubproxy", UNSET)
+        pubproxy: PubproxyDetail | Unset
+        if isinstance(_pubproxy, Unset):
+            pubproxy = UNSET
+        else:
+            pubproxy = PubproxyDetail.from_dict(_pubproxy)
+
         lookup_response = cls(
             ip=ip,
             is_vpn=is_vpn,
@@ -265,6 +296,7 @@ class LookupResponse:
             is_resproxy=is_resproxy,
             is_dcproxy=is_dcproxy,
             is_mobproxy=is_mobproxy,
+            is_pubproxy=is_pubproxy,
             vpn=vpn,
             hosting=hosting,
             relay=relay,
@@ -273,6 +305,7 @@ class LookupResponse:
             resproxy=resproxy,
             dcproxy=dcproxy,
             mobproxy=mobproxy,
+            pubproxy=pubproxy,
         )
 
         lookup_response.additional_properties = d

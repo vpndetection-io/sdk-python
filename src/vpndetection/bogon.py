@@ -5,7 +5,7 @@ from __future__ import annotations
 import ipaddress
 
 from ._bogons import BOGON_V4, BOGON_V6
-from .models import ClassDetail, ProxyDetail, Result, VpnDetail
+from .models import ClassDetail, ProxyDetail, PubproxyDetail, Result, VpnDetail
 
 __all__ = ["bogon_result", "is_bogon"]
 
@@ -65,6 +65,7 @@ def bogon_result(ip: str) -> Result:
         is_resproxy=False,
         is_dcproxy=False,
         is_mobproxy=False,
+        is_pubproxy=False,
         vpn=VpnDetail(),
         hosting=ClassDetail(),
         relay=ClassDetail(),
@@ -73,6 +74,7 @@ def bogon_result(ip: str) -> Result:
         resproxy=ProxyDetail(),
         dcproxy=ProxyDetail(),
         mobproxy=ProxyDetail(),
+        pubproxy=PubproxyDetail(),
         raw={},
     )
 

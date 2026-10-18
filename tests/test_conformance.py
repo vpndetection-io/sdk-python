@@ -14,7 +14,7 @@ from helpers import TESTDATA, ClientFactory, Stub, as_wire
 
 from vpndetection import DEFAULT_BASE_URL, Result, VPNDetectionError, is_bogon
 
-DETAIL_OBJECTS = ("vpn", "hosting", "dcproxy")
+DETAIL_OBJECTS = ("vpn", "hosting", "dcproxy", "pubproxy")
 
 
 def test_is_bogon_matches_the_canonical_ranges() -> None:

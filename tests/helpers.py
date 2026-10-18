@@ -464,7 +464,11 @@ def as_wire(detail: Any) -> dict[str, Any]:
     """
     fields = dataclasses.asdict(detail)
     return {
-        key: value.isoformat() if isinstance(value, datetime.date) else value
+        key: value.isoformat()
+        if isinstance(value, datetime.date)
+        else list(value)
+        if isinstance(value, tuple)
+        else value
         for key, value in fields.items()
         if value is not None
     }

@@ -34,6 +34,7 @@ from vpndetection import (
     DeviceAuthorization,
     OauthMetadata,
     ProxyDetail,
+    PubproxyDetail,
     Result,
     TokenResponse,
     VpnDetail,
@@ -57,6 +58,7 @@ from vpndetection._generated.models.device_authorization import (
 from vpndetection._generated.models.lookup_response import LookupResponse as WireLookupResponse
 from vpndetection._generated.models.oauth_metadata import OauthMetadata as WireOauthMetadata
 from vpndetection._generated.models.proxy_detail import ProxyDetail as WireProxyDetail
+from vpndetection._generated.models.pubproxy_detail import PubproxyDetail as WirePubproxyDetail
 from vpndetection._generated.models.standing import Standing
 from vpndetection._generated.models.token_response import TokenResponse as WireTokenResponse
 from vpndetection._generated.models.vpn_detail import VpnDetail as WireVpnDetail
@@ -350,6 +352,7 @@ def test_the_runtime_vocabularies_are_the_pinned_specs() -> None:
         (WireVpnDetail, VpnDetail),
         (WireClassDetail, ClassDetail),
         (WireProxyDetail, ProxyDetail),
+        (WirePubproxyDetail, PubproxyDetail),
         (WireOauthMetadata, OauthMetadata),
         (WireDeviceAuthorization, DeviceAuthorization),
         (WireTokenResponse, TokenResponse),
