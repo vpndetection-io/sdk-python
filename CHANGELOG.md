@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.10.0 - 2026-10-19
+
+### Features
+
+- Re-pin the spec to 2026.10.19: num_ports and num_proxies in the pubproxy detail ([`9d74815`](https://github.com/vpndetection-io/sdk-python/commit/9d74815fcaa1f153dd9fe34016cc0ee2a7380360))
+
 ## 5.9.0 - 2026-10-18
 
 ### Features
