@@ -102,11 +102,16 @@ class PubproxyDetail:
 
     `protocols` is empty where only the address is known, and `last_usable` is the
     empty string when no request through a proxy on the address was answered.
+    `num_ports` counts the ports a proxy listens on here (0 when it is only an exit),
+    and `num_proxies` the proxies whose traffic left from here (0 when it is only an
+    entry).
     """
 
     entry: bool | None = None
     exit: bool | None = None
     protocols: tuple[str, ...] | None = None
+    num_ports: int | None = None
+    num_proxies: int | None = None
     last_seen: datetime.date | None = None
     last_usable: str | None = None
 
@@ -268,6 +273,8 @@ def _pubproxy(value: Any) -> PubproxyDetail | None:
         entry=_opt(value.entry),
         exit=_opt(value.exit_),
         protocols=None if protocols is None else tuple(protocols),
+        num_ports=_opt(value.num_ports),
+        num_proxies=_opt(value.num_proxies),
         last_seen=_opt(value.last_seen),
         last_usable=_opt(value.last_usable),
     )

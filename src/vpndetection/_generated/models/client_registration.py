@@ -16,7 +16,7 @@ class ClientRegistration:
     """
     Attributes:
         client_id (str):
-        client_id_issued_at (int): Unix seconds.
+        client_id_issued_at (int): Unix seconds. 64-bit, since 32 bits run out on 2038-01-19.
         client_name (str): As the person will see it.
         redirect_uris (list[str]):
         token_endpoint_auth_method (str): Always `none`.

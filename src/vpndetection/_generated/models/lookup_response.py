@@ -66,10 +66,10 @@ class LookupResponse:
                 families, measured over a rolling 90 day window. Every key is present
                 when the object is populated; the object is `{}` when its flag is false.
             pubproxy (PubproxyDetail | Unset): The address in Public Proxy IP, open proxies anyone can connect
-                through, over a rolling 90 day window. It covers both ends of a proxy:
-                the address it listens on and the address its traffic leaves from.
-                Every key is present when the object is populated; the object is `{}`
-                when `is_pubproxy` is false.
+                through, measured over a rolling 90 day window. An address is either
+                end of a proxy, or both: where it listens, and where its traffic
+                leaves from. Every key is present when the object is populated; the
+                object is `{}` when `is_pubproxy` is false.
     """
 
     ip: str

@@ -15,10 +15,10 @@ T = TypeVar("T", bound="PubproxyDetail")
 @_attrs_define
 class PubproxyDetail:
     """The address in Public Proxy IP, open proxies anyone can connect
-    through, over a rolling 90 day window. It covers both ends of a proxy:
-    the address it listens on and the address its traffic leaves from.
-    Every key is present when the object is populated; the object is `{}`
-    when `is_pubproxy` is false.
+    through, measured over a rolling 90 day window. An address is either
+    end of a proxy, or both: where it listens, and where its traffic
+    leaves from. Every key is present when the object is populated; the
+    object is `{}` when `is_pubproxy` is false.
 
         Attributes:
             entry (bool | Unset): Whether a public proxy listens on this address. Example: True.
@@ -27,6 +27,12 @@ class PubproxyDetail:
                 address: `http`, `https` (an HTTP proxy that also tunnels HTTPS),
                 `socks4` or `socks5`. Empty where only the address is known.
                  Example: ['http', 'https'].
+            num_ports (int | Unset): How many distinct ports a public proxy listens on at this address;
+                0 when it is only an exit, or its port is not known.
+                 Example: 1.
+            num_proxies (int | Unset): How many distinct public proxies' traffic left from this address;
+                0 when it is only an entry.
+                 Example: 0.
             last_seen (datetime.date | Unset): The most recent date within the window a proxy on this address was seen.
                 Example: 2026-10-17.
             last_usable (str | Unset): The most recent date within the window a request through a proxy on
@@ -38,6 +44,8 @@ class PubproxyDetail:
     entry: bool | Unset = UNSET
     exit_: bool | Unset = UNSET
     protocols: list[str] | Unset = UNSET
+    num_ports: int | Unset = UNSET
+    num_proxies: int | Unset = UNSET
     last_seen: datetime.date | Unset = UNSET
     last_usable: str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
@@ -50,6 +58,10 @@ class PubproxyDetail:
         protocols: list[str] | Unset = UNSET
         if not isinstance(self.protocols, Unset):
             protocols = self.protocols
+
+        num_ports = self.num_ports
+
+        num_proxies = self.num_proxies
 
         last_seen: str | Unset = UNSET
         if not isinstance(self.last_seen, Unset):
@@ -66,6 +78,10 @@ class PubproxyDetail:
             field_dict["exit"] = exit_
         if protocols is not UNSET:
             field_dict["protocols"] = protocols
+        if num_ports is not UNSET:
+            field_dict["num_ports"] = num_ports
+        if num_proxies is not UNSET:
+            field_dict["num_proxies"] = num_proxies
         if last_seen is not UNSET:
             field_dict["last_seen"] = last_seen
         if last_usable is not UNSET:
@@ -82,6 +98,10 @@ class PubproxyDetail:
 
         protocols = cast(list[str], d.pop("protocols", UNSET))
 
+        num_ports = d.pop("num_ports", UNSET)
+
+        num_proxies = d.pop("num_proxies", UNSET)
+
         _last_seen = d.pop("last_seen", UNSET)
         last_seen: datetime.date | Unset
         if isinstance(_last_seen, Unset):
@@ -95,6 +115,8 @@ class PubproxyDetail:
             entry=entry,
             exit_=exit_,
             protocols=protocols,
+            num_ports=num_ports,
+            num_proxies=num_proxies,
             last_seen=last_seen,
             last_usable=last_usable,
         )
