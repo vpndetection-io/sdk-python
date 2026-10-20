@@ -297,7 +297,9 @@ def _location(value: Any) -> Location | None:
 def _asn(value: Any) -> Asn | None:
     if isinstance(value, Unset):
         return None
-    return Asn(asn=value.asn, name=value.name, domain=value.domain, type=value.type_, prefix=value.prefix)
+    return Asn(
+        asn=value.asn, name=value.name, domain=value.domain, type=value.type_, prefix=value.prefix
+    )
 
 
 def _class(value: Any) -> ClassDetail | None:
