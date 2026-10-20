@@ -10,6 +10,7 @@ from .account_revealed_apikey import AccountRevealedApikey
 from .account_user import AccountUser
 from .apikey_detail import ApikeyDetail
 from .apikey_list import ApikeyList
+from .asn import Asn
 from .batch_lookup_error import BatchLookupError
 from .batch_lookup_request import BatchLookupRequest
 from .batch_lookup_response import BatchLookupResponse
@@ -50,6 +51,7 @@ from .error import Error
 from .identity import Identity
 from .list_databases_response_200 import ListDatabasesResponse200
 from .list_downloads_response_200 import ListDownloadsResponse200
+from .location import Location
 from .lookup_error import LookupError_
 from .lookup_response import LookupResponse
 from .oauth_authorize_code_challenge_method import OauthAuthorizeCodeChallengeMethod
@@ -76,6 +78,7 @@ __all__ = (
     "AccountUser",
     "ApikeyDetail",
     "ApikeyList",
+    "Asn",
     "BatchLookupError",
     "BatchLookupRequest",
     "BatchLookupResponse",
@@ -114,6 +117,7 @@ __all__ = (
     "Identity",
     "ListDatabasesResponse200",
     "ListDownloadsResponse200",
+    "Location",
     "LookupError_",
     "LookupResponse",
     "OauthAuthorizeCodeChallengeMethod",

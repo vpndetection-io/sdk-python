@@ -83,8 +83,8 @@ def sync_detailed(
     """Lookup
 
      Answers what is known about a single IPv4 or IPv6 address. Which fields
-    come back is decided by the plan behind the presented key; with no key
-    the answer is `ip` and `is_vpn`.
+    come back is decided by the presented key; with no key the answer is
+    `ip` and `is_vpn`.
 
     Args:
         ip (str):
@@ -116,8 +116,8 @@ def sync(
     """Lookup
 
      Answers what is known about a single IPv4 or IPv6 address. Which fields
-    come back is decided by the plan behind the presented key; with no key
-    the answer is `ip` and `is_vpn`.
+    come back is decided by the presented key; with no key the answer is
+    `ip` and `is_vpn`.
 
     Args:
         ip (str):
@@ -144,8 +144,8 @@ async def asyncio_detailed(
     """Lookup
 
      Answers what is known about a single IPv4 or IPv6 address. Which fields
-    come back is decided by the plan behind the presented key; with no key
-    the answer is `ip` and `is_vpn`.
+    come back is decided by the presented key; with no key the answer is
+    `ip` and `is_vpn`.
 
     Args:
         ip (str):
@@ -175,8 +175,8 @@ async def asyncio(
     """Lookup
 
      Answers what is known about a single IPv4 or IPv6 address. Which fields
-    come back is decided by the plan behind the presented key; with no key
-    the answer is `ip` and `is_vpn`.
+    come back is decided by the presented key; with no key the answer is
+    `ip` and `is_vpn`.
 
     Args:
         ip (str):

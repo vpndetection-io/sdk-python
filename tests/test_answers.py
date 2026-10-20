@@ -32,6 +32,7 @@ DATABASE: dict[str, Any] = {
     "notice_due_at": None,
     "in_term": False,
     "standing": "unlicensed",
+    "open": False,
     "versions": [],
 }
 
@@ -40,6 +41,7 @@ DOWNLOAD: dict[str, Any] = {
     "format": "mmdb",
     "outcome": "ok",
     "sample": False,
+    "open": False,
     "bytes": None,
     "http_status": None,
     "apikey_id": None,

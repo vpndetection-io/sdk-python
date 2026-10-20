@@ -16,24 +16,16 @@ T = TypeVar("T", bound="VpnDetail")
 class VpnDetail:
     """What is known about the VPN attribution. Every key is present when the
     object is populated, empty values included; the object is `{}` when
-    `is_vpn` is false. `confidence` and `method` are max only, so on a lower
-    plan they are absent from a populated object rather than empty.
+    `is_vpn` is false.
 
         Attributes:
             provider (str | Unset): The VPN provider, or an empty string for an unattributed range. Example: mullvad.
             last_seen (datetime.date | Unset): The most recent date this address was observed as VPN infrastructure.
                 Example: 2026-09-02.
-            confidence (str | Unset): How strongly the attribution is supported. Max only. Example: high.
-            method (str | Unset): The class of evidence the attribution rests on, one of four values.
-                Max only.
-
-                `scan` - we spoke the VPN protocol to the address ourselves and got a
-                valid server response. `scrape` - the operator published the address
-                through its own API, client or configuration. `registry` - public
-                registration or naming records attribute it to the operator.
-                `infer` - the address was extrapolated from confirmed neighbors in
-                the same block.
-                 Example: scan.
+            confidence (str | Unset): How strongly the attribution is supported. Example: high.
+            method (str | Unset): Never returned since 2026-10-20: no plan is answered with the class of
+                evidence an attribution rests on. Declared so that a client typed
+                against it keeps compiling; read `confidence` instead.
     """
 
     provider: str | Unset = UNSET

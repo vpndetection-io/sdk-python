@@ -9,7 +9,9 @@ from attrs import field as _attrs_field
 from ..types import UNSET, Unset
 
 if TYPE_CHECKING:
+    from ..models.asn import Asn
     from ..models.class_detail import ClassDetail
+    from ..models.location import Location
     from ..models.proxy_detail import ProxyDetail
     from ..models.pubproxy_detail import PubproxyDetail
     from ..models.vpn_detail import VpnDetail
@@ -30,20 +32,19 @@ class LookupResponse:
             is_vpn (bool): Whether the address is VPN infrastructure. Keys off presence in the
                 VPN dataset, so an unattributed range with no provider is still
                 `true`.
-            is_hosting (bool | Unset): Whether the address belongs to a hosting or cloud provider. Starter and above.
+            is_hosting (bool | Unset): Whether the address belongs to a hosting or cloud provider. Paid plans.
             is_relay (bool | Unset): Whether the address is privacy relay or enterprise web gateway egress, such as iCloud
-                Private Relay or Zscaler. Starter and above.
-            is_tor (bool | Unset): Whether the address is a Tor node. Starter and above.
-            is_cdn (bool | Unset): Whether the address belongs to a CDN. Starter and above.
-            is_resproxy (bool | Unset): Whether the address was seen in a residential proxy pool. Scale and above.
-            is_dcproxy (bool | Unset): Whether the address was seen in a datacenter proxy pool. Scale and above.
-            is_mobproxy (bool | Unset): Whether the address was seen in a mobile proxy pool. Scale and above.
+                Private Relay or Zscaler. Free and paid plans.
+            is_tor (bool | Unset): Whether the address is a Tor node. Free and paid plans.
+            is_cdn (bool | Unset): Whether the address belongs to a CDN. Paid plans.
+            is_resproxy (bool | Unset): Whether the address was seen in a residential proxy pool. Paid plans.
+            is_dcproxy (bool | Unset): Whether the address was seen in a datacenter proxy pool. Paid plans.
+            is_mobproxy (bool | Unset): Whether the address was seen in a mobile proxy pool. Paid plans.
             is_pubproxy (bool | Unset): Whether a public proxy, one anyone can connect through, listens on the address or
-                sends its traffic out from it. Scale and above.
+                sends its traffic out from it. Paid plans.
             vpn (VpnDetail | Unset): What is known about the VPN attribution. Every key is present when the
                 object is populated, empty values included; the object is `{}` when
-                `is_vpn` is false. `confidence` and `method` are max only, so on a lower
-                plan they are absent from a populated object rather than empty.
+                `is_vpn` is false.
             hosting (ClassDetail | Unset): The shared detail shape for the hosting, relay, tor and cdn datasets.
                 Every key is present when the object is populated; the object is `{}`
                 when its flag is false.
@@ -70,6 +71,13 @@ class LookupResponse:
                 end of a proxy, or both: where it listens, and where its traffic
                 leaves from. Every key is present when the object is populated; the
                 object is `{}` when `is_pubproxy` is false.
+            location (Location | Unset): Where the address is, to the country: the fields of our IP Country
+                database. Free and paid plans. Each field is present whenever the
+                object is, so an address in no country, or a private one, answers
+                empty strings.
+            asn (Asn | Unset): The autonomous system that announces the address. Free and paid plans.
+                Each field is present whenever the object is: `asn` is 0 and the rest
+                empty where no announcement covers the address.
     """
 
     ip: str
@@ -91,6 +99,8 @@ class LookupResponse:
     dcproxy: ProxyDetail | Unset = UNSET
     mobproxy: ProxyDetail | Unset = UNSET
     pubproxy: PubproxyDetail | Unset = UNSET
+    location: Location | Unset = UNSET
+    asn: Asn | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -150,6 +160,14 @@ class LookupResponse:
         if not isinstance(self.pubproxy, Unset):
             pubproxy = self.pubproxy.to_dict()
 
+        location: dict[str, Any] | Unset = UNSET
+        if not isinstance(self.location, Unset):
+            location = self.location.to_dict()
+
+        asn: dict[str, Any] | Unset = UNSET
+        if not isinstance(self.asn, Unset):
+            asn = self.asn.to_dict()
+
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update(
@@ -192,12 +210,18 @@ class LookupResponse:
             field_dict["mobproxy"] = mobproxy
         if pubproxy is not UNSET:
             field_dict["pubproxy"] = pubproxy
+        if location is not UNSET:
+            field_dict["location"] = location
+        if asn is not UNSET:
+            field_dict["asn"] = asn
 
         return field_dict
 
     @classmethod
     def from_dict(cls, src_dict: Mapping[str, Any]) -> Self:
+        from ..models.asn import Asn
         from ..models.class_detail import ClassDetail
+        from ..models.location import Location
         from ..models.proxy_detail import ProxyDetail
         from ..models.pubproxy_detail import PubproxyDetail
         from ..models.vpn_detail import VpnDetail
@@ -286,6 +310,20 @@ class LookupResponse:
         else:
             pubproxy = PubproxyDetail.from_dict(_pubproxy)
 
+        _location = d.pop("location", UNSET)
+        location: Location | Unset
+        if isinstance(_location, Unset):
+            location = UNSET
+        else:
+            location = Location.from_dict(_location)
+
+        _asn = d.pop("asn", UNSET)
+        asn: Asn | Unset
+        if isinstance(_asn, Unset):
+            asn = UNSET
+        else:
+            asn = Asn.from_dict(_asn)
+
         lookup_response = cls(
             ip=ip,
             is_vpn=is_vpn,
@@ -306,6 +344,8 @@ class LookupResponse:
             dcproxy=dcproxy,
             mobproxy=mobproxy,
             pubproxy=pubproxy,
+            location=location,
+            asn=asn,
         )
 
         lookup_response.additional_properties = d

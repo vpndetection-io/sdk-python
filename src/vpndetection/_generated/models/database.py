@@ -45,6 +45,11 @@ class Database:
             standing (Standing): Where your license for a database family stands today. `licensed` is a
                 live grant, `expired` one whose term has ended, and `unlicensed` a
                 database published but never bought.
+            open_ (bool): An Open database: free under CC BY-SA 4.0 (credit VPNDetection,
+                https://vpndetection.io, and share what you build from it under the
+                same license). Every organization holds a `standard` license to it
+                from the start, which `standing` and `license_type` report like any
+                other.
             versions (list[DatabaseVersion]): Every published version of this family. The `id` here is what the
                 download and checksum endpoints take.
     """
@@ -64,6 +69,7 @@ class Database:
     notice_due_at: datetime.datetime | None
     in_term: bool
     standing: Standing
+    open_: bool
     versions: list[DatabaseVersion]
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -112,6 +118,8 @@ class Database:
 
         standing = self.standing.value
 
+        open_ = self.open_
+
         versions = []
         for versions_item_data in self.versions:
             versions_item = versions_item_data.to_dict()
@@ -131,6 +139,7 @@ class Database:
                 "notice_due_at": notice_due_at,
                 "in_term": in_term,
                 "standing": standing,
+                "open": open_,
                 "versions": versions,
             }
         )
@@ -256,6 +265,8 @@ class Database:
 
         standing = Standing(d.pop("standing"))
 
+        open_ = d.pop("open")
+
         versions = []
         _versions = d.pop("versions")
         for versions_item_data in _versions:
@@ -274,6 +285,7 @@ class Database:
             notice_due_at=notice_due_at,
             in_term=in_term,
             standing=standing,
+            open_=open_,
             versions=versions,
         )
 
