@@ -20,9 +20,9 @@ class Rung:
     """One plan tier, and how a run reaches it.
 
     `widens` is what the rung promises against whichever observable rung sits below it:
-    the first paid tier serves strictly more than a free key; every paid plan answers the
-    same fields, so a higher paid tier only keeps what the one under it serves, and a free
-    key keeps what no key does.
+    a free key serves strictly more than no key, and the first paid tier strictly more
+    than a free key; every paid plan answers the same fields, so a higher paid tier only
+    keeps what the one under it serves.
 
     Field COUNTS are deliberately absent. Pinning "starter answers seven fields" turns a
     pricing change into a red SDK build; the relation between the tiers is what the
@@ -48,7 +48,7 @@ class Rung:
 # Ascending, one rung per plan tier.
 RUNGS = [
     Rung("unauth", None, widens=False),
-    Rung("free", "VPNDETECTION_STAGING_KEY_FREE", widens=False),
+    Rung("free", "VPNDETECTION_STAGING_KEY_FREE", widens=True),
     Rung("starter", "VPNDETECTION_STAGING_KEY_STARTER", widens=True),
     Rung("scale", "VPNDETECTION_STAGING_KEY_SCALE", widens=False),
     Rung("max", "VPNDETECTION_STAGING_KEY_MAX", widens=False),
