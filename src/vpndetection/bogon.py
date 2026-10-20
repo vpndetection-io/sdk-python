@@ -5,7 +5,7 @@ from __future__ import annotations
 import ipaddress
 
 from ._bogons import BOGON_V4, BOGON_V6
-from .models import ClassDetail, ProxyDetail, PubproxyDetail, Result, VpnDetail
+from .models import Asn, ClassDetail, Location, ProxyDetail, PubproxyDetail, Result, VpnDetail
 
 __all__ = ["bogon_result", "is_bogon"]
 
@@ -48,7 +48,8 @@ def unmapped(ip: str) -> str:
 
 def bogon_result(ip: str) -> Result:
     """The answer a bogon gets, in the full shape the API serves at its widest plan:
-    every flag present and false, every detail object present and empty.
+    every flag present and false, every detail object present and empty, and
+    `location` and `asn` with every field empty, as the API answers a bogon.
 
     `is_bogon` is set so a caller can always tell a locally computed answer from a
     served one. Note this is deliberately the WIDEST shape regardless of your plan, so
@@ -75,6 +76,8 @@ def bogon_result(ip: str) -> Result:
         dcproxy=ProxyDetail(),
         mobproxy=ProxyDetail(),
         pubproxy=PubproxyDetail(),
+        location=Location(),
+        asn=Asn(),
         raw={},
     )
 

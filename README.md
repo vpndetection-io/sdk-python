@@ -17,7 +17,7 @@ Requires Python 3.11 or newer. Type hints are included, and the package ships `p
 
 ## Usage
 
-**No API key needed to start.** The free tier answers `ip` and `is_vpn`, and allows 1000 requests per day per source address.
+**No API key needed to start.** Without a key, a lookup answers `ip` and `is_vpn`, up to 1000 a day per source address.
 
 ```python
 from vpndetection import VPNDetection
@@ -37,7 +37,7 @@ with VPNDetection() as client:
 
 ### With an API key
 
-An API key raises your quota, and raises your features on a paid plan. Create one in the [console](https://app.vpndetection.io), then pass it in:
+A free key adds Tor and relay detection, where the address is and the AS that announces it. Every paid plan answers every field, the same on each, and the plans differ only in how many lookups they include. Create a key in the [console](https://app.vpndetection.io), then pass it in:
 
 ```python
 import os
@@ -45,10 +45,11 @@ import os
 client = VPNDetection(os.environ["VPNDETECTION_API_KEY"])
 
 result = client.lookup("45.83.91.1")
-print(result.is_vpn)          # True
-print(result.vpn.provider)    # 'nordvpn'
-print(result.is_hosting)      # True
-print(result.hosting.provider)
+print(result.is_vpn)              # True
+print(result.location.country)    # the ISO 3166 country code
+print(result.asn.name)            # who runs the announcing network
+print(result.vpn.provider)        # 'nordvpn', on a paid plan
+print(result.is_hosting)          # True, on a paid plan
 ```
 
 ### Async
@@ -253,7 +254,7 @@ Check that `state` came back as you sent it before you exchange `code`, which wo
 
 ### Fields your plan does not include
 
-Only `ip` and `is_vpn` come back on every plan. The rest are `None` when your plan does not include them, which means "not in your plan" rather than "checked, and no".
+Without a key only `ip` and `is_vpn` come back, and a free key adds Tor, relay, `location` and `asn`. The rest are `None` when your key does not include them, which means "not in your plan" rather than "checked, and no".
 
 ```python
 result.flagged("is_hosting")   # False rather than None on a plan without it

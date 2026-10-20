@@ -61,9 +61,9 @@ one of them."""
 class VpnDetail:
     """What is known about the VPN attribution.
 
-    Every field is populated when the object itself is, empty values included;
-    `confidence` and `method` are max only, so on a lower plan they are `None` on an
-    otherwise populated object.
+    Every field is populated when the object itself is, empty values included.
+    `method` is deprecated: no plan is answered with it since 2026-10-20, so it is
+    `None`; read `confidence` instead. It stays until the next major.
     """
 
     provider: str | None = None
@@ -117,6 +117,36 @@ class PubproxyDetail:
 
 
 @dataclass(frozen=True, slots=True)
+class Location:
+    """Where the address is, on every keyed answer.
+
+    Every field is set whenever the object is, an empty string where it is not known.
+    """
+
+    continent: str = ""
+    continent_name: str = ""
+    country: str = ""
+    country_name: str = ""
+    timezone: str = ""
+    currency_code: str = ""
+    currency_name: str = ""
+    currency_symbol: str = ""
+    flag_emoji: str = ""
+    flag_unicode: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class Asn:
+    """The AS announcing the address, on every keyed answer: `asn` is 0 where none does."""
+
+    asn: int = 0
+    name: str = ""
+    domain: str = ""
+    type: str = ""
+    prefix: str = ""
+
+
+@dataclass(frozen=True, slots=True)
 class Result:
     """What a lookup answers.
 
@@ -153,6 +183,9 @@ class Result:
     dcproxy: ProxyDetail | None = None
     mobproxy: ProxyDetail | None = None
     pubproxy: PubproxyDetail | None = None
+
+    location: Location | None = None
+    asn: Asn | None = None
 
     raw: dict[str, Any] = field(default_factory=dict)
 
@@ -207,6 +240,8 @@ def to_result(body: dict[str, Any]) -> Result:
         dcproxy=_proxy(parsed.dcproxy),
         mobproxy=_proxy(parsed.mobproxy),
         pubproxy=_pubproxy(parsed.pubproxy),
+        location=_location(parsed.location),
+        asn=_asn(parsed.asn),
         raw=body,
     )
 
@@ -240,6 +275,29 @@ def _vpn(value: Any) -> VpnDetail | None:
         confidence=_opt(value.confidence),
         method=_opt(value.method),
     )
+
+
+def _location(value: Any) -> Location | None:
+    if isinstance(value, Unset):
+        return None
+    return Location(
+        continent=value.continent,
+        continent_name=value.continent_name,
+        country=value.country,
+        country_name=value.country_name,
+        timezone=value.timezone,
+        currency_code=value.currency_code,
+        currency_name=value.currency_name,
+        currency_symbol=value.currency_symbol,
+        flag_emoji=value.flag_emoji,
+        flag_unicode=value.flag_unicode,
+    )
+
+
+def _asn(value: Any) -> Asn | None:
+    if isinstance(value, Unset):
+        return None
+    return Asn(asn=value.asn, name=value.name, domain=value.domain, type=value.type_, prefix=value.prefix)
 
 
 def _class(value: Any) -> ClassDetail | None:

@@ -14,7 +14,7 @@ from helpers import TESTDATA, ClientFactory, Stub, as_wire
 
 from vpndetection import DEFAULT_BASE_URL, Result, VPNDetectionError, is_bogon
 
-DETAIL_OBJECTS = ("vpn", "hosting", "dcproxy", "pubproxy")
+DETAIL_OBJECTS = ("vpn", "hosting", "dcproxy", "pubproxy", "location", "asn")
 
 
 def test_is_bogon_matches_the_canonical_ranges() -> None:
@@ -66,6 +66,9 @@ def test_a_bogon_is_answered_locally_in_the_full_max_shape(make_client: ClientFa
     for name in TESTDATA["bogonResponse"]["emptyObjects"]:
         detail = getattr(result, name)
         assert detail is not None and as_wire(detail) == {}, f"{name} must be present and empty"
+    for name in ("location", "asn"):
+        expected = TESTDATA["bogonResponse"][name]
+        assert as_wire(getattr(result, name)) == expected, f"{name} must carry every key, empty"
     assert stub.calls == [], "a bogon must not reach the network"
 
 
