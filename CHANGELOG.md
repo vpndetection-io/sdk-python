@@ -2,6 +2,13 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.11.0 - 2026-10-20
+
+### Features
+
+- Add location and asn to lookup results, a bogon's included ([`7c3c51e`](https://github.com/vpndetection-io/sdk-python/commit/7c3c51e57174171193d76825f3d6e9cbfe5a69a3))
+- Read open on databases and downloads, and mark vpn.method deprecated ([`7253d88`](https://github.com/vpndetection-io/sdk-python/commit/7253d88e7b15c3ff719d88305a4824c31662631e))
+
 ## 5.10.0 - 2026-10-19
 
 ### Features
