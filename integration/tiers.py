@@ -19,9 +19,10 @@ from dataclasses import dataclass
 class Rung:
     """One plan tier, and how a run reaches it.
 
-    `widens` is what the rung promises against whichever observable rung sits below it: a
-    paid tier serves strictly more than the tier under it, while a free key and no key at
-    all are the same entitlement reached two ways.
+    `widens` is what the rung promises against whichever observable rung sits below it:
+    the first paid tier serves strictly more than a free key; every paid plan answers the
+    same fields, so a higher paid tier only keeps what the one under it serves, and a free
+    key keeps what no key does.
 
     Field COUNTS are deliberately absent. Pinning "starter answers seven fields" turns a
     pricing change into a red SDK build; the relation between the tiers is what the
@@ -49,8 +50,8 @@ RUNGS = [
     Rung("unauth", None, widens=False),
     Rung("free", "VPNDETECTION_STAGING_KEY_FREE", widens=False),
     Rung("starter", "VPNDETECTION_STAGING_KEY_STARTER", widens=True),
-    Rung("scale", "VPNDETECTION_STAGING_KEY_SCALE", widens=True),
-    Rung("max", "VPNDETECTION_STAGING_KEY_MAX", widens=True),
+    Rung("scale", "VPNDETECTION_STAGING_KEY_SCALE", widens=False),
+    Rung("max", "VPNDETECTION_STAGING_KEY_MAX", widens=False),
 ]
 
 UNAUTH = RUNGS[0]
