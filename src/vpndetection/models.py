@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 import datetime
+import enum
+import sys
+import types
+import typing
 from dataclasses import dataclass, field
 from typing import Any, Literal, TypeVar, get_args
 
+from ._generated import models as _generated_models
 from ._generated.models.database_license_type_type_1 import DatabaseLicenseTypeType1
 from ._generated.models.lookup_response import LookupResponse
 from ._generated.models.standing import Standing
@@ -208,6 +213,7 @@ def to_result(body: dict[str, Any]) -> Result:
     a plan that includes a field and answers `false` would lose it.
     """
     parsed = LookupResponse.from_dict(body)
+    check_answer(parsed)
     # The generated model takes any value it finds, so `"ip": null` or `"is_vpn": "yes"`
     # came back as the answer, from a lookup and a batch entry alike (5.7.1, measured
     # 2026-10-15). Each is the server's failure, raised for the caller to report as one.
@@ -244,6 +250,89 @@ def to_result(body: dict[str, Any]) -> Result:
         asn=_asn(parsed.asn),
         raw=body,
     )
+
+
+def check_answer(value: Any) -> None:
+    """Raises TypeError where a generated model holds a member of another type than the
+    spec gives it, or None in one the spec requires and never sends as null, at any depth.
+
+    `from_dict` takes a scalar as it comes and reads a required member by subscript, so
+    `"version": "3"`, an `entries` or `bytes` of `"760"`, `"open": "yes"` and a lookup's
+    `dcproxy.hits` of `"3"` came back as the answer, and so did a required member sent as
+    null (5.11.0 and 5.7.1, measured 2026-10-22 and -15). A bool never stands for a
+    number, while an int stands for a float, which JSON does not tell apart.
+    """
+    if isinstance(value, list | tuple):
+        for item in value:
+            check_answer(item)
+        return
+    if isinstance(value, dict):
+        for item in value.values():
+            check_answer(item)
+        return
+    fields = getattr(type(value), "__attrs_attrs__", None)
+    if fields is None:
+        return
+    hints = _hints(type(value))
+    for member_field in fields:
+        member = getattr(value, member_field.name)
+        hint = hints.get(member_field.name, Any)
+        if member is None:
+            # An optional member sent as null reads as absent.
+            if not _conforms(None, hint) and Unset not in typing.get_args(hint):
+                raise TypeError(f"{type(value).__name__}.{member_field.name} is null")
+            continue
+        if not _conforms(member, hint):
+            raise TypeError(f"{type(value).__name__}.{member_field.name} is not {hint}: {member!r}")
+        check_answer(member)
+
+
+_HINTS: dict[type, dict[str, Any]] = {}
+
+
+def _hints(model: type) -> dict[str, Any]:
+    """A generated model's member types, its string annotations resolved: each module
+    imports the models it names only for type checking, so they come from the package."""
+    hints = _HINTS.get(model)
+    if hints is None:
+        namespace = dict(vars(_generated_models))
+        namespace.update(vars(sys.modules[model.__module__]))
+        hints = _HINTS[model] = typing.get_type_hints(model, globalns=namespace)
+    return hints
+
+
+def _conforms(value: Any, hint: Any) -> bool:
+    if hint is Any:
+        return True
+    origin = typing.get_origin(hint)
+    if origin is typing.Union or origin is types.UnionType:
+        return any(_conforms(value, arm) for arm in typing.get_args(hint))
+    if hint is type(None):
+        return value is None
+    if origin in (list, tuple):
+        arms = typing.get_args(hint)
+        return isinstance(value, list | tuple) and (
+            not arms or all(_conforms(item, arms[0]) for item in value)
+        )
+    if origin is dict:
+        arms = typing.get_args(hint)
+        return isinstance(value, dict) and (
+            len(arms) < 2 or all(_conforms(item, arms[1]) for item in value.values())
+        )
+    if hint is bool:
+        return isinstance(value, bool)
+    if hint is int:
+        return isinstance(value, int) and not isinstance(value, bool)
+    if hint is float:
+        return isinstance(value, int | float) and not isinstance(value, bool)
+    if isinstance(hint, type) and (
+        hint in (str, datetime.date, datetime.datetime)
+        or issubclass(hint, enum.Enum)
+        or hasattr(hint, "__attrs_attrs__")
+        or hint is Unset
+    ):
+        return isinstance(value, hint)
+    return True
 
 
 # The flags a lookup answers, `is_vpn` the one every plan serves.

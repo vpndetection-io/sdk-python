@@ -9,6 +9,7 @@ an HTML 429 into a retried `server_error`, sent three times (measured 2026-10-15
 
 from __future__ import annotations
 
+import functools
 import json
 from collections.abc import Callable
 from typing import Any
@@ -49,6 +50,53 @@ DOWNLOAD: dict[str, Any] = {
     "user_agent": None,
     "created": "2026-10-15T06:00:00Z",
 }
+
+VERSION: dict[str, Any] = {
+    "id": "vpn_ip_v1",
+    "version": 1,
+    "summary": "The first release.",
+    "formats": [{"format": "mmdb", "bytes": 760}],
+}
+METADATA: dict[str, Any] = {
+    "id": "vpn_ip_v1",
+    "updated": "2026-10-20",
+    "entries": 5,
+    "schema": {"csv": [{"name": "ip", "type": "string"}]},
+    "size": {"mmdb": 760},
+    "update_freq": "daily",
+}
+ENTITLEMENT: dict[str, Any] = {
+    "org_id": "85bb51e4-2eb6-4a31-8e4d-02ba8b98fe61",
+    "apikey": {"id": "0ab424cc-7619-4dad-b027-afacdc2cedb0", "expires": None, "allowed_cidrs": []},
+    "plan": {"key": "max", "tier": "max"},
+    "usage": {
+        "requests": 580,
+        "quota": 5000000,
+        "hard_limit": None,
+        "window_start": "2026-09-04T07:00:00Z",
+        "window_end": "2026-10-04T07:00:00Z",
+    },
+}
+DETAILS: dict[str, dict[str, Any]] = {
+    "vpn": {"provider": "nordvpn", "confidence": "high", "last_seen": "2026-10-01"},
+    "dcproxy": {"provider": "p", "hits": 3, "hits_days_pct": 50, "providers_num": 1},
+    "pubproxy": {
+        "entry": True,
+        "exit": True,
+        "protocols": ["http"],
+        "num_ports": 2,
+        "num_proxies": 3,
+    },
+}
+
+
+def _database(version: dict[str, Any]) -> dict[str, Any]:
+    return {"databases": [{**DATABASE, "versions": [{**VERSION, **version}]}]}
+
+
+def _detailed(detail: str, **members: Any) -> dict[str, Any]:
+    return {**LOOKUP, f"is_{detail}": True, detail: {**DETAILS[detail], **members}}
+
 
 CALLS: dict[str, tuple[str, Callable[[Any], Any]]] = {
     "lookup": ("/8.8.8.8", lambda c: c.lookup("8.8.8.8")),
@@ -161,6 +209,50 @@ MALFORMED = {
         {"downloads": [{**DOWNLOAD, "dataset_id": None}]},
     ),
     "checksums null": ("checksums", {"id": "vpn_ip_v1", "format": "mmdb", "checksums": None}),
+    # Through 5.11.0 a scalar of another type was handed back as it came.
+    "a version's version a numeric string": ("list", _database(version={"version": "3"})),
+    "a version's version not a number": ("list", _database(version={"version": "x"})),
+    "a format's bytes a numeric string": (
+        "list",
+        _database(version={"formats": [{"format": "mmdb", "bytes": "760"}]}),
+    ),
+    "a database's open a string": ("list", {"databases": [{**DATABASE, "open": "yes"}]}),
+    "a database's name a number": ("list", {"databases": [{**DATABASE, "name": 1}]}),
+    "databases an empty object": ("list", {"databases": {}}),
+    "metadata's entries a numeric string": ("metadata", {**METADATA, "entries": "5"}),
+    "a metadata size a numeric string": ("metadata", {**METADATA, "size": {"mmdb": "760"}}),
+    "a metadata size a list": ("metadata", {**METADATA, "size": {"mmdb": [760]}}),
+    "a checksum a number": (
+        "checksums",
+        {"id": "vpn_ip_v1", "format": "mmdb", "checksums": {"mmdb": 1}},
+    ),
+    "a download's bytes a numeric string": (
+        "downloads",
+        {"downloads": [{**DOWNLOAD, "bytes": "760"}]},
+    ),
+    "a download's sample a string": ("downloads", {"downloads": [{**DOWNLOAD, "sample": "no"}]}),
+    "a download's http_status a numeric string": (
+        "downloads",
+        {"downloads": [{**DOWNLOAD, "http_status": "302"}]},
+    ),
+    "downloads an empty object": ("downloads", {"downloads": {}}),
+    "a lookup's dcproxy hits a numeric string": ("lookup", _detailed("dcproxy", hits="3")),
+    "a lookup's pubproxy num_ports a numeric string": (
+        "lookup",
+        _detailed("pubproxy", num_ports="2"),
+    ),
+    "a lookup's pubproxy entry a string": ("lookup", _detailed("pubproxy", entry="yes")),
+    "a lookup's pubproxy protocols of numbers": ("lookup", _detailed("pubproxy", protocols=[1])),
+    "a lookup's vpn provider a list": ("lookup", _detailed("vpn", provider=["x"])),
+    "my_ip's dcproxy hits a numeric string": ("my_ip", _detailed("dcproxy", hits="3")),
+    "the entitlement's quota a numeric string": (
+        "my_entitlement",
+        {**ENTITLEMENT, "usage": {**ENTITLEMENT["usage"], "quota": "5000000"}},
+    ),
+    "the entitlement's tier a number": (
+        "my_entitlement",
+        {**ENTITLEMENT, "plan": {"key": "max", "tier": 1}},
+    ),
 }
 
 
@@ -184,13 +276,29 @@ def test_the_fixtures_above_read_as_answers(make_client: ClientFactory) -> None:
     # Each malformed case is one member away from these, so they must read as they are.
     for name, body in [
         ("list", {"databases": [DATABASE]}),
+        ("list", _database(version={})),
         ("downloads", {"downloads": [DOWNLOAD]}),
+        ("downloads", {"downloads": [{**DOWNLOAD, "bytes": 760, "http_status": 302}]}),
     ]:
         path, call = CALLS[name]
         origin = Raw(200, json.dumps(body))
         client = make_client(transport=origin.transport, cache=False, retries=2)
 
         assert len(call(client)) == 1
+        assert origin.paths == [path]
+    for name, body in [
+        ("metadata", METADATA),
+        ("my_entitlement", ENTITLEMENT),
+        ("lookup", _detailed("vpn")),
+        ("lookup", _detailed("dcproxy")),
+        ("lookup", _detailed("pubproxy")),
+        ("my_ip", _detailed("dcproxy")),
+    ]:
+        path, call = CALLS[name]
+        origin = Raw(200, json.dumps(body))
+        client = make_client(transport=origin.transport, cache=False, retries=2)
+
+        assert not isinstance(outcome_of(functools.partial(call, client)), VPNDetectionError), name
         assert origin.paths == [path]
 
 

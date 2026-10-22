@@ -27,7 +27,7 @@ from ._generated.client import AuthenticatedClient, Client
 from ._generated.models.database import Database
 from ._generated.models.download import Download
 from .errors import VPNDetectionError, error_from_response, oauth_error_from
-from .models import Pkce, Result, to_result
+from .models import Pkce, Result, check_answer, to_result
 
 DEFAULT_BASE_URL = "https://api.vpndetection.io"
 DEFAULT_CONCURRENCY = 8
@@ -248,8 +248,9 @@ def decoded(
     object missing a required key a `KeyError`, and `null` or a list where an object
     belongs a `TypeError`. On a 2xx each is the server sending an answer this client cannot
     read, so each is the one error type here, a retried `server_error` carrying the status.
-    A member the API never sends as null is refused as null too, at any depth, where the
-    generated decoder hands it on (`check_required`).
+    A member of another type than the spec gives it is refused too, at any depth, and so is
+    a null one the API never sends, where the generated decoder hands either on
+    (`check_answer`).
 
     Any other status is left to `unwrap`, which classifies it by the status alone, whatever
     its body. Decoded too, a proxy's HTML page on a 401, an empty 403 or an HTML 429 was a
@@ -258,31 +259,10 @@ def decoded(
     """
     if 200 <= res.status_code < 300:
         try:
-            check_required(endpoint._build_response(client=client, response=res).parsed)
+            check_answer(endpoint._build_response(client=client, response=res).parsed)
         except (AttributeError, KeyError, TypeError, ValueError) as exc:
             raise malformed(exc, res.status_code) from exc
     return res
-
-
-def check_required(value: Any) -> None:
-    """Raises TypeError where a generated model holds None in a member the spec requires
-    and never sends as null, at any depth: `from_dict` reads a required member by
-    subscript, so one the body sent as null was handed on as None."""
-    if isinstance(value, list | tuple):
-        for item in value:
-            check_required(item)
-        return
-    fields = getattr(type(value), "__attrs_attrs__", None)
-    if fields is None:
-        return
-    for field in fields:
-        member = getattr(value, field.name)
-        kind = str(field.type)
-        if member is None and "None" not in kind and "Unset" not in kind:
-            raise TypeError(f"{type(value).__name__}.{field.name} is null")
-        check_required(member)
-    for member in getattr(value, "additional_properties", {}).values():
-        check_required(member)
 
 
 def malformed(exc: Exception, status: int) -> VPNDetectionError:
@@ -503,7 +483,7 @@ def parse_entry(body: Any, parse: Callable[[dict[str, Any]], T], status: int) ->
         raise VPNDetectionError("server_error", "the API answered with a non-object body", status)
     try:
         value = parse(body)
-        check_required(value)
+        check_answer(value)
     except (AttributeError, KeyError, TypeError, ValueError) as exc:
         raise malformed(exc, status) from exc
     return value
@@ -633,11 +613,19 @@ def redirect_location(res: httpx.Response) -> str:
 
 
 def databases_of(body: dict[str, Any]) -> list[Database]:
-    return [Database.from_dict(d) for d in body["databases"]]
+    return [Database.from_dict(d) for d in _listed(body, "databases")]
 
 
 def downloads_of(body: dict[str, Any]) -> list[Download]:
-    return [Download.from_dict(d) for d in body["downloads"]]
+    return [Download.from_dict(d) for d in _listed(body, "downloads")]
+
+
+def _listed(body: dict[str, Any], name: str) -> list[Any]:
+    """`body[name]`, a list: iterated, `{}` read as an empty catalog."""
+    items = body[name]
+    if not isinstance(items, list):
+        raise TypeError(f"the answer's {name} is not a list: {items!r}")
+    return items
 
 
 def checksums_of(body: dict[str, Any]) -> dict[str, str]:
