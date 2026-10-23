@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 import builtins
 import os
-from collections.abc import Awaitable, Callable, Iterable
+from collections.abc import Awaitable, Callable, Iterable, Sequence
 from types import TracebackType
 from typing import Any, Self, TypeVar
 
@@ -28,6 +28,7 @@ from ._core import (
     DEVICE_CODE_GRANT,
     OAUTH_DEVICE_AUTHORIZATION_PATH,
     OAUTH_METADATA_PATH,
+    OAUTH_REGISTER_PATH,
     OAUTH_REVOKE_PATH,
     OAUTH_TOKEN_PATH,
     POLL_DEADLINE_CAP,
@@ -57,6 +58,7 @@ from ._core import (
     part_file,
     pkce_challenge,
     redirect_location,
+    registration_body,
     request_async,
     retry_delay,
     storage_refusal,
@@ -80,12 +82,14 @@ from ._generated.models.entitlement import Entitlement
 from .bogon import bogon_result, is_bogon, unmapped
 from .errors import OauthError, OauthExpiredTokenError, VPNDetectionError
 from .models import (
+    ClientRegistration,
     DeviceAuthorization,
     Format,
     OauthMetadata,
     Pkce,
     Result,
     TokenResponse,
+    to_client_registration,
     to_device_authorization,
     to_oauth_metadata,
     to_result,
@@ -683,6 +687,22 @@ class AsyncOauthApi:
         """The `S256` challenge for a PKCE verifier: its SHA-256, as unpadded base64url."""
         return pkce_challenge(verifier)
 
+    async def register(
+        self,
+        redirect_uris: Sequence[str],
+        *,
+        client_name: str | None = None,
+        timeout: float | None = None,
+    ) -> ClientRegistration:
+        """Register a client for the authorization code flow; see `OauthApi.register`."""
+        body = registration_body(redirect_uris, client_name)
+
+        async def call() -> ClientRegistration:
+            res = await self._send("POST", OAUTH_REGISTER_PATH, None, timeout, body)
+            return to_client_registration(oauth_body(res), res.status_code)
+
+        return await self._owner._retrying(call, self._owner._retries)
+
     async def revoke(self, client_id: str, token: str, *, timeout: float | None = None) -> None:
         """End a token; revoking the refresh token signs the machine out."""
 
@@ -729,7 +749,12 @@ class AsyncOauthApi:
         return await self._owner._retrying(call, 0)
 
     async def _send(
-        self, method: str, path: str, form: dict[str, str] | None, timeout: float | None
+        self,
+        method: str,
+        path: str,
+        form: dict[str, str] | None,
+        timeout: float | None,
+        body: dict[str, Any] | None = None,
     ) -> httpx.Response:
         bound = self._owner._bound(timeout)
-        return await oauth_request_async(self._owner._client, method, path, form, bound)
+        return await oauth_request_async(self._owner._client, method, path, form, bound, body)

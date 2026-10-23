@@ -5,7 +5,7 @@ from __future__ import annotations
 import builtins
 import os
 import time
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Sequence
 from concurrent.futures import Future, ThreadPoolExecutor
 from types import TracebackType
 from typing import Any, Self, TypeVar
@@ -24,6 +24,7 @@ from ._core import (
     DEVICE_CODE_GRANT,
     OAUTH_DEVICE_AUTHORIZATION_PATH,
     OAUTH_METADATA_PATH,
+    OAUTH_REGISTER_PATH,
     OAUTH_REVOKE_PATH,
     OAUTH_TOKEN_PATH,
     POLL_DEADLINE_CAP,
@@ -53,6 +54,7 @@ from ._core import (
     part_file,
     pkce_challenge,
     redirect_location,
+    registration_body,
     request,
     retry_delay,
     storage_refusal,
@@ -76,12 +78,14 @@ from ._generated.models.entitlement import Entitlement
 from .bogon import bogon_result, is_bogon, unmapped
 from .errors import OauthError, OauthExpiredTokenError, VPNDetectionError
 from .models import (
+    ClientRegistration,
     DeviceAuthorization,
     Format,
     OauthMetadata,
     Pkce,
     Result,
     TokenResponse,
+    to_client_registration,
     to_device_authorization,
     to_oauth_metadata,
     to_result,
@@ -708,6 +712,31 @@ class OauthApi:
         """The `S256` challenge for a PKCE verifier: its SHA-256, as unpadded base64url."""
         return pkce_challenge(verifier)
 
+    def register(
+        self,
+        redirect_uris: Sequence[str],
+        *,
+        client_name: str | None = None,
+        timeout: float | None = None,
+    ) -> ClientRegistration:
+        """Register a client for the authorization code flow, for a program that cannot
+        serve a Client ID Metadata Document, and get its `client_id`.
+
+        Each redirect URI must be https on a public host name, or http on a loopback
+        address, which then matches on any port; the server refuses any other with the
+        `OauthError` `invalid_redirect_uri`. Nothing is kept until a person approves the
+        client, so registering again costs nothing, and this is retried like a lookup. No
+        URI at all, an empty one, or one with no UTF-8 raises `ValueError` before anything
+        is sent.
+        """
+        body = registration_body(redirect_uris, client_name)
+
+        def call() -> ClientRegistration:
+            res = self._send("POST", OAUTH_REGISTER_PATH, None, timeout, body)
+            return to_client_registration(oauth_body(res), res.status_code)
+
+        return self._owner._retrying(call, self._owner._retries)
+
     def revoke(self, client_id: str, token: str, *, timeout: float | None = None) -> None:
         """End a token. A refresh token ends the whole sign-in and every token it issued, so
         revoking it is how a program signs the machine out."""
@@ -762,6 +791,12 @@ class OauthApi:
         return self._owner._retrying(call, 0)
 
     def _send(
-        self, method: str, path: str, form: dict[str, str] | None, timeout: float | None
+        self,
+        method: str,
+        path: str,
+        form: dict[str, str] | None,
+        timeout: float | None,
+        body: dict[str, Any] | None = None,
     ) -> httpx.Response:
-        return oauth_request(self._owner._client, method, path, form, self._owner._bound(timeout))
+        bound = self._owner._bound(timeout)
+        return oauth_request(self._owner._client, method, path, form, bound, body)

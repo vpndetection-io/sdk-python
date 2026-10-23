@@ -496,6 +496,26 @@ class TokenResponse:
     apikey: str | None = field(default=None, repr=False)
 
 
+@dataclass(frozen=True, slots=True)
+class ClientRegistration:
+    """A registered client, public and with no secret: it proves each sign-in with PKCE.
+
+    `client_id` goes to `authorization_url` and `exchange_authorization_code`.
+    `client_id_issued_at` is Unix seconds, and `client_name` the name the person will see,
+    a placeholder when none was given or none can be shown. `token_endpoint_auth_method` is
+    always `none`, and `scope` the most this client may be granted.
+    """
+
+    client_id: str
+    client_id_issued_at: int
+    client_name: str
+    redirect_uris: tuple[str, ...]
+    token_endpoint_auth_method: str
+    grant_types: tuple[str, ...] | None = None
+    response_types: tuple[str, ...] | None = None
+    scope: str | None = None
+
+
 def to_oauth_metadata(body: Any, status: int) -> OauthMetadata:
     return OauthMetadata(**_members(body, _OAUTH_METADATA, status))
 
@@ -506,6 +526,10 @@ def to_device_authorization(body: Any, status: int) -> DeviceAuthorization:
 
 def to_token_response(body: Any, status: int) -> TokenResponse:
     return TokenResponse(**_members(body, _TOKEN_RESPONSE, status))
+
+
+def to_client_registration(body: Any, status: int) -> ClientRegistration:
+    return ClientRegistration(**_members(body, _CLIENT_REGISTRATION, status))
 
 
 # A member's type on the wire, and whether a 2xx without it is malformed.
@@ -545,6 +569,17 @@ _TOKEN_RESPONSE: dict[str, _Member] = {
     "scope": ("str", False),
     "apikey_id": ("str", False),
     "apikey": ("str", False),
+}
+
+_CLIENT_REGISTRATION: dict[str, _Member] = {
+    "client_id": ("str", True),
+    "client_id_issued_at": ("int", True),
+    "client_name": ("str", True),
+    "redirect_uris": ("strs", True),
+    "token_endpoint_auth_method": ("str", True),
+    "grant_types": ("strs", False),
+    "response_types": ("strs", False),
+    "scope": ("str", False),
 }
 
 _WIRE_NAMES = {"apikey_id": "mslm:apikey_id", "apikey": "mslm:apikey"}

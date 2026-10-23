@@ -8,6 +8,7 @@ hanging the suite.
 from __future__ import annotations
 
 import asyncio
+import json
 import re
 import time
 import urllib.parse
@@ -54,6 +55,11 @@ EVERY_REQUIRED_MEMBER = {
     "interval": 5,
     "access_token": "mo_at_x",
     "token_type": "Bearer",
+    "client_id": "dcr_x",
+    "client_id_issued_at": 1792304178,
+    "client_name": "Example CLI",
+    "redirect_uris": ["http://127.0.0.1/cb"],
+    "token_endpoint_auth_method": "none",
 }
 
 DEVICE = DeviceAuthorization(
@@ -83,7 +89,7 @@ def test_no_oauth_request_carries_the_api_key(make_client: ClientFactory) -> Non
     outcome = settle(lambda: _every_operation(client.oauth), bound)
 
     assert outcome is None, f"settled with {outcome!r}"
-    assert len(stub.requests) == 7
+    assert len(stub.requests) == 8
     url = client.oauth.authorization_url("vpndetection-cli", "http://127.0.0.1/cb", "c" * 43)
     assert key not in url, "the authorization URL carried the API key"
     for req in stub.requests:
@@ -462,6 +468,121 @@ def test_a_pkce_pair_is_fresh_and_its_challenge_is_the_s256_one(
     assert first.verifier not in repr(first)
 
 
+REGISTER: dict[str, Any] = CORPUS["register"]
+
+
+@pytest.mark.parametrize("case", REGISTER["bodies"]["cases"], ids=lambda case: case["name"])
+def test_register_posts_exactly_its_json_body(
+    make_client: ClientFactory, case: dict[str, Any]
+) -> None:
+    bound = LoopBound()
+    stub = OauthStub([{"status": 201, "body": EVERY_REQUIRED_MEMBER}], bound)
+    client = make_client(api_key=None, base_url=f"{BASE_URL}///", transport=stub.transport)
+    args = case["args"]
+
+    outcome = settle(
+        lambda: client.oauth.register(
+            args["redirectUris"], client_name=args.get("clientName"), timeout=5
+        ),
+        bound,
+    )
+
+    assert not isinstance(outcome, BaseException), f"settled with {outcome!r}"
+    [req] = stub.requests
+    _assert_endpoint(req, REGISTER["endpoint"])
+    assert str(req.url) == f"{BASE_URL}{REGISTER['endpoint']['path']}"
+    assert req.headers["content-type"].startswith(REGISTER["contentType"])
+    assert json.loads(req.content) == case["body"]
+
+
+@pytest.mark.parametrize(
+    "case",
+    REGISTER["refusals"]["cases"]
+    + [
+        {"name": "a lone surrogate", "args": {"redirectUris": ["http://127.0.0.1/cb\ud800"]}},
+        {
+            "name": "a name with a lone surrogate",
+            "args": {"redirectUris": ["http://127.0.0.1/cb"], "clientName": "\udc00"},
+        },
+        {"name": "a string, not a list", "args": {"redirectUris": "http://127.0.0.1/cb"}},
+    ],
+    ids=lambda case: case["name"],
+)
+def test_register_refuses_an_empty_uri_before_sending(
+    make_client: ClientFactory, case: dict[str, Any]
+) -> None:
+    bound = LoopBound()
+    stub = OauthStub([{"status": 201, "body": EVERY_REQUIRED_MEMBER}], bound)
+    client = make_client(base_url=BASE_URL, transport=stub.transport)
+    args = case["args"]
+
+    outcome = settle(
+        lambda: client.oauth.register(args["redirectUris"], client_name=args.get("clientName")),
+        bound,
+    )
+
+    assert isinstance(outcome, ValueError), f"settled with {outcome!r}"
+    assert stub.requests == []
+
+
+@pytest.mark.parametrize("case", REGISTER["responses"]["cases"], ids=lambda case: case["name"])
+def test_register_decodes_on_presence(make_client: ClientFactory, case: dict[str, Any]) -> None:
+    bound = LoopBound()
+    client = make_client(base_url=BASE_URL, transport=OauthStub([case], bound).transport)
+
+    got = settle(lambda: client.oauth.register(["http://127.0.0.1/cb"]), bound)
+
+    assert not isinstance(got, BaseException), f"settled with {got!r}"
+    for name, value in case["expect"]["present"].items():
+        member = getattr(got, name)
+        assert (list(member) if isinstance(member, tuple) else member) == value, name
+    for name in case["expect"]["absent"]:
+        assert getattr(got, name) is None, f"{name} should be absent"
+
+
+@pytest.mark.parametrize("case", REGISTER["unreadable"]["cases"], ids=lambda case: case["name"])
+def test_register_reads_an_unreadable_answer_as_a_server_error(
+    make_client: ClientFactory, case: dict[str, Any]
+) -> None:
+    bound = LoopBound()
+    stub = OauthStub([case], bound)
+    client = make_client(base_url=BASE_URL, transport=stub.transport, retries=0)
+
+    outcome = settle(lambda: client.oauth.register(["http://127.0.0.1/cb"]), bound)
+
+    want = {"type": "client", "kind": "server_error", "status": case["status"]}
+    _assert_outcome(outcome, want, case["name"])
+    assert len(stub.requests) == 1
+
+
+@pytest.mark.parametrize("case", REGISTER["errors"], ids=lambda case: case["name"])
+def test_register_refusals_are_classified(make_client: ClientFactory, case: dict[str, Any]) -> None:
+    bound = LoopBound()
+    client = make_client(base_url=BASE_URL, transport=OauthStub([case], bound).transport)
+
+    outcome = settle(lambda: client.oauth.register(["http://127.0.0.1/cb"]), bound)
+
+    _assert_outcome(outcome, case["expect"], case["name"])
+
+
+@pytest.mark.parametrize("case", REGISTER["retries"], ids=lambda case: case["name"])
+def test_register_is_retried_unless_refused(
+    make_client: ClientFactory, case: dict[str, Any]
+) -> None:
+    bound = LoopBound()
+    stub = OauthStub(case["responses"], bound)
+    client = make_client(base_url=BASE_URL, transport=stub.transport)
+
+    outcome = settle(lambda: client.oauth.register(case["args"]["redirectUris"]), bound)
+
+    expect = case["expect"]
+    assert len(stub.requests) == expect["requests"], "requests sent"
+    if expect["outcome"] == "ok":
+        assert not isinstance(outcome, BaseException), f"settled with {outcome!r}"
+    else:
+        _assert_outcome(outcome, {**expect, "type": expect["outcome"]}, case["name"])
+
+
 def _every_operation(oauth: OauthAdapter) -> None:
     oauth.metadata()
     oauth.device_authorization("vpndetection-cli", scope="account.read")
@@ -471,6 +592,7 @@ def _every_operation(oauth: OauthAdapter) -> None:
         "vpndetection-cli", "mo_ac_x", "v" * 43, "http://127.0.0.1/cb"
     )
     oauth.revoke("vpndetection-cli", "mo_rt_x")
+    oauth.register(["http://127.0.0.1/cb"], client_name="Example CLI")
     oauth.poll_device_token("vpndetection-cli", DEVICE)
 
 

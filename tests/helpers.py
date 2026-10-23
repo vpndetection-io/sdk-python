@@ -168,6 +168,9 @@ class OauthAdapter:
     def revoke(self, client_id: str, token: str, **kwargs: Any) -> Any:
         return self._call("revoke", client_id, token, **kwargs)
 
+    def register(self, redirect_uris: Any, **kwargs: Any) -> Any:
+        return self._call("register", redirect_uris, **kwargs)
+
     # These three make no request, so they are plain methods on both clients.
     def authorization_url(self, *args: Any, **kwargs: Any) -> Any:
         return self._client.oauth.authorization_url(*args, **kwargs)

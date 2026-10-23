@@ -14,7 +14,7 @@ import os
 import secrets
 import threading
 import time
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 from pathlib import Path
 from types import ModuleType
 from typing import IO, Any, TypeVar, cast
@@ -46,6 +46,7 @@ OAUTH_DEVICE_AUTHORIZATION_PATH = "/oauth/device_authorization"
 OAUTH_TOKEN_PATH = "/oauth/token"
 OAUTH_REVOKE_PATH = "/oauth/revoke"
 OAUTH_AUTHORIZE_PATH = "/oauth/authorize"
+OAUTH_REGISTER_PATH = "/oauth/register"
 DEVICE_CODE_GRANT = "urn:ietf:params:oauth:grant-type:device_code"
 
 # One chunk of a transfer, and therefore the ceiling on what a download of any size
@@ -329,10 +330,13 @@ def oauth_request(
     path: str,
     form: dict[str, str] | None,
     bound: float | None,
+    body: dict[str, Any] | None = None,
 ) -> httpx.Response:
-    """One attempt at an OAuth endpoint, carrying no credential, its failure raised."""
+    """One attempt at an OAuth endpoint, carrying no credential, its failure raised. `body`
+    goes as JSON, for `register`; every other one sends a form or nothing."""
     http = client.get_httpx_client()
-    return oauth_checked(exchange(http, _oauth_build(http, method, path, form, bound), bound))
+    req = _oauth_build(http, method, path, form, bound, body)
+    return oauth_checked(exchange(http, req, bound))
 
 
 async def oauth_request_async(
@@ -341,11 +345,37 @@ async def oauth_request_async(
     path: str,
     form: dict[str, str] | None,
     bound: float | None,
+    body: dict[str, Any] | None = None,
 ) -> httpx.Response:
     """`oauth_request`, awaited."""
     http = client.get_async_httpx_client()
-    req = _oauth_build(http, method, path, form, bound)
+    req = _oauth_build(http, method, path, form, bound, body)
     return oauth_checked(await exchange_async(http, req, bound))
+
+
+def registration_body(redirect_uris: Sequence[str], client_name: str | None) -> dict[str, Any]:
+    """`register`'s JSON body: the redirect URIs in the order given, then `client_name`
+    unless it is None or empty. No URI at all, an empty one, or one with no UTF-8 (a lone
+    surrogate) is refused before anything is sent."""
+    if isinstance(redirect_uris, str) or not redirect_uris:
+        raise ValueError(f"redirect_uris must list at least one URI, not {redirect_uris!r}")
+    uris = list(redirect_uris)
+    for i, uri in enumerate(uris):
+        _check_text(f"redirect_uris[{i}]", uri)
+    body: dict[str, Any] = {"redirect_uris": uris}
+    if client_name:
+        _check_text("client_name", client_name)
+        body["client_name"] = client_name
+    return body
+
+
+def _check_text(name: str, value: Any) -> None:
+    if not isinstance(value, str) or value == "":
+        raise ValueError(f"{name} must be a non-empty string, not {value!r}")
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError as exc:
+        raise ValueError(f"{name} has no UTF-8 to send: {value!r}") from exc
 
 
 def authorization_url(
@@ -740,8 +770,9 @@ def _oauth_build(
     path: str,
     form: dict[str, str] | None,
     bound: float | None,
+    body: dict[str, Any] | None = None,
 ) -> httpx.Request:
-    req = http.build_request(method, path, data=form, timeout=httpx.Timeout(bound))
+    req = http.build_request(method, path, data=form, json=body, timeout=httpx.Timeout(bound))
     req.headers.pop("authorization", None)
     return req
 
