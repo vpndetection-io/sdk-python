@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.12.0 - 2026-10-23
+
+### Features
+
+- Add oauth.register, for RFC 7591 dynamic client registration ([`73c5a7d`](https://github.com/vpndetection-io/sdk-python/commit/73c5a7dc1188b9bef36906060d04ebaf437fd114))
+
 ## 5.11.1 - 2026-10-22
 
 ### Fixes
