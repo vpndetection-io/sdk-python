@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.12.1 - 2026-10-25
+
+### Fixes
+
+- Refuse a retry count that is not a whole number, and non-RFC 3339 dates ([`a993604`](https://github.com/vpndetection-io/sdk-python/commit/a99360440a02271ef5306aa969e7da8ec517e134))
+
 ## 5.12.0 - 2026-10-23
 
 ### Features
