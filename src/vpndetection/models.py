@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime
 import enum
+import re
 import sys
 import types
 import typing
@@ -212,7 +213,7 @@ def to_result(body: dict[str, Any]) -> Result:
     know the sentinel exists. Every field is read on PRESENCE rather than truthiness, or
     a plan that includes a field and answers `false` would lose it.
     """
-    parsed = LookupResponse.from_dict(body)
+    parsed = LookupResponse.from_dict(rfc3339(LookupResponse, body))
     check_answer(parsed)
     # The generated model takes any value it finds, so `"ip": null` or `"is_vpn": "yes"`
     # came back as the answer, from a lookup and a batch entry alike (5.7.1, measured
@@ -285,6 +286,78 @@ def check_answer(value: Any) -> None:
         if not _conforms(member, hint):
             raise TypeError(f"{type(value).__name__}.{member_field.name} is not {hint}: {member!r}")
         check_answer(member)
+
+
+# The spec's `date-time` and `date` are RFC 3339's, and only those are read. The generated
+# models parse with `fromisoformat`, which took a date-time with no offset as a naive
+# datetime, which no aware one can be compared with, a date alone as midnight, `+0500`, `+05`,
+# `+05:60` as an hour more, a space for the `T`, no seconds, a comma for the point, week dates
+# and `20261005` (5.12.0, measured 2026-10-25). The lowercase `t` and `z` RFC 3339 also allows
+# stay refused, by the generated decoder that reads every answer first; the API sends neither.
+_FULL_DATE = re.compile(r"([0-9]{4})-([0-9]{2})-([0-9]{2})")
+_DATE_TIME = re.compile(
+    r"([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.[0-9]+)?"
+    r"(?:Z|[+-]([0-9]{2}):([0-9]{2}))"
+)
+
+
+def rfc3339(model: type, body: Any) -> Any:
+    """`body`, once every date its model names, at any depth, is in RFC 3339's form, on a
+    day, hour, second and offset that exist. Raises ValueError otherwise."""
+    fields = getattr(model, "__attrs_attrs__", None)
+    if fields is None or not isinstance(body, dict):
+        return body
+    hints = _hints(model)
+    for member_field in fields:
+        if member_field.name in body:
+            _check_date(
+                hints.get(member_field.name, Any), body[member_field.name], member_field.name
+            )
+    return body
+
+
+def _check_date(hint: Any, value: Any, name: str) -> None:
+    arms = _arms(hint)
+    if isinstance(value, str):
+        if datetime.datetime in arms:
+            _date_time(value, name)
+        elif datetime.date in arms:
+            _date(value, name)
+    elif isinstance(value, dict):
+        for arm in arms:
+            if hasattr(arm, "__attrs_attrs__"):
+                rfc3339(arm, value)
+    elif isinstance(value, list):
+        for arm in arms:
+            if typing.get_origin(arm) is list and typing.get_args(arm):
+                for item in value:
+                    _check_date(typing.get_args(arm)[0], item, name)
+
+
+def _arms(hint: Any) -> tuple[Any, ...]:
+    origin = typing.get_origin(hint)
+    if origin is typing.Union or origin is types.UnionType:
+        return tuple(arm for part in typing.get_args(hint) for arm in _arms(part))
+    return (hint,)
+
+
+def _date(value: str, name: str) -> None:
+    match = _FULL_DATE.fullmatch(value)
+    if match is None:
+        raise ValueError(f"{name} is not an RFC 3339 date: {value!r}")
+    # A day its month lacks, 30 February, raises here.
+    datetime.date(int(match[1]), int(match[2]), int(match[3]))
+
+
+def _date_time(value: str, name: str) -> None:
+    match = _DATE_TIME.fullmatch(value)
+    if match is None:
+        raise ValueError(f"{name} is not an RFC 3339 date-time: {value!r}")
+    year, month, day, hour, minute, second, offset_hour, offset_minute = match.groups()
+    if offset_hour is not None and (int(offset_hour) > 23 or int(offset_minute) > 59):
+        raise ValueError(f"{name} has no such offset: {value!r}")
+    # 30 February, an hour of 24 and a leap second raise here.
+    datetime.datetime(int(year), int(month), int(day), int(hour), int(minute), int(second))
 
 
 _HINTS: dict[type, dict[str, Any]] = {}

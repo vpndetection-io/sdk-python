@@ -40,14 +40,18 @@ from ._core import (
     batch_body,
     build_client,
     build_transfer_client,
+    call_retries,
     check_concurrency,
+    check_retries,
     check_timeout,
     checksums_of,
     chunked,
     create_pkce,
     databases_of,
     downloads_of,
+    entitlement_of,
     landed_error,
+    metadata_of,
     oauth_body,
     oauth_request,
     parse_body,
@@ -114,6 +118,10 @@ class VPNDetection:
     `timeout` that is not a finite number greater than 0 is a `ValueError` where it is set,
     rather than a failure of every request.
 
+    `retries` is how many times a failed attempt is retried, 2 unless given: a whole number
+    from 0, or `math.inf` to retry until the call succeeds. Anything else, on the client or
+    a call, is a `ValueError` where it is set too.
+
     Holds an HTTP connection pool, so use it as a context manager or call `close()` when
     you are done with it.
     """
@@ -133,7 +141,7 @@ class VPNDetection:
         cache_max_size: int = DEFAULT_CACHE_MAX_SIZE,
         cache_ttl: float = DEFAULT_CACHE_TTL,
         concurrency: int = DEFAULT_CONCURRENCY,
-        retries: int = DEFAULT_RETRIES,
+        retries: float = DEFAULT_RETRIES,
         timeout: float | None = DEFAULT_TIMEOUT,
         transport: httpx.BaseTransport | None = None,
     ) -> None:
@@ -146,7 +154,7 @@ class VPNDetection:
         # served, as `cache=False` promises.
         self._flights = Flights(Future)
         self._concurrency = concurrency
-        self._retries = retries
+        self._retries = check_retries(retries)
         self._timeout = timeout
         self.database = DatabaseApi(self)
         self.oauth = OauthApi(self)
@@ -163,7 +171,7 @@ class VPNDetection:
         return is_bogon(ip)
 
     def lookup(
-        self, ip: str, *, retries: int | None = None, timeout: float | None = None
+        self, ip: str, *, retries: float | None = None, timeout: float | None = None
     ) -> Result:
         """Classify one address.
 
@@ -175,6 +183,7 @@ class VPNDetection:
         """
         # Here as well as in _bound: a bogon or a cached answer returns before any request.
         check_timeout(timeout)
+        call_retries(retries)
         ip = unmapped(ip)
         if is_bogon(ip):
             return bogon_result(ip)
@@ -195,7 +204,7 @@ class VPNDetection:
             except Abandoned:
                 continue
 
-    def _lead(self, ip: str, flight: Any, retries: int | None, timeout: float | None) -> Result:
+    def _lead(self, ip: str, flight: Any, retries: float | None, timeout: float | None) -> Result:
         assert self._cache is not None
         try:
             # A request that landed between the miss and boarding cached its answer before
@@ -213,14 +222,14 @@ class VPNDetection:
         self._flights.land(ip, flight, result)
         return result
 
-    def _serve(self, ip: str, retries: int | None, timeout: float | None) -> Result:
+    def _serve(self, ip: str, retries: float | None, timeout: float | None) -> Result:
         def call() -> Result:
             res = request(lookup_ip, self._client, self._bound(timeout), ip=ip)
             return parse_body(res, to_result)
 
         return self._retrying(call, self._retries if retries is None else retries)
 
-    def my_ip(self, *, retries: int | None = None, timeout: float | None = None) -> Result:
+    def my_ip(self, *, retries: float | None = None, timeout: float | None = None) -> Result:
         """Classify the address this client is calling from.
 
         The same answer `lookup` would give for that address, at the same cost against
@@ -232,6 +241,8 @@ class VPNDetection:
         told where it used to be.
         """
 
+        call_retries(retries)
+
         def call() -> Result:
             res = request(lookup_my_ip, self._client, self._bound(timeout))
             return parse_body(res, to_result)
@@ -239,7 +250,7 @@ class VPNDetection:
         return self._retrying(call, self._retries if retries is None else retries)
 
     def my_entitlement(
-        self, *, retries: int | None = None, timeout: float | None = None
+        self, *, retries: float | None = None, timeout: float | None = None
     ) -> Entitlement:
         """What this client's key is entitled to, and how much of it has been used.
 
@@ -259,9 +270,11 @@ class VPNDetection:
         answer is a wrong one within seconds of the next request.
         """
 
+        call_retries(retries)
+
         def call() -> Entitlement:
             res = request(my_entitlement, self._client, self._bound(timeout))
-            return parse_body(res, Entitlement.from_dict)
+            return parse_body(res, entitlement_of)
 
         return self._retrying(call, self._retries if retries is None else retries)
 
@@ -270,7 +283,7 @@ class VPNDetection:
         ips: Iterable[str],
         *,
         concurrency: int | None = None,
-        retries: int | None = None,
+        retries: float | None = None,
         timeout: float | None = None,
     ) -> dict[str, Result | VPNDetectionError]:
         """Classify many addresses in as few requests as possible.
@@ -293,6 +306,7 @@ class VPNDetection:
         """
         check_concurrency(concurrency)
         check_timeout(timeout)
+        call_retries(retries)
         asked = list(dict.fromkeys(ips))
         unique = list(dict.fromkeys(unmapped(ip) for ip in asked))
         answers: dict[str, Result | VPNDetectionError] = {}
@@ -367,7 +381,7 @@ class VPNDetection:
     def _lookup_chunk(
         self,
         chunk: list[str],
-        retries: int | None,
+        retries: float | None,
         timeout: float | None,
         led: dict[str, Any],
     ) -> dict[str, Result | VPNDetectionError]:
@@ -398,7 +412,7 @@ class VPNDetection:
     def _bound(self, timeout: float | None) -> float | None:
         return self._timeout if timeout is None else check_timeout(timeout)
 
-    def _retrying(self, call: Callable[[], T], retries: int) -> T:
+    def _retrying(self, call: Callable[[], T], retries: float) -> T:
         attempt = 0
         while True:
             try:
@@ -447,7 +461,7 @@ class DatabaseApi:
 
         def call() -> DatabaseMetadata:
             res = request(database_metadata, self._client, self._bound(timeout), id=dataset_id)
-            return parse_body(res, DatabaseMetadata.from_dict)
+            return parse_body(res, metadata_of)
 
         return self._retrying(call)
 

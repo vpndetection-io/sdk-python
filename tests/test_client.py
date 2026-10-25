@@ -6,6 +6,7 @@ import asyncio
 import dataclasses
 import datetime
 import inspect
+import math
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -199,6 +200,77 @@ def test_a_per_call_concurrency_below_one_is_refused_before_any_request(
     assert outcome.retryable is False
     assert "concurrency" in str(outcome)
     assert stub.calls == []
+
+
+@pytest.mark.parametrize("client", [VPNDetection, AsyncVPNDetection])
+@pytest.mark.parametrize("retries", [-1, 1.5, float("nan"), float("-inf"), "2", None, True])
+def test_a_retry_count_that_is_not_a_whole_number_from_0_is_refused_when_the_client_is_built(
+    client: type[VPNDetection | AsyncVPNDetection], retries: Any
+) -> None:
+    """5.12.0 took each: NaN retried a failing call until it succeeded, -1 read as 0, 1.5 as
+    two retries, and a string or None raised a raw TypeError out of every failing call."""
+    with pytest.raises(ValueError, match="retries"):
+        client(retries=retries)
+
+
+@pytest.mark.parametrize("retries", [0, 2, 2.0, math.inf])
+def test_a_whole_retry_count_or_infinity_builds_a_client(retries: float) -> None:
+    VPNDetection(retries=retries).close()
+    asyncio.run(AsyncVPNDetection(retries=retries).aclose())
+
+
+PER_CALL_RETRIES: dict[str, Callable[..., Any]] = {
+    "lookup": lambda c, **o: c.lookup("9.9.9.9", **o),
+    "a bogon": lambda c, **o: c.lookup("10.0.0.1", **o),
+    "a cached address": lambda c, **o: c.lookup("1.1.1.1", **o),
+    "my_ip": lambda c, **o: c.my_ip(**o),
+    "my_entitlement": lambda c, **o: c.my_entitlement(**o),
+    "lookup_batch": lambda c, **o: c.lookup_batch(["9.9.9.9"], **o),
+    "a batch of a bogon and a cached address": lambda c, **o: c.lookup_batch(
+        ["10.0.0.1", "1.1.1.1"], **o
+    ),
+}
+
+
+@pytest.mark.parametrize("retries", [-1, 1.5, float("nan"), "2", True])
+@pytest.mark.parametrize("call", PER_CALL_RETRIES)
+def test_a_per_call_retry_count_that_is_not_a_whole_number_from_0_is_refused_before_anything_answers(
+    make_client: ClientFactory, call: str, retries: Any
+) -> None:
+    stub = Stub({"1.1.1.1": {"body": {"ip": "1.1.1.1", "is_vpn": False}}})
+    client = make_client(transport=stub.transport)
+    client.lookup("1.1.1.1")
+    sent = len(stub.calls)
+
+    with pytest.raises(ValueError, match="retries"):
+        PER_CALL_RETRIES[call](client, retries=retries)
+
+    assert len(stub.calls) == sent
+
+
+@pytest.mark.parametrize("on", ["client", "call"])
+def test_infinite_retries_retry_a_failing_call_until_it_succeeds(
+    make_client: ClientFactory, monkeypatch: pytest.MonkeyPatch, on: str
+) -> None:
+    monkeypatch.setattr(_core, "_BACKOFF_BASE", 0.0)
+    sent: list[str] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        sent.append(request.url.path)
+        if len(sent) <= 8:
+            return httpx.Response(503, json={"error": "unavailable"})
+        return httpx.Response(200, json={"ip": "9.9.9.9", "is_vpn": False})
+
+    client = make_client(
+        transport=httpx.MockTransport(answer),
+        cache=False,
+        retries=math.inf if on == "client" else 0,
+    )
+
+    result = client.lookup("9.9.9.9", **({} if on == "client" else {"retries": math.inf}))
+
+    assert result.ip == "9.9.9.9"
+    assert len(sent) == 9
 
 
 def test_retries_are_configurable_per_call(make_client: ClientFactory) -> None:

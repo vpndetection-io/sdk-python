@@ -9,6 +9,7 @@ an HTML 429 into a retried `server_error`, sent three times (measured 2026-10-15
 
 from __future__ import annotations
 
+import datetime
 import functools
 import json
 from collections.abc import Callable
@@ -300,6 +301,164 @@ def test_the_fixtures_above_read_as_answers(make_client: ClientFactory) -> None:
 
         assert not isinstance(outcome_of(functools.partial(call, client)), VPNDetectionError), name
         assert origin.paths == [path]
+
+
+# A date-time and a date are RFC 3339's and nothing else. 5.12.0 read them with
+# `fromisoformat`, so a date-time with no offset came back naive, a date alone as midnight,
+# and `+0500`, `+05`, `+05:60`, a space for the `T`, no seconds, a comma for the point,
+# week dates and the basic format as dates (measured 2026-10-25). RFC 3339's lowercase `t`
+# and `z` stay refused: the generated decoder reads every answer first, and cannot.
+DATED: dict[str, tuple[str, Callable[[Any], Any], Callable[[Any], Any], bool]] = {
+    "a database's starts": (
+        "list",
+        lambda v: {"databases": [{**DATABASE, "starts": v}]},
+        lambda answer: answer[0].starts,
+        True,
+    ),
+    "a download's created": (
+        "downloads",
+        lambda v: {"downloads": [{**DOWNLOAD, "created": v}]},
+        lambda answer: answer[0].created,
+        True,
+    ),
+    "the entitlement's window_start": (
+        "my_entitlement",
+        lambda v: {**ENTITLEMENT, "usage": {**ENTITLEMENT["usage"], "window_start": v}},
+        lambda answer: answer.usage.window_start,
+        True,
+    ),
+    "the key's expires": (
+        "my_entitlement",
+        lambda v: {**ENTITLEMENT, "apikey": {**ENTITLEMENT["apikey"], "expires": v}},
+        lambda answer: answer.apikey.expires,
+        True,
+    ),
+    "metadata's updated": (
+        "metadata",
+        lambda v: {**METADATA, "updated": v},
+        lambda answer: answer.updated,
+        False,
+    ),
+    "a lookup's vpn last_seen": (
+        "lookup",
+        lambda v: _detailed("vpn", last_seen=v),
+        lambda answer: answer.vpn.last_seen,
+        False,
+    ),
+    "a lookup's dcproxy first_seen": (
+        "lookup",
+        lambda v: _detailed("dcproxy", first_seen=v),
+        lambda answer: answer.dcproxy.first_seen,
+        False,
+    ),
+    "my_ip's vpn last_seen": (
+        "my_ip",
+        lambda v: _detailed("vpn", last_seen=v),
+        lambda answer: answer.vpn.last_seen,
+        False,
+    ),
+}
+
+NOT_DATE_TIMES = [
+    "x",
+    "tomorrow",
+    "monday",
+    "2026-02-30T10:00:00Z",
+    "2026-10-05T24:00:00Z",
+    "2026-10-05T10:00:60Z",
+    "2026-10-05T10:00:00",
+    "2026-10-05",
+    "2026-10-05 10:00:00Z",
+    "2026-10-05T10:00Z",
+    "2026-10-05T10:00:00+0500",
+    "2026-10-05T10:00:00+05",
+    "2026-10-05T10:00:00+05:60",
+    "2026-10-05T10:00:00+24:00",
+    "2026-10-05T10:00:00+05:00:30",
+    "20261005T100000Z",
+    "2026-W41-1T10:00:00Z",
+    "2026-10-1T10:00:00Z",
+    "2026-10-05T10:00:00,5Z",
+    " 2026-10-05T10:00:00Z",
+    "2026-10-05t10:00:00z",
+]
+
+NOT_DATES = [
+    "x",
+    "tomorrow",
+    "monday",
+    "2026-02-30",
+    "2026-10-05T10:00:00Z",
+    "20261005",
+    "2026-W41-1",
+    "2026-W41",
+    "2026-10-1",
+    " 2026-10-05",
+]
+
+
+@pytest.mark.parametrize(
+    ("member", "value"),
+    [
+        (member, value)
+        for member, (_, _, _, timed) in DATED.items()
+        for value in (NOT_DATE_TIMES if timed else NOT_DATES)
+    ],
+)
+def test_a_date_in_a_form_its_format_does_not_name_is_a_retried_server_error(
+    make_client: ClientFactory, member: str, value: str
+) -> None:
+    name, body, _, _ = DATED[member]
+    path, call = CALLS[name]
+    origin = Raw(200, json.dumps(body(value)))
+    client = make_client(transport=origin.transport, cache=False, retries=2)
+
+    outcome = outcome_of(lambda: call(client))
+
+    assert isinstance(outcome, VPNDetectionError), f"{member} {value!r} answered {outcome!r}"
+    assert (outcome.kind, outcome.status) == ("server_error", 200), repr(outcome)
+    assert origin.paths == [path] * 3
+
+
+UTC = datetime.UTC
+SPELLINGS = {
+    "2026-10-05T10:00:00Z": datetime.datetime(2026, 10, 5, 10, tzinfo=UTC),
+    "2026-10-05T10:00:00.123456789-00:00": datetime.datetime(2026, 10, 5, 10, 0, 0, 123456, UTC),
+    "2026-10-05T10:00:00.5+05:30": datetime.datetime(
+        2026, 10, 5, 10, 0, 0, 500000, datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+    ),
+    "2026-10-05T10:00:00-23:59": datetime.datetime(
+        2026, 10, 5, 10, tzinfo=datetime.timezone(-datetime.timedelta(hours=23, minutes=59))
+    ),
+}
+
+
+@pytest.mark.parametrize("value", list(SPELLINGS))
+@pytest.mark.parametrize("member", [m for m, (_, _, _, timed) in DATED.items() if timed])
+def test_every_rfc_3339_spelling_of_a_date_time_is_read(
+    make_client: ClientFactory, member: str, value: str
+) -> None:
+    name, body, read, _ = DATED[member]
+    path, call = CALLS[name]
+    served = body(value)
+    origin = Raw(200, json.dumps(served))
+    client = make_client(transport=origin.transport, cache=False, retries=2)
+
+    answer = call(client)
+
+    assert read(answer) == SPELLINGS[value]
+    assert read(answer).utcoffset() == SPELLINGS[value].utcoffset()
+    assert origin.paths == [path]
+
+
+@pytest.mark.parametrize("member", [m for m, (_, _, _, timed) in DATED.items() if not timed])
+def test_a_full_date_is_read(make_client: ClientFactory, member: str) -> None:
+    name, body, read, _ = DATED[member]
+    _, call = CALLS[name]
+    origin = Raw(200, json.dumps(body("2026-10-05")))
+    client = make_client(transport=origin.transport, cache=False, retries=2)
+
+    assert read(call(client)) == datetime.date(2026, 10, 5)
 
 
 ENTRIES: dict[str, Any] = {

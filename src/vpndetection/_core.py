@@ -25,9 +25,11 @@ from cachetools import TTLCache
 
 from ._generated.client import AuthenticatedClient, Client
 from ._generated.models.database import Database
+from ._generated.models.database_metadata import DatabaseMetadata
 from ._generated.models.download import Download
+from ._generated.models.entitlement import Entitlement
 from .errors import VPNDetectionError, error_from_response, oauth_error_from
-from .models import Pkce, Result, check_answer, to_result
+from .models import Pkce, Result, check_answer, rfc3339, to_result
 
 DEFAULT_BASE_URL = "https://api.vpndetection.io"
 DEFAULT_CONCURRENCY = 8
@@ -565,6 +567,31 @@ def check_timeout(timeout: float | None) -> float | None:
     return timeout
 
 
+def check_retries(retries: float) -> float:
+    """`retries`, once it is a count of retries: a whole number from 0, or `math.inf` to
+    retry a failing call until it succeeds.
+
+    Refused where it is SET, on the client or the call, because nothing downstream refuses
+    it: NaN compares false with every attempt number, so a failing call was retried until
+    it succeeded, -1 read as 0, 1.5 as two retries, and a string or None raised a raw
+    `TypeError` out of every call that failed, a 404 included (5.12.0, measured
+    2026-10-25). A whole float such as 2.0 reads as 2.
+    """
+    if (
+        isinstance(retries, bool)
+        or not isinstance(retries, int | float)
+        or not retries >= 0
+        or (isinstance(retries, float) and not (retries.is_integer() or retries == math.inf))
+    ):
+        raise ValueError(f"retries must be a whole number from 0, or math.inf, not {retries!r}")
+    return retries
+
+
+def call_retries(retries: float | None) -> float | None:
+    """A per-call `retries`, checked as the client's is, or None for the client's own."""
+    return None if retries is None else check_retries(retries)
+
+
 def check_concurrency(concurrency: int | None) -> None:
     """Refuse a per-call concurrency that could never send a chunk, before anything is sent,
     rather than quietly running it as 1."""
@@ -643,11 +670,19 @@ def redirect_location(res: httpx.Response) -> str:
 
 
 def databases_of(body: dict[str, Any]) -> list[Database]:
-    return [Database.from_dict(d) for d in _listed(body, "databases")]
+    return [Database.from_dict(rfc3339(Database, d)) for d in _listed(body, "databases")]
 
 
 def downloads_of(body: dict[str, Any]) -> list[Download]:
-    return [Download.from_dict(d) for d in _listed(body, "downloads")]
+    return [Download.from_dict(rfc3339(Download, d)) for d in _listed(body, "downloads")]
+
+
+def entitlement_of(body: dict[str, Any]) -> Entitlement:
+    return Entitlement.from_dict(rfc3339(Entitlement, body))
+
+
+def metadata_of(body: dict[str, Any]) -> DatabaseMetadata:
+    return DatabaseMetadata.from_dict(rfc3339(DatabaseMetadata, body))
 
 
 def _listed(body: dict[str, Any], name: str) -> list[Any]:
@@ -662,7 +697,7 @@ def checksums_of(body: dict[str, Any]) -> dict[str, str]:
     return dict(body["checksums"])
 
 
-def retry_delay(err: VPNDetectionError, attempt: int, retries: int) -> float | None:
+def retry_delay(err: VPNDetectionError, attempt: int, retries: float) -> float | None:
     """How long to wait before attempt `attempt + 1`, or None when there must not be one.
 
     A server-supplied `Retry-After` wins over the backoff schedule outright: it is the
