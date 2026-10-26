@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.12.2 - 2026-10-26
+
+### Fixes
+
+- Re-pin the spec to 2026.10.25: Retry-After on myip's 429 ([`7312f09`](https://github.com/vpndetection-io/sdk-python/commit/7312f091f366cc4d09680f70d4b6c5ed6d7ed054))
+
 ## 5.12.1 - 2026-10-25
 
 ### Fixes
