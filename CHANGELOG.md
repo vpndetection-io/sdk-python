@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.12.3 - 2026-10-28
+
+### Fixes
+
+- Read a date-time whose T or Z is lowercase ([`4778c40`](https://github.com/vpndetection-io/sdk-python/commit/4778c40414a3fd39e441b290cff5ec2a2bd5017f))
+
 ## 5.12.2 - 2026-10-26
 
 ### Fixes
