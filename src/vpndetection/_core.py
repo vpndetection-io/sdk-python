@@ -279,7 +279,7 @@ _DATE_TIME_STRING = re.compile(
 
 def _capitalized(res: httpx.Response) -> httpx.Response:
     """`res`, each date-time in it with its `t` and `z` in capitals: the generated decoder's
-    `fromisoformat` refuses the lowercase ones RFC 3339 allows. `models.rfc3339` does the
+    `fromisoformat` refuses the lowercase `z` RFC 3339 allows. `models.rfc3339` does the
     same for the answer itself, member by member."""
     content = _DATE_TIME_STRING.sub(lambda match: match[0].upper(), res.content)
     if content == res.content:

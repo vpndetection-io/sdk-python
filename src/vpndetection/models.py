@@ -292,9 +292,10 @@ def check_answer(value: Any) -> None:
 # models parse with `fromisoformat`, which took a date-time with no offset as a naive
 # datetime, which no aware one can be compared with, a date alone as midnight, `+0500`, `+05`,
 # `+05:60` as an hour more, a space for the `T`, no seconds, a comma for the point, week dates
-# and `20261005` (5.12.0, measured 2026-10-25). RFC 3339 also allows a lowercase `t` and `z`,
-# which `fromisoformat` refuses, so a date-time is handed to it with both in capitals:
-# 5.12.2 refused `2026-10-05t10:00:00z` as an answer it could not read (measured 2026-10-28).
+# and `20261005` (5.12.0, measured 2026-10-25). RFC 3339 also allows a lowercase `t` and `z`:
+# this check refused both and `fromisoformat` refuses the `z` (Python 3.11 and 3.12), so 5.12.2
+# refused `2026-10-05t10:00:00z` as an answer it could not read (measured 2026-10-28). Both are
+# read now, and a date-time reaches the generated decoder in capitals.
 _FULL_DATE = re.compile(r"([0-9]{4})-([0-9]{2})-([0-9]{2})")
 _DATE_TIME = re.compile(
     r"([0-9]{4})-([0-9]{2})-([0-9]{2})[Tt]([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.[0-9]+)?"
