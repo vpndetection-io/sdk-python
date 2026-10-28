@@ -11,6 +11,7 @@ import hashlib
 import json
 import math
 import os
+import re
 import secrets
 import threading
 import time
@@ -262,10 +263,30 @@ def decoded(
     """
     if 200 <= res.status_code < 300:
         try:
-            check_answer(endpoint._build_response(client=client, response=res).parsed)
+            parsed = endpoint._build_response(client=client, response=_capitalized(res)).parsed
+            check_answer(parsed)
         except (AttributeError, KeyError, TypeError, ValueError) as exc:
             raise malformed(exc, res.status_code) from exc
     return res
+
+
+# A JSON string holding an RFC 3339 date-time, in either case.
+_DATE_TIME_STRING = re.compile(
+    rb'"[0-9]{4}-[0-9]{2}-[0-9]{2}[Tt][0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]+)?'
+    rb'(?:[Zz]|[+-][0-9]{2}:[0-9]{2})"'
+)
+
+
+def _capitalized(res: httpx.Response) -> httpx.Response:
+    """`res`, each date-time in it with its `t` and `z` in capitals: the generated decoder's
+    `fromisoformat` refuses the lowercase ones RFC 3339 allows. `models.rfc3339` does the
+    same for the answer itself, member by member."""
+    content = _DATE_TIME_STRING.sub(lambda match: match[0].upper(), res.content)
+    if content == res.content:
+        return res
+    return httpx.Response(
+        res.status_code, headers={"content-type": "application/json"}, content=content
+    )
 
 
 def malformed(exc: Exception, status: int) -> VPNDetectionError:

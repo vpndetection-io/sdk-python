@@ -292,46 +292,53 @@ def check_answer(value: Any) -> None:
 # models parse with `fromisoformat`, which took a date-time with no offset as a naive
 # datetime, which no aware one can be compared with, a date alone as midnight, `+0500`, `+05`,
 # `+05:60` as an hour more, a space for the `T`, no seconds, a comma for the point, week dates
-# and `20261005` (5.12.0, measured 2026-10-25). The lowercase `t` and `z` RFC 3339 also allows
-# stay refused, by the generated decoder that reads every answer first; the API sends neither.
+# and `20261005` (5.12.0, measured 2026-10-25). RFC 3339 also allows a lowercase `t` and `z`,
+# which `fromisoformat` refuses, so a date-time is handed to it with both in capitals:
+# 5.12.2 refused `2026-10-05t10:00:00z` as an answer it could not read (measured 2026-10-28).
 _FULL_DATE = re.compile(r"([0-9]{4})-([0-9]{2})-([0-9]{2})")
 _DATE_TIME = re.compile(
-    r"([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.[0-9]+)?"
-    r"(?:Z|[+-]([0-9]{2}):([0-9]{2}))"
+    r"([0-9]{4})-([0-9]{2})-([0-9]{2})[Tt]([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.[0-9]+)?"
+    r"(?:[Zz]|[+-]([0-9]{2}):([0-9]{2}))"
 )
 
 
 def rfc3339(model: type, body: Any) -> Any:
     """`body`, once every date its model names, at any depth, is in RFC 3339's form, on a
-    day, hour, second and offset that exist. Raises ValueError otherwise."""
+    day, hour, second and offset that exist, each date-time's `t` and `z` in capitals for
+    the generated decoder. Raises ValueError otherwise. `body` itself is never changed,
+    since a lookup hands it on as `raw`."""
     fields = getattr(model, "__attrs_attrs__", None)
     if fields is None or not isinstance(body, dict):
         return body
     hints = _hints(model)
+    read = body
     for member_field in fields:
-        if member_field.name in body:
-            _check_date(
-                hints.get(member_field.name, Any), body[member_field.name], member_field.name
-            )
-    return body
+        name = member_field.name
+        if name in body:
+            value = _check_date(hints.get(name, Any), body[name], name)
+            if value is not body[name]:
+                read = {**read, name: value}
+    return read
 
 
-def _check_date(hint: Any, value: Any, name: str) -> None:
+def _check_date(hint: Any, value: Any, name: str) -> Any:
     arms = _arms(hint)
     if isinstance(value, str):
         if datetime.datetime in arms:
-            _date_time(value, name)
-        elif datetime.date in arms:
+            return _date_time(value, name)
+        if datetime.date in arms:
             _date(value, name)
     elif isinstance(value, dict):
         for arm in arms:
             if hasattr(arm, "__attrs_attrs__"):
-                rfc3339(arm, value)
+                value = rfc3339(arm, value)
     elif isinstance(value, list):
         for arm in arms:
             if typing.get_origin(arm) is list and typing.get_args(arm):
-                for item in value:
-                    _check_date(typing.get_args(arm)[0], item, name)
+                items = [_check_date(typing.get_args(arm)[0], item, name) for item in value]
+                if any(read is not item for read, item in zip(items, value, strict=True)):
+                    value = items
+    return value
 
 
 def _arms(hint: Any) -> tuple[Any, ...]:
@@ -349,7 +356,7 @@ def _date(value: str, name: str) -> None:
     datetime.date(int(match[1]), int(match[2]), int(match[3]))
 
 
-def _date_time(value: str, name: str) -> None:
+def _date_time(value: str, name: str) -> str:
     match = _DATE_TIME.fullmatch(value)
     if match is None:
         raise ValueError(f"{name} is not an RFC 3339 date-time: {value!r}")
@@ -358,6 +365,9 @@ def _date_time(value: str, name: str) -> None:
         raise ValueError(f"{name} has no such offset: {value!r}")
     # 30 February, an hour of 24 and a leap second raise here.
     datetime.datetime(int(year), int(month), int(day), int(hour), int(minute), int(second))
+    # Its only letters are the `T` and the `Z`.
+    capitals = value.upper()
+    return value if capitals == value else capitals
 
 
 _HINTS: dict[type, dict[str, Any]] = {}

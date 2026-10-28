@@ -307,7 +307,7 @@ def test_the_fixtures_above_read_as_answers(make_client: ClientFactory) -> None:
 # `fromisoformat`, so a date-time with no offset came back naive, a date alone as midnight,
 # and `+0500`, `+05`, `+05:60`, a space for the `T`, no seconds, a comma for the point,
 # week dates and the basic format as dates (measured 2026-10-25). RFC 3339's lowercase `t`
-# and `z` stay refused: the generated decoder reads every answer first, and cannot.
+# and `z` are read: 5.12.2 refused them, since the generated decoder cannot (2026-10-28).
 DATED: dict[str, tuple[str, Callable[[Any], Any], Callable[[Any], Any], bool]] = {
     "a database's starts": (
         "list",
@@ -380,7 +380,8 @@ NOT_DATE_TIMES = [
     "2026-10-1T10:00:00Z",
     "2026-10-05T10:00:00,5Z",
     " 2026-10-05T10:00:00Z",
-    "2026-10-05t10:00:00z",
+    "2026-10-05x10:00:00Z",
+    "2026-10-05T10:00:00y",
 ]
 
 NOT_DATES = [
@@ -423,6 +424,9 @@ def test_a_date_in_a_form_its_format_does_not_name_is_a_retried_server_error(
 UTC = datetime.UTC
 SPELLINGS = {
     "2026-10-05T10:00:00Z": datetime.datetime(2026, 10, 5, 10, tzinfo=UTC),
+    "2026-10-05t10:00:00Z": datetime.datetime(2026, 10, 5, 10, tzinfo=UTC),
+    "2026-10-05T10:00:00z": datetime.datetime(2026, 10, 5, 10, tzinfo=UTC),
+    "2026-10-05t10:00:00.5z": datetime.datetime(2026, 10, 5, 10, 0, 0, 500000, UTC),
     "2026-10-05T10:00:00.123456789-00:00": datetime.datetime(2026, 10, 5, 10, 0, 0, 123456, UTC),
     "2026-10-05T10:00:00.5+05:30": datetime.datetime(
         2026, 10, 5, 10, 0, 0, 500000, datetime.timezone(datetime.timedelta(hours=5, minutes=30))
