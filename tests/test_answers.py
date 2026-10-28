@@ -307,7 +307,7 @@ def test_the_fixtures_above_read_as_answers(make_client: ClientFactory) -> None:
 # `fromisoformat`, so a date-time with no offset came back naive, a date alone as midnight,
 # and `+0500`, `+05`, `+05:60`, a space for the `T`, no seconds, a comma for the point,
 # week dates and the basic format as dates (measured 2026-10-25). RFC 3339's lowercase `t`
-# and `z` are read: 5.12.2 refused them, since the generated decoder cannot (2026-10-28).
+# and `z` are read, which 5.12.2 refused (measured 2026-10-28).
 DATED: dict[str, tuple[str, Callable[[Any], Any], Callable[[Any], Any], bool]] = {
     "a database's starts": (
         "list",
