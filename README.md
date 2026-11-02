@@ -188,7 +188,7 @@ Note that `rate_limited` and `quota_exceeded` both arrive as HTTP 429 and are no
 
 ### Database downloads
 
-If your key carries the `db.download` scope, the licensed databases are available through `client.database`. `list` answers database families, and the ids the other calls take come from each family's `versions`. There are three ways to get a database: the time-limited link, the bytes, or straight to a file, which streams so nothing bigger than a chunk is ever held in memory:
+If your key carries the `db.download` scope, the licensed databases are available through `client.database`. `list` answers database families, and the IDs the other calls take come from each family's `versions`. There are three ways to get a database: the time-limited link, the bytes, or straight to a file, which streams so nothing bigger than a chunk is ever held in memory:
 
 ```python
 databases = client.database.list()
