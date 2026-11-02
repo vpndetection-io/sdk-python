@@ -30,7 +30,7 @@ FORMAT: Format = "csvgz"
 # means the suite is pointed somewhere unintended, which is exactly when a transfer must
 # not go ahead.
 CEILING = 8 << 20
-# A real catalog id the max organization holds no license for.
+# A real catalog ID the max organization holds no license for.
 UNLICENSED_ID = "hosting_ip_v1"
 
 HEX_DIGEST = re.compile(r"^[0-9a-f]{64}$")
@@ -64,7 +64,7 @@ def test_the_licensed_catalog_answers_the_schema_the_client_was_generated_from()
             licensed.append(dataset.base)
         assert_no_undocumented_keys(dataset)
         # The point of the family shape: a license covers the family, and these are the
-        # ids the download and checksum calls take. Before the spec was corrected this
+        # IDs the download and checksum calls take. Before the spec was corrected this
         # list did not exist, so `list` could not tell a caller what to download.
         assert dataset.versions, f"{dataset.base} carries no versions"
         for version in dataset.versions:
