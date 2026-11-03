@@ -21,7 +21,7 @@ class Entitlement:
     """
     Attributes:
         org_id (UUID): The organization the key belongs to.
-        apikey (EntitlementApikey): The credential itself. The key is never echoed - only its id, which is
+        apikey (EntitlementApikey): The credential itself. The key is never echoed - only its ID, which is
             what the console shows and what you can act on.
         plan (EntitlementPlan):
         usage (EntitlementUsage):

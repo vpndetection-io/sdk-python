@@ -20,7 +20,7 @@ T = TypeVar("T", bound="DatabaseVersion")
 class DatabaseVersion:
     """
     Attributes:
-        id (str): The versioned database id, e.g. `vpn_ip_v1`. Pass this to download. Example: vpn_ip_v1.
+        id (str): The versioned database ID, e.g. `vpn_ip_v1`. Pass this to download. Example: vpn_ip_v1.
         version (int):  Example: 1.
         formats (list[DatabaseFormatSize]):
         summary (str | Unset):

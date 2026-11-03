@@ -13,7 +13,7 @@ T = TypeVar("T", bound="EntitlementApikey")
 
 @_attrs_define
 class EntitlementApikey:
-    """The credential itself. The key is never echoed - only its id, which is
+    """The credential itself. The key is never echoed - only its ID, which is
     what the console shows and what you can act on.
 
         Attributes:

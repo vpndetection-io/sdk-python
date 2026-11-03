@@ -73,7 +73,7 @@ def sync_detailed(
 ) -> Response[AccountCreatedApikey | AccountRc]:
     """Rotate
 
-     Replaces the secret behind a key, keeping its id, name and settings.
+     Replaces the secret behind a key, keeping its ID, name and settings.
     The previous secret stops working immediately. The new secret comes
     back in the answer, so this needs `apikeys.reveal` as well as
     `apikeys.manage`.
@@ -107,7 +107,7 @@ def sync(
 ) -> AccountCreatedApikey | AccountRc | None:
     """Rotate
 
-     Replaces the secret behind a key, keeping its id, name and settings.
+     Replaces the secret behind a key, keeping its ID, name and settings.
     The previous secret stops working immediately. The new secret comes
     back in the answer, so this needs `apikeys.reveal` as well as
     `apikeys.manage`.
@@ -136,7 +136,7 @@ async def asyncio_detailed(
 ) -> Response[AccountCreatedApikey | AccountRc]:
     """Rotate
 
-     Replaces the secret behind a key, keeping its id, name and settings.
+     Replaces the secret behind a key, keeping its ID, name and settings.
     The previous secret stops working immediately. The new secret comes
     back in the answer, so this needs `apikeys.reveal` as well as
     `apikeys.manage`.
@@ -168,7 +168,7 @@ async def asyncio(
 ) -> AccountCreatedApikey | AccountRc | None:
     """Rotate
 
-     Replaces the secret behind a key, keeping its id, name and settings.
+     Replaces the secret behind a key, keeping its ID, name and settings.
     The previous secret stops working immediately. The new secret comes
     back in the answer, so this needs `apikeys.reveal` as well as
     `apikeys.manage`.
