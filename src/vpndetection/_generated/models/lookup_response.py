@@ -58,16 +58,24 @@ class LookupResponse:
                 Every key is present when the object is populated; the object is `{}`
                 when its flag is false.
             resproxy (ProxyDetail | Unset): The shared detail shape for the residential, datacenter and mobile proxy
-                families, measured over a rolling 90 day window. Every key is present
-                when the object is populated; the object is `{}` when its flag is false.
+                families, measured over a rolling 90 day window. An address that leaves
+                the window keeps its flag and the values of its last day in it, so
+                `last_seen` is what says how recent they are. Every key is present when
+                the object is populated; the object is `{}` when its flag is false.
             dcproxy (ProxyDetail | Unset): The shared detail shape for the residential, datacenter and mobile proxy
-                families, measured over a rolling 90 day window. Every key is present
-                when the object is populated; the object is `{}` when its flag is false.
+                families, measured over a rolling 90 day window. An address that leaves
+                the window keeps its flag and the values of its last day in it, so
+                `last_seen` is what says how recent they are. Every key is present when
+                the object is populated; the object is `{}` when its flag is false.
             mobproxy (ProxyDetail | Unset): The shared detail shape for the residential, datacenter and mobile proxy
-                families, measured over a rolling 90 day window. Every key is present
-                when the object is populated; the object is `{}` when its flag is false.
+                families, measured over a rolling 90 day window. An address that leaves
+                the window keeps its flag and the values of its last day in it, so
+                `last_seen` is what says how recent they are. Every key is present when
+                the object is populated; the object is `{}` when its flag is false.
             pubproxy (PubproxyDetail | Unset): The address in Public Proxy IP, open proxies anyone can connect
-                through, measured over a rolling 90 day window. An address is either
+                through, measured over a rolling 90 day window. An address that leaves
+                the window keeps its flag and the values of its last day in it, so
+                `last_seen` is what says how recent they are. An address is either
                 end of a proxy, or both: where it listens, and where its traffic
                 leaves from. Every key is present when the object is populated; the
                 object is `{}` when `is_pubproxy` is false.

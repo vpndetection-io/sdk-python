@@ -15,7 +15,9 @@ T = TypeVar("T", bound="PubproxyDetail")
 @_attrs_define
 class PubproxyDetail:
     """The address in Public Proxy IP, open proxies anyone can connect
-    through, measured over a rolling 90 day window. An address is either
+    through, measured over a rolling 90 day window. An address that leaves
+    the window keeps its flag and the values of its last day in it, so
+    `last_seen` is what says how recent they are. An address is either
     end of a proxy, or both: where it listens, and where its traffic
     leaves from. Every key is present when the object is populated; the
     object is `{}` when `is_pubproxy` is false.

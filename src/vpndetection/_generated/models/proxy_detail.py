@@ -15,8 +15,10 @@ T = TypeVar("T", bound="ProxyDetail")
 @_attrs_define
 class ProxyDetail:
     """The shared detail shape for the residential, datacenter and mobile proxy
-    families, measured over a rolling 90 day window. Every key is present
-    when the object is populated; the object is `{}` when its flag is false.
+    families, measured over a rolling 90 day window. An address that leaves
+    the window keeps its flag and the values of its last day in it, so
+    `last_seen` is what says how recent they are. Every key is present when
+    the object is populated; the object is `{}` when its flag is false.
 
         Attributes:
             provider (str | Unset): The proxy network, or an empty string where unattributed. Example: brightdata.
