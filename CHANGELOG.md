@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.12.4 - 2026-11-06
+
+### Fixes
+
+- End a device poll for a NaN lifetime, and once a wait hits the deadline ([`52b0dd9`](https://github.com/vpndetection-io/sdk-python/commit/52b0dd96167b102b18ee1ad800e2c506348632e7))
+
 ## 5.12.3 - 2026-10-28
 
 ### Fixes
