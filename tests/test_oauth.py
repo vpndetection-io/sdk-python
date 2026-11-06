@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import math
 import re
 import time
 import urllib.parse
@@ -381,6 +382,49 @@ def test_an_expires_in_past_any_float_still_polls(make_client: ClientFactory) ->
 
     assert isinstance(outcome, TokenResponse), f"settled with {outcome!r}"
     assert clock.waits == [1]
+
+
+@pytest.mark.parametrize("interval", [5, 3])
+def test_a_wait_that_ran_to_the_deadline_ends_the_poll_however_early_the_timer_woke(
+    make_client: ClientFactory, interval: int
+) -> None:
+    """A timer that wakes before the clock has moved its delay leaves the deadline reading as
+    not yet reached, so a poll that read the clock again would ask once more at it. A wait
+    cut to the deadline, or ending at it, ends the poll."""
+    bound = LoopBound()
+    stub = OauthStub([{"status": 400, "body": {"error": "authorization_pending"}}], bound)
+    client = make_client(base_url=BASE_URL, transport=stub.transport)
+    clock = FakeClock(bound, short=0.0005)
+    client.oauth.use_clock(clock)
+    device = DeviceAuthorization(**{**_device_fields(), "expires_in": 3, "interval": interval})
+
+    outcome = settle(lambda: client.oauth.poll_device_token("vpndetection-cli", device), bound)
+
+    assert isinstance(outcome, OauthExpiredTokenError), f"settled with {outcome!r}"
+    assert outcome.status is None, "the local deadline, not the server's"
+    assert stub.requests == []
+    assert clock.waits == [3]
+
+
+@pytest.mark.parametrize("expires_in", [math.nan, -math.nan, math.inf - math.inf])
+def test_a_lifetime_that_is_not_a_number_ends_the_poll_at_once(
+    make_client: ClientFactory, expires_in: float
+) -> None:
+    """A hand-built device can carry NaN, which compares false with everything, so the
+    deadline was never reached and the poll asked every interval for good."""
+    bound = LoopBound()
+    stub = OauthStub([{"status": 400, "body": {"error": "authorization_pending"}}], bound)
+    client = make_client(base_url=BASE_URL, transport=stub.transport)
+    clock = FakeClock(bound)
+    client.oauth.use_clock(clock)
+    device = DeviceAuthorization(**{**_device_fields(), "expires_in": expires_in, "interval": 1})
+
+    outcome = settle(lambda: client.oauth.poll_device_token("vpndetection-cli", device), bound)
+
+    assert isinstance(outcome, OauthExpiredTokenError), f"settled with {outcome!r}"
+    assert outcome.status is None, "the local deadline, not the server's"
+    assert stub.requests == []
+    assert clock.waits == [0]
 
 
 def _device_fields() -> dict[str, Any]:

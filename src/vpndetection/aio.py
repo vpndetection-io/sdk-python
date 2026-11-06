@@ -736,9 +736,17 @@ class AsyncOauthApi:
         while True:
             # No wait runs past the deadline: an interval ending after it waits only the
             # time left, and the expiry follows with nothing sent. In full, an interval of
-            # 2147483647 held a poll with 2 s left for 68 years (5.5.2).
-            await self._clock.sleep(min(interval, max(deadline - self._clock.now(), 0)))
-            if self._clock.now() >= deadline:
+            # 2147483647 held a poll with 2 s left for 68 years (5.5.2). A remainder not
+            # above 0 is none left: a hand-built `expires_in` of NaN, which compares false
+            # with everything, polled every interval for good (5.12.3). `max(0, ...)` is 0
+            # for NaN only in that order; `max(nan, 0)` is NaN.
+            left = max(0, deadline - self._clock.now())
+            to_deadline = left <= interval
+            await self._clock.sleep(left if to_deadline else interval)
+            # A wait that ran to the deadline ends the poll without reading the clock again:
+            # a timer may wake before the clock has moved the whole wait, and the deadline
+            # would then read as not yet reached, so one more request would go out at it.
+            if to_deadline or self._clock.now() >= deadline:
                 raise OauthExpiredTokenError()
             try:
                 return await self.exchange_device_code(

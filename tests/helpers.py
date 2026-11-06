@@ -241,11 +241,14 @@ class FakeClock(Clock):
     """A poll's sleep and monotonic clock, replaced together, recording every wait in
     seconds. Past LOOP_BOUND waits, or twice that many clock reads, it trips `bound`."""
 
-    def __init__(self, bound: LoopBound) -> None:
+    def __init__(self, bound: LoopBound, short: float = 0.0) -> None:
         self.waits: list[float] = []
         self._elapsed = 0.0
         self._reads = 0
         self._bound = bound
+        # Each wait of at least 1 ms wakes this many seconds before the clock has moved
+        # its delay, as a runtime timer may.
+        self._short = short
 
     def now(self) -> float:
         self._reads += 1
@@ -257,7 +260,7 @@ class FakeClock(Clock):
         if len(self.waits) == LOOP_BOUND:
             self._bound.trip(f"waited more than {LOOP_BOUND} times")
         self.waits.append(seconds)
-        self._elapsed += seconds
+        self._elapsed += seconds - self._short if seconds >= 0.001 else seconds
 
 
 class AsyncFakeClock(AsyncClock):
