@@ -7,13 +7,14 @@ from ... import errors
 from ...client import AuthenticatedClient, Client
 from ...models.database_format import DatabaseFormat
 from ...models.error import Error
-from ...types import UNSET, Response
+from ...types import UNSET, Response, Unset
 
 
 def _get_kwargs(
     *,
     id: str,
     format_: DatabaseFormat,
+    build: str | Unset = UNSET,
 ) -> dict[str, Any]:
 
     params: dict[str, Any] = {}
@@ -22,6 +23,8 @@ def _get_kwargs(
 
     json_format_ = format_.value
     params["format"] = json_format_
+
+    params["build"] = build
 
     params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
 
@@ -61,6 +64,11 @@ def _parse_response(
 
         return response_404
 
+    if response.status_code == 410:
+        response_410 = Error.from_dict(response.json())
+
+        return response_410
+
     if response.status_code == 503:
         response_503 = Error.from_dict(response.json())
 
@@ -88,6 +96,7 @@ def sync_detailed(
     client: AuthenticatedClient,
     id: str,
     format_: DatabaseFormat,
+    build: str | Unset = UNSET,
 ) -> Response[Any | Error]:
     """Download
 
@@ -97,6 +106,7 @@ def sync_detailed(
     Args:
         id (str):
         format_ (DatabaseFormat): A file format a database version is published in.
+        build (str | Unset):  Example: 20261105.0t53s5.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -109,6 +119,7 @@ def sync_detailed(
     kwargs = _get_kwargs(
         id=id,
         format_=format_,
+        build=build,
     )
 
     response = client.get_httpx_client().request(
@@ -123,6 +134,7 @@ def sync(
     client: AuthenticatedClient,
     id: str,
     format_: DatabaseFormat,
+    build: str | Unset = UNSET,
 ) -> Any | Error | None:
     """Download
 
@@ -132,6 +144,7 @@ def sync(
     Args:
         id (str):
         format_ (DatabaseFormat): A file format a database version is published in.
+        build (str | Unset):  Example: 20261105.0t53s5.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -145,6 +158,7 @@ def sync(
         client=client,
         id=id,
         format_=format_,
+        build=build,
     ).parsed
 
 
@@ -153,6 +167,7 @@ async def asyncio_detailed(
     client: AuthenticatedClient,
     id: str,
     format_: DatabaseFormat,
+    build: str | Unset = UNSET,
 ) -> Response[Any | Error]:
     """Download
 
@@ -162,6 +177,7 @@ async def asyncio_detailed(
     Args:
         id (str):
         format_ (DatabaseFormat): A file format a database version is published in.
+        build (str | Unset):  Example: 20261105.0t53s5.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -174,6 +190,7 @@ async def asyncio_detailed(
     kwargs = _get_kwargs(
         id=id,
         format_=format_,
+        build=build,
     )
 
     response = await client.get_async_httpx_client().request(**kwargs)
@@ -186,6 +203,7 @@ async def asyncio(
     client: AuthenticatedClient,
     id: str,
     format_: DatabaseFormat,
+    build: str | Unset = UNSET,
 ) -> Any | Error | None:
     """Download
 
@@ -195,6 +213,7 @@ async def asyncio(
     Args:
         id (str):
         format_ (DatabaseFormat): A file format a database version is published in.
+        build (str | Unset):  Example: 20261105.0t53s5.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -209,5 +228,6 @@ async def asyncio(
             client=client,
             id=id,
             format_=format_,
+            build=build,
         )
     ).parsed

@@ -22,14 +22,19 @@ class ProxyDetail:
 
         Attributes:
             provider (str | Unset): The proxy network, or an empty string where unattributed. Example: brightdata.
-            first_seen (datetime.date | Unset): The earliest date within the window this address was seen in the pool.
-                Example: 2026-06-14.
-            last_seen (datetime.date | Unset): The most recent date within the window this address was seen in the pool.
-                Example: 2026-09-02.
-            hits (int | Unset): How many times the address was observed in the pool during the window. Example: 42.
-            hits_days_pct (int | Unset): The share of days in the window on which the address was seen, as a
-                percentage. A high value means a stable pool member rather than a
-                one-off sighting.
+            first_seen (datetime.date | Unset): The earliest date within the window this address was seen in the
+                pool, as of its last day in the window once it has left.
+                 Example: 2026-06-14.
+            last_seen (datetime.date | Unset): The most recent date this address was seen in the pool. An address
+                that leaves the window keeps its flag, so this date is what says how
+                recent the sighting is.
+                 Example: 2026-09-02.
+            hits (int | Unset): How many times the address was observed in the pool during the
+                window, as of its last day in it once it has left.
+                 Example: 42.
+            hits_days_pct (int | Unset): The percentage of days in the window on which the address was seen,
+                as of its last day in it once it has left. A high value means a
+                stable pool member rather than a one-off sighting.
                  Example: 63.
             providers_num (int | Unset): How many distinct proxy networks this address was seen in. Example: 2.
     """

@@ -35,11 +35,13 @@ class PubproxyDetail:
             num_proxies (int | Unset): How many distinct public proxies' traffic left from this address;
                 0 when it is only an entry.
                  Example: 0.
-            last_seen (datetime.date | Unset): The most recent date within the window a proxy on this address was seen.
-                Example: 2026-10-17.
+            last_seen (datetime.date | Unset): The most recent date a proxy on this address was seen. An address
+                that leaves the window keeps its flag, so this date is what says how
+                recent the sighting is.
+                 Example: 2026-10-17.
             last_usable (str | Unset): The most recent date within the window a request through a proxy on
                 this address was answered, as YYYY-MM-DD, or an empty string when
-                none was.
+                none was, as of its last day in the window once it has left.
                  Example: 2026-10-17.
     """
 
