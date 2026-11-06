@@ -2,7 +2,7 @@
 dataset licenses, and `db.download` is a scope the other three keys do not carry.
 
 The transfer is budgeted before it starts. `metadata` publishes a size per format, and
-that size is checked against the ceiling below FIRST, so a mistaken dataset id can never
+that size is checked against the ceiling below FIRST, so a mistaken dataset ID can never
 quietly pull one of the gigabyte datasets through CI.
 """
 
@@ -68,7 +68,7 @@ def test_the_licensed_catalog_answers_the_schema_the_client_was_generated_from()
         # list did not exist, so `list` could not tell a caller what to download.
         assert dataset.versions, f"{dataset.base} carries no versions"
         for version in dataset.versions:
-            assert version.id, f"{dataset.base} has a version with no id"
+            assert version.id, f"{dataset.base} has a version with no ID"
             assert version.formats, f"{version.id} carries no formats"
     # The max org holds grants in staging, so an empty list here is the catalogue
     # arriving without any of them rather than a plan that buys nothing.
