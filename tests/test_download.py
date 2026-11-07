@@ -26,6 +26,8 @@ BLOB = f"{STORAGE}/blob"
 API_KEY = "secret-key"
 
 SMALL = b"id,provider\n45.83.91.1,mullvad\n"
+# A build the API no longer keeps, which it answers 410 for.
+GONE_BUILD = "20261029.abc123"
 # One chunk, reused, so a test can serve gigabytes without allocating them.
 FILLER = bytes(1 << 20)
 
@@ -73,6 +75,10 @@ class Origin:
 
     def _handle(self, request: httpx.Request) -> httpx.Response:
         self.requests.append(request)
+        if request.url.path == "/api/v1/database/download" and (
+            request.url.params.get("build") == GONE_BUILD
+        ):
+            return httpx.Response(410, json={"rc": "BUILD_GONE"})
         if request.url.path == "/api/v1/database/download":
             # Absolute, as the real 302 is: a presigned URL is on another host entirely,
             # so nothing here may lean on a relative one.
@@ -162,6 +168,49 @@ def test_download_url_hands_back_the_link_without_fetching_it(
     served = origin(make_client)
 
     assert served.client.database.download_url("cdn_ip_v1", "csvgz") == BLOB
+    assert served.paths() == ["/api/v1/database/download"]
+
+
+def test_download_url_asks_for_the_live_build_unless_given_one(
+    make_client: ClientFactory,
+) -> None:
+    served = origin(make_client)
+
+    served.client.database.download_url("cdn_ip_v1", "csvgz")
+    served.client.database.download_url("cdn_ip_v1", "csvgz", build="20261105.0t53s5")
+
+    assert [dict(r.url.params) for r in served.requests] == [
+        {"id": "cdn_ip_v1", "format": "csvgz"},
+        {"id": "cdn_ip_v1", "format": "csvgz", "build": "20261105.0t53s5"},
+    ]
+
+
+@pytest.mark.parametrize("method", ["download", "download_bytes"])
+def test_a_transfer_asks_for_the_build_it_is_given(
+    make_client: ClientFactory, tmp_path: Path, method: str
+) -> None:
+    served = origin(make_client)
+    rest = (tmp_path / "build.csv.gz",) if method == "download" else ()
+
+    getattr(served.client.database, method)("cdn_ip_v1", "csvgz", *rest, build="20261105.0t53s5")
+
+    assert [(r.url.path, r.url.params.get("build")) for r in served.requests] == [
+        ("/api/v1/database/download", "20261105.0t53s5"),
+        ("/blob", None),
+    ]
+
+
+# A pruned build is gone for good, so asking again cannot help.
+def test_a_build_no_longer_kept_is_a_bad_request_with_its_410_sent_once(
+    make_client: ClientFactory,
+) -> None:
+    served = origin(make_client)
+
+    with pytest.raises(VPNDetectionError) as caught:
+        served.client.database.download_bytes("cdn_ip_v1", "csvgz", build=GONE_BUILD)
+
+    assert caught.value.kind == "bad_request"
+    assert caught.value.status == 410
     assert served.paths() == ["/api/v1/database/download"]
 
 

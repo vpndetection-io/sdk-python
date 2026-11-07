@@ -502,7 +502,14 @@ class DatabaseApi:
 
         return self._retrying(call)
 
-    def download_url(self, dataset_id: str, format: Format, *, timeout: float | None = None) -> str:
+    def download_url(
+        self,
+        dataset_id: str,
+        format: Format,
+        *,
+        build: str | None = None,
+        timeout: float | None = None,
+    ) -> str:
         """The time-limited URL for one dataset file.
 
         The API answers `302` to object storage. The URL is returned rather than the
@@ -512,6 +519,11 @@ class DatabaseApi:
 
         `timeout` bounds each attempt at MINTING the link, which is an ordinary API
         request, and says nothing about the transfer you then run with it.
+
+        `build` names one build of the dataset, as a `database.updated` webhook gives it,
+        so the file is the one whose `sha256` the webhook carries; without it, the build
+        that is live. A build is kept 7 days, and one pruned since is a `bad_request`
+        with status 410.
         """
 
         def call() -> str:
@@ -521,12 +533,20 @@ class DatabaseApi:
                 self._bound(timeout),
                 id=dataset_id,
                 format_=DatabaseFormat(format),
+                build=build,
             )
             return redirect_location(res)
 
         return self._retrying(call)
 
-    def download(self, dataset_id: str, format: Format, path: str | os.PathLike[str]) -> int:
+    def download(
+        self,
+        dataset_id: str,
+        format: Format,
+        path: str | os.PathLike[str],
+        *,
+        build: str | None = None,
+    ) -> int:
         """Download one dataset file to `path`, and return the bytes written.
 
         The bytes are streamed straight to disk, so nothing larger than a chunk is ever
@@ -538,8 +558,10 @@ class DatabaseApi:
         A failure DURING the transfer surfaces as it happened, an `httpx` error or an
         `OSError`, rather than as this library's error type: a reset socket and a full
         disk are different problems, and only one of them is ours.
+
+        `build` asks for one build of the dataset, as `download_url` does.
         """
-        res = self._open_transfer(dataset_id, format)
+        res = self._open_transfer(dataset_id, format, build)
         try:
             written = 0
             with part_file(path) as sink:
@@ -552,15 +574,16 @@ class DatabaseApi:
         finally:
             res.close()
 
-    def download_bytes(self, dataset_id: str, format: Format) -> bytes:
+    def download_bytes(self, dataset_id: str, format: Format, *, build: str | None = None) -> bytes:
         """Download one dataset file and hand back its bytes.
 
         **This holds the entire file in memory**, and the catalog spans five orders of
         magnitude, from `cdn_ip_v1` at 10 KB to `resproxy_ip_90d_v1` at 1.79 GB. Reach
         for it at the small end, where the bytes go straight into a parser, and use
-        `download` for anything you have not measured.
+        `download` for anything you have not measured. `build` asks for one build of the
+        dataset, as `download_url` does.
         """
-        res = self._open_transfer(dataset_id, format)
+        res = self._open_transfer(dataset_id, format, build)
         try:
             body = res.read()
             assert_whole_transfer(res, len(body))
@@ -574,8 +597,8 @@ class DatabaseApi:
     #
     # Returns the response with its body still unread, so the caller decides whether a
     # dataset is going to disk or into memory.
-    def _open_transfer(self, dataset_id: str, format: Format) -> httpx.Response:
-        url = self.download_url(dataset_id, format)
+    def _open_transfer(self, dataset_id: str, format: Format, build: str | None) -> httpx.Response:
+        url = self.download_url(dataset_id, format, build=build)
         transfer = self._owner._transfer
 
         def call() -> httpx.Response:

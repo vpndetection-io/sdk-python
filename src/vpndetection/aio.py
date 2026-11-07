@@ -491,7 +491,12 @@ class AsyncDatabaseApi:
         return await self._retrying(call)
 
     async def download_url(
-        self, dataset_id: str, format: Format, *, timeout: float | None = None
+        self,
+        dataset_id: str,
+        format: Format,
+        *,
+        build: str | None = None,
+        timeout: float | None = None,
     ) -> str:
         """The time-limited URL for one dataset file.
 
@@ -502,6 +507,11 @@ class AsyncDatabaseApi:
 
         `timeout` bounds each attempt at MINTING the link, which is an ordinary API
         request, and says nothing about the transfer you then run with it.
+
+        `build` names one build of the dataset, as a `database.updated` webhook gives it,
+        so the file is the one whose `sha256` the webhook carries; without it, the build
+        that is live. A build is kept 7 days, and one pruned since is a `bad_request`
+        with status 410.
         """
 
         async def call() -> str:
@@ -511,12 +521,20 @@ class AsyncDatabaseApi:
                 self._bound(timeout),
                 id=dataset_id,
                 format_=DatabaseFormat(format),
+                build=build,
             )
             return redirect_location(res)
 
         return await self._retrying(call)
 
-    async def download(self, dataset_id: str, format: Format, path: str | os.PathLike[str]) -> int:
+    async def download(
+        self,
+        dataset_id: str,
+        format: Format,
+        path: str | os.PathLike[str],
+        *,
+        build: str | None = None,
+    ) -> int:
         """Download one dataset file to `path`, and return the bytes written.
 
         The bytes are streamed straight to disk, so nothing larger than a chunk is ever
@@ -529,11 +547,13 @@ class AsyncDatabaseApi:
         `OSError`, rather than as this library's error type: a reset socket and a full
         disk are different problems, and only one of them is ours.
 
+        `build` asks for one build of the dataset, as `download_url` does.
+
         Each chunk is written from a worker thread. A gigabyte of blocking writes on the
         event loop would stall every other task in the process for the length of the
         transfer, which is the one thing an async caller cannot afford.
         """
-        res = await self._open_transfer(dataset_id, format)
+        res = await self._open_transfer(dataset_id, format, build)
         try:
             loop = asyncio.get_running_loop()
             written = 0
@@ -547,15 +567,18 @@ class AsyncDatabaseApi:
         finally:
             await res.aclose()
 
-    async def download_bytes(self, dataset_id: str, format: Format) -> bytes:
+    async def download_bytes(
+        self, dataset_id: str, format: Format, *, build: str | None = None
+    ) -> bytes:
         """Download one dataset file and hand back its bytes.
 
         **This holds the entire file in memory**, and the catalog spans five orders of
         magnitude, from `cdn_ip_v1` at 10 KB to `resproxy_ip_90d_v1` at 1.79 GB. Reach
         for it at the small end, where the bytes go straight into a parser, and use
-        `download` for anything you have not measured.
+        `download` for anything you have not measured. `build` asks for one build of the
+        dataset, as `download_url` does.
         """
-        res = await self._open_transfer(dataset_id, format)
+        res = await self._open_transfer(dataset_id, format, build)
         try:
             body = await res.aread()
             assert_whole_transfer(res, len(body))
@@ -569,8 +592,10 @@ class AsyncDatabaseApi:
     #
     # Returns the response with its body still unread, so the caller decides whether a
     # dataset is going to disk or into memory.
-    async def _open_transfer(self, dataset_id: str, format: Format) -> httpx.Response:
-        url = await self.download_url(dataset_id, format)
+    async def _open_transfer(
+        self, dataset_id: str, format: Format, build: str | None
+    ) -> httpx.Response:
+        url = await self.download_url(dataset_id, format, build=build)
         transfer = self._owner._transfer
 
         async def call() -> httpx.Response:

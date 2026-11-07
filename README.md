@@ -202,6 +202,13 @@ written = client.database.download("vpn_ip_extended_v1", "mmdb", "./vpn_ip_exten
 
 `download_bytes` holds the whole file in memory, and the catalog runs from `cdn_ip_v1` at 10 KB to `resproxy_ip_90d_v1` at 1.79 GB, so use `download` for anything you have not measured.
 
+From 5.13.0, each of the three takes a keyword-only `build`: the build a `database.updated` webhook names, so the file is the one whose `sha256` the webhook carries rather than whatever is live by the time you ask. Without it you get the live build. A build is kept 7 days, and one pruned since is a `bad_request` with status 410:
+
+```python
+data = event["data"]  # a database.updated webhook's
+client.database.download(data["dataset"], "mmdb", f"./{data['dataset']}.mmdb", build=data["build"])
+```
+
 From 5.4.0, `list`, `metadata`, `checksums`, `downloads` and `download_url` each take a keyword-only `timeout` in seconds, bounding each attempt at that one call in place of the client's:
 
 ```python
