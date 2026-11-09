@@ -60,9 +60,9 @@ def sync_detailed(
 ) -> Response[AccountRc]:
     """Members
 
-     Read-only. Adding or removing a member is an invitation flow with email
-    in the middle rather than a POST, and modeling it as one here would
-    promise something this API does not do.
+     The members of the organization this credential is scoped to.
+
+    Read-only. Members are invited by email from the console.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -87,9 +87,9 @@ def sync(
 ) -> AccountRc | None:
     """Members
 
-     Read-only. Adding or removing a member is an invitation flow with email
-    in the middle rather than a POST, and modeling it as one here would
-    promise something this API does not do.
+     The members of the organization this credential is scoped to.
+
+    Read-only. Members are invited by email from the console.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -110,9 +110,9 @@ async def asyncio_detailed(
 ) -> Response[AccountRc]:
     """Members
 
-     Read-only. Adding or removing a member is an invitation flow with email
-    in the middle rather than a POST, and modeling it as one here would
-    promise something this API does not do.
+     The members of the organization this credential is scoped to.
+
+    Read-only. Members are invited by email from the console.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -135,9 +135,9 @@ async def asyncio(
 ) -> AccountRc | None:
     """Members
 
-     Read-only. Adding or removing a member is an invitation flow with email
-    in the middle rather than a POST, and modeling it as one here would
-    promise something this API does not do.
+     The members of the organization this credential is scoped to.
+
+    Read-only. Members are invited by email from the console.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.

@@ -75,13 +75,11 @@ def sync_detailed(
 
      Returns an existing key's secret.
 
-    Its own scope rather than part of `apikeys.manage`, because the two are
-    different acts: rotating replaces a secret you never see, while this
-    hands one over.
+    It needs the `apikeys.reveal` scope, which `apikeys.manage` doesn't
+    include.
 
-    Refused with `NOT_RETRIEVABLE` for a key issued before this product
-    stored secrets recoverably - that secret was never kept, so no retry
-    will ever produce it. Rotate the key instead.
+    Refused with `NOT_RETRIEVABLE` for a key issued before we kept secrets.
+    Rotate that key instead.
 
     Args:
         id (UUID):
@@ -114,13 +112,11 @@ def sync(
 
      Returns an existing key's secret.
 
-    Its own scope rather than part of `apikeys.manage`, because the two are
-    different acts: rotating replaces a secret you never see, while this
-    hands one over.
+    It needs the `apikeys.reveal` scope, which `apikeys.manage` doesn't
+    include.
 
-    Refused with `NOT_RETRIEVABLE` for a key issued before this product
-    stored secrets recoverably - that secret was never kept, so no retry
-    will ever produce it. Rotate the key instead.
+    Refused with `NOT_RETRIEVABLE` for a key issued before we kept secrets.
+    Rotate that key instead.
 
     Args:
         id (UUID):
@@ -148,13 +144,11 @@ async def asyncio_detailed(
 
      Returns an existing key's secret.
 
-    Its own scope rather than part of `apikeys.manage`, because the two are
-    different acts: rotating replaces a secret you never see, while this
-    hands one over.
+    It needs the `apikeys.reveal` scope, which `apikeys.manage` doesn't
+    include.
 
-    Refused with `NOT_RETRIEVABLE` for a key issued before this product
-    stored secrets recoverably - that secret was never kept, so no retry
-    will ever produce it. Rotate the key instead.
+    Refused with `NOT_RETRIEVABLE` for a key issued before we kept secrets.
+    Rotate that key instead.
 
     Args:
         id (UUID):
@@ -185,13 +179,11 @@ async def asyncio(
 
      Returns an existing key's secret.
 
-    Its own scope rather than part of `apikeys.manage`, because the two are
-    different acts: rotating replaces a secret you never see, while this
-    hands one over.
+    It needs the `apikeys.reveal` scope, which `apikeys.manage` doesn't
+    include.
 
-    Refused with `NOT_RETRIEVABLE` for a key issued before this product
-    stored secrets recoverably - that secret was never kept, so no retry
-    will ever produce it. Rotate the key instead.
+    Refused with `NOT_RETRIEVABLE` for a key issued before we kept secrets.
+    Rotate that key instead.
 
     Args:
         id (UUID):

@@ -79,8 +79,8 @@ def sync_detailed(
 
      Creates a key and returns its secret.
 
-    This is the ONLY response that ever carries the secret, and only
-    because this is the moment it comes into existence. Store it now.
+    Store the secret now. Reading it back later takes `reveal` and the
+    `apikeys.reveal` scope.
 
     Args:
         body (AccountCreateApikeyRequest):
@@ -113,8 +113,8 @@ def sync(
 
      Creates a key and returns its secret.
 
-    This is the ONLY response that ever carries the secret, and only
-    because this is the moment it comes into existence. Store it now.
+    Store the secret now. Reading it back later takes `reveal` and the
+    `apikeys.reveal` scope.
 
     Args:
         body (AccountCreateApikeyRequest):
@@ -142,8 +142,8 @@ async def asyncio_detailed(
 
      Creates a key and returns its secret.
 
-    This is the ONLY response that ever carries the secret, and only
-    because this is the moment it comes into existence. Store it now.
+    Store the secret now. Reading it back later takes `reveal` and the
+    `apikeys.reveal` scope.
 
     Args:
         body (AccountCreateApikeyRequest):
@@ -174,8 +174,8 @@ async def asyncio(
 
      Creates a key and returns its secret.
 
-    This is the ONLY response that ever carries the secret, and only
-    because this is the moment it comes into existence. Store it now.
+    Store the secret now. Reading it back later takes `reveal` and the
+    `apikeys.reveal` scope.
 
     Args:
         body (AccountCreateApikeyRequest):

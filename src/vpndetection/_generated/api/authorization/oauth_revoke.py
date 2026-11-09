@@ -60,11 +60,10 @@ def sync_detailed(
 ) -> Response[OauthRevokeResponse200]:
     """Revoke
 
-     RFC 7009. Always answers 200, including for a token that was never
-    valid - an endpoint that distinguished the two would be a way to test
-    whether a stolen string is a live credential.
+     RFC 7009. Always answers 200, even for a token that was never valid, so
+    it can't be used to test whether a token is live.
 
-    Revoking a REFRESH token ends the whole authorization and takes its
+    Revoking a refresh token ends the whole authorization and takes its
     access tokens with it. Revoking an access token affects only that token.
 
     Args:
@@ -96,11 +95,10 @@ def sync(
 ) -> OauthRevokeResponse200 | None:
     """Revoke
 
-     RFC 7009. Always answers 200, including for a token that was never
-    valid - an endpoint that distinguished the two would be a way to test
-    whether a stolen string is a live credential.
+     RFC 7009. Always answers 200, even for a token that was never valid, so
+    it can't be used to test whether a token is live.
 
-    Revoking a REFRESH token ends the whole authorization and takes its
+    Revoking a refresh token ends the whole authorization and takes its
     access tokens with it. Revoking an access token affects only that token.
 
     Args:
@@ -127,11 +125,10 @@ async def asyncio_detailed(
 ) -> Response[OauthRevokeResponse200]:
     """Revoke
 
-     RFC 7009. Always answers 200, including for a token that was never
-    valid - an endpoint that distinguished the two would be a way to test
-    whether a stolen string is a live credential.
+     RFC 7009. Always answers 200, even for a token that was never valid, so
+    it can't be used to test whether a token is live.
 
-    Revoking a REFRESH token ends the whole authorization and takes its
+    Revoking a refresh token ends the whole authorization and takes its
     access tokens with it. Revoking an access token affects only that token.
 
     Args:
@@ -161,11 +158,10 @@ async def asyncio(
 ) -> OauthRevokeResponse200 | None:
     """Revoke
 
-     RFC 7009. Always answers 200, including for a token that was never
-    valid - an endpoint that distinguished the two would be a way to test
-    whether a stolen string is a live credential.
+     RFC 7009. Always answers 200, even for a token that was never valid, so
+    it can't be used to test whether a token is live.
 
-    Revoking a REFRESH token ends the whole authorization and takes its
+    Revoking a refresh token ends the whole authorization and takes its
     access tokens with it. Revoking an access token affects only that token.
 
     Args:

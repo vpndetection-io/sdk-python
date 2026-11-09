@@ -61,9 +61,8 @@ def sync_detailed(
 ) -> Response[AccountRc | ApikeyList]:
     """List
 
-     Metadata only. A key's secret is never in a list - not here and not in
-    the console - because a list is the response that ends up in logs,
-    caches and support tickets.
+     Each key's metadata. A list never carries a secret, here or in the
+    console: `reveal` reads one.
 
     `retrievable` says whether the secret could still be read back at all.
     A key issued before this product stored secrets recoverably was never
@@ -93,9 +92,8 @@ def sync(
 ) -> AccountRc | ApikeyList | None:
     """List
 
-     Metadata only. A key's secret is never in a list - not here and not in
-    the console - because a list is the response that ends up in logs,
-    caches and support tickets.
+     Each key's metadata. A list never carries a secret, here or in the
+    console: `reveal` reads one.
 
     `retrievable` says whether the secret could still be read back at all.
     A key issued before this product stored secrets recoverably was never
@@ -121,9 +119,8 @@ async def asyncio_detailed(
 ) -> Response[AccountRc | ApikeyList]:
     """List
 
-     Metadata only. A key's secret is never in a list - not here and not in
-    the console - because a list is the response that ends up in logs,
-    caches and support tickets.
+     Each key's metadata. A list never carries a secret, here or in the
+    console: `reveal` reads one.
 
     `retrievable` says whether the secret could still be read back at all.
     A key issued before this product stored secrets recoverably was never
@@ -151,9 +148,8 @@ async def asyncio(
 ) -> AccountRc | ApikeyList | None:
     """List
 
-     Metadata only. A key's secret is never in a list - not here and not in
-    the console - because a list is the response that ends up in logs,
-    caches and support tickets.
+     Each key's metadata. A list never carries a secret, here or in the
+    console: `reveal` reads one.
 
     `retrievable` says whether the secret could still be read back at all.
     A key issued before this product stored secrets recoverably was never

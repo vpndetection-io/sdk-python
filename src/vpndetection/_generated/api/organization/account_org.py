@@ -63,9 +63,7 @@ def sync_detailed(
 
      The organization this credential is scoped to.
 
-    There is no way to name a different one. A credential describes exactly
-    one organization, so an identifier in the path could only ever be your
-    own or a refusal.
+    A credential belongs to one organization, so this takes no ID.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -92,9 +90,7 @@ def sync(
 
      The organization this credential is scoped to.
 
-    There is no way to name a different one. A credential describes exactly
-    one organization, so an identifier in the path could only ever be your
-    own or a refusal.
+    A credential belongs to one organization, so this takes no ID.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -117,9 +113,7 @@ async def asyncio_detailed(
 
      The organization this credential is scoped to.
 
-    There is no way to name a different one. A credential describes exactly
-    one organization, so an identifier in the path could only ever be your
-    own or a refusal.
+    A credential belongs to one organization, so this takes no ID.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -144,9 +138,7 @@ async def asyncio(
 
      The organization this credential is scoped to.
 
-    There is no way to name a different one. A credential describes exactly
-    one organization, so an identifier in the path could only ever be your
-    own or a refusal.
+    A credential belongs to one organization, so this takes no ID.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.

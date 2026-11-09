@@ -56,11 +56,9 @@ def sync_detailed(
 ) -> Response[Error | ListDatabasesResponse200]:
     """List
 
-     Every database this organization may SEE, with where its license stands.
-    Not just the ones you hold: a customer with one grant should be able to
-    tell what else is published without asking. `standing` is the
-    difference - `licensed`, `expired`, or `unlicensed` for one never
-    bought.
+     Every database this organization can see, licensed or not. `standing`
+    says where its license stands: `licensed`, `expired`, or `unlicensed`
+    for one never bought.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -85,11 +83,9 @@ def sync(
 ) -> Error | ListDatabasesResponse200 | None:
     """List
 
-     Every database this organization may SEE, with where its license stands.
-    Not just the ones you hold: a customer with one grant should be able to
-    tell what else is published without asking. `standing` is the
-    difference - `licensed`, `expired`, or `unlicensed` for one never
-    bought.
+     Every database this organization can see, licensed or not. `standing`
+    says where its license stands: `licensed`, `expired`, or `unlicensed`
+    for one never bought.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -110,11 +106,9 @@ async def asyncio_detailed(
 ) -> Response[Error | ListDatabasesResponse200]:
     """List
 
-     Every database this organization may SEE, with where its license stands.
-    Not just the ones you hold: a customer with one grant should be able to
-    tell what else is published without asking. `standing` is the
-    difference - `licensed`, `expired`, or `unlicensed` for one never
-    bought.
+     Every database this organization can see, licensed or not. `standing`
+    says where its license stands: `licensed`, `expired`, or `unlicensed`
+    for one never bought.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -137,11 +131,9 @@ async def asyncio(
 ) -> Error | ListDatabasesResponse200 | None:
     """List
 
-     Every database this organization may SEE, with where its license stands.
-    Not just the ones you hold: a customer with one grant should be able to
-    tell what else is published without asking. `standing` is the
-    difference - `licensed`, `expired`, or `unlicensed` for one never
-    bought.
+     Every database this organization can see, licensed or not. `standing`
+    says where its license stands: `licensed`, `expired`, or `unlicensed`
+    for one never bought.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.

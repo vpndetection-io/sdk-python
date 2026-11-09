@@ -71,7 +71,8 @@ def sync_detailed(
 ) -> Response[OauthError | TokenResponse]:
     """Token
 
-     Three grant types.
+     Issues tokens for three grant types: a device code, an authorization
+    code and a refresh token.
 
     `urn:ietf:params:oauth:grant-type:device_code` polls a device
     authorization. Until the person approves it answers
@@ -117,7 +118,8 @@ def sync(
 ) -> OauthError | TokenResponse | None:
     """Token
 
-     Three grant types.
+     Issues tokens for three grant types: a device code, an authorization
+    code and a refresh token.
 
     `urn:ietf:params:oauth:grant-type:device_code` polls a device
     authorization. Until the person approves it answers
@@ -158,7 +160,8 @@ async def asyncio_detailed(
 ) -> Response[OauthError | TokenResponse]:
     """Token
 
-     Three grant types.
+     Issues tokens for three grant types: a device code, an authorization
+    code and a refresh token.
 
     `urn:ietf:params:oauth:grant-type:device_code` polls a device
     authorization. Until the person approves it answers
@@ -202,7 +205,8 @@ async def asyncio(
 ) -> OauthError | TokenResponse | None:
     """Token
 
-     Three grant types.
+     Issues tokens for three grant types: a device code, an authorization
+    code and a refresh token.
 
     `urn:ietf:params:oauth:grant-type:device_code` polls a device
     authorization. Until the person approves it answers

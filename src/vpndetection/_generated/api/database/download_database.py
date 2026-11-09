@@ -100,8 +100,8 @@ def sync_detailed(
 ) -> Response[Any | Error]:
     """Download
 
-     Answers `302` with a time-limited URL pointing straight at object storage. Follow the redirect; the
-    link authorizes the START of a transfer, so one already running is not interrupted when it lapses.
+     Redirects (`302`) to a time-limited link to the database file. The link only has to be valid when
+    the download starts, so a long one isn't cut off when it expires.
 
     Args:
         id (str):
@@ -138,8 +138,8 @@ def sync(
 ) -> Any | Error | None:
     """Download
 
-     Answers `302` with a time-limited URL pointing straight at object storage. Follow the redirect; the
-    link authorizes the START of a transfer, so one already running is not interrupted when it lapses.
+     Redirects (`302`) to a time-limited link to the database file. The link only has to be valid when
+    the download starts, so a long one isn't cut off when it expires.
 
     Args:
         id (str):
@@ -171,8 +171,8 @@ async def asyncio_detailed(
 ) -> Response[Any | Error]:
     """Download
 
-     Answers `302` with a time-limited URL pointing straight at object storage. Follow the redirect; the
-    link authorizes the START of a transfer, so one already running is not interrupted when it lapses.
+     Redirects (`302`) to a time-limited link to the database file. The link only has to be valid when
+    the download starts, so a long one isn't cut off when it expires.
 
     Args:
         id (str):
@@ -207,8 +207,8 @@ async def asyncio(
 ) -> Any | Error | None:
     """Download
 
-     Answers `302` with a time-limited URL pointing straight at object storage. Follow the redirect; the
-    link authorizes the START of a transfer, so one already running is not interrupted when it lapses.
+     Redirects (`302`) to a time-limited link to the database file. The link only has to be valid when
+    the download starts, so a long one isn't cut off when it expires.
 
     Args:
         id (str):
