@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.15.2 - 2026-11-11
+
+### Fixes
+
+- Say Unlimited, the free plan, never the Unlimited tier, and re-pin the spec ([`bd6dbdd`](https://github.com/vpndetection-io/sdk-python/commit/bd6dbdd7cfaf8b23f10d52a69502d747613a4425))
+
 ## 5.15.1 - 2026-11-11
 
 ### Fixes
