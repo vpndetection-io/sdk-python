@@ -48,6 +48,11 @@ def _parse_response(
 
         return response_401
 
+    if response.status_code == 402:
+        response_402 = LookupError_.from_dict(response.json())
+
+        return response_402
+
     if response.status_code == 403:
         response_403 = LookupError_.from_dict(response.json())
 
@@ -97,16 +102,18 @@ def sync_detailed(
     normalized form. An address that could not be answered sits in `errors`
     with the status and message the single lookup would have given, and
     never disturbs the others: a string that is not an address is a `400`
-    there, and an allowance that runs out part way through leaves the
-    remaining entries as `429`s.
+    there, and an overage cap reached part way through leaves the remaining
+    entries as `429`s.
 
     The call itself fails only for the reasons below, and a `429` on the
     call always carries `Retry-After`: the batch is admitted or refused
-    whole by the rate limit, so a per-entry `429` is always a spent
-    allowance and never a throttle.
+    whole by the rate limit, so a per-entry `429` is always the overage cap
+    and never a throttle.
 
-    A batch needs an API key, a free one included: without one the call is
-    refused with `401`. The Unlimited tier looks up one address at a time.
+    A batch needs a paid plan: without a key the call is refused with `401`,
+    and with a trial key with `402`, unless it names one address, which is
+    answered as `GET /{ip}` would answer it. Unlimited and a trial look up
+    one address at a time.
 
     Args:
         body (BatchLookupRequest):
@@ -147,16 +154,18 @@ def sync(
     normalized form. An address that could not be answered sits in `errors`
     with the status and message the single lookup would have given, and
     never disturbs the others: a string that is not an address is a `400`
-    there, and an allowance that runs out part way through leaves the
-    remaining entries as `429`s.
+    there, and an overage cap reached part way through leaves the remaining
+    entries as `429`s.
 
     The call itself fails only for the reasons below, and a `429` on the
     call always carries `Retry-After`: the batch is admitted or refused
-    whole by the rate limit, so a per-entry `429` is always a spent
-    allowance and never a throttle.
+    whole by the rate limit, so a per-entry `429` is always the overage cap
+    and never a throttle.
 
-    A batch needs an API key, a free one included: without one the call is
-    refused with `401`. The Unlimited tier looks up one address at a time.
+    A batch needs a paid plan: without a key the call is refused with `401`,
+    and with a trial key with `402`, unless it names one address, which is
+    answered as `GET /{ip}` would answer it. Unlimited and a trial look up
+    one address at a time.
 
     Args:
         body (BatchLookupRequest):
@@ -192,16 +201,18 @@ async def asyncio_detailed(
     normalized form. An address that could not be answered sits in `errors`
     with the status and message the single lookup would have given, and
     never disturbs the others: a string that is not an address is a `400`
-    there, and an allowance that runs out part way through leaves the
-    remaining entries as `429`s.
+    there, and an overage cap reached part way through leaves the remaining
+    entries as `429`s.
 
     The call itself fails only for the reasons below, and a `429` on the
     call always carries `Retry-After`: the batch is admitted or refused
-    whole by the rate limit, so a per-entry `429` is always a spent
-    allowance and never a throttle.
+    whole by the rate limit, so a per-entry `429` is always the overage cap
+    and never a throttle.
 
-    A batch needs an API key, a free one included: without one the call is
-    refused with `401`. The Unlimited tier looks up one address at a time.
+    A batch needs a paid plan: without a key the call is refused with `401`,
+    and with a trial key with `402`, unless it names one address, which is
+    answered as `GET /{ip}` would answer it. Unlimited and a trial look up
+    one address at a time.
 
     Args:
         body (BatchLookupRequest):
@@ -240,16 +251,18 @@ async def asyncio(
     normalized form. An address that could not be answered sits in `errors`
     with the status and message the single lookup would have given, and
     never disturbs the others: a string that is not an address is a `400`
-    there, and an allowance that runs out part way through leaves the
-    remaining entries as `429`s.
+    there, and an overage cap reached part way through leaves the remaining
+    entries as `429`s.
 
     The call itself fails only for the reasons below, and a `429` on the
     call always carries `Retry-After`: the batch is admitted or refused
-    whole by the rate limit, so a per-entry `429` is always a spent
-    allowance and never a throttle.
+    whole by the rate limit, so a per-entry `429` is always the overage cap
+    and never a throttle.
 
-    A batch needs an API key, a free one included: without one the call is
-    refused with `401`. The Unlimited tier looks up one address at a time.
+    A batch needs a paid plan: without a key the call is refused with `401`,
+    and with a trial key with `402`, unless it names one address, which is
+    answered as `GET /{ip}` would answer it. Unlimited and a trial look up
+    one address at a time.
 
     Args:
         body (BatchLookupRequest):

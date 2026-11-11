@@ -49,20 +49,73 @@ def test_each_tier_serves_a_superset_of_the_tier_below() -> None:
     below = None
     for rung in tiers.observable():
         answer = answer_for(rung)
-        print(f"==> {rung.tier}: {len(answer.raw)} fields")
+        fields = _tier_fields(answer.raw)
+        print(f"==> {rung.tier}: {len(fields)} fields")
         if below is None:
             below = answer
             continue
-        for field in below.raw:
-            assert field in answer.raw, f"{rung.tier} drops {field}, which {below.rung.tier} serves"
+        lower = _tier_fields(below.raw)
+        for field in lower:
+            assert field in fields, f"{rung.tier} drops {field}, which {below.rung.tier} serves"
         # Without this a run in which every key resolved to the same plan would pass:
         # identical sets satisfy containment in both directions.
         if rung.widens:
-            assert len(answer.raw) > len(below.raw), (
-                f"{rung.tier} answers {len(answer.raw)} field(s) and {below.rung.tier} "
-                f"answers {len(below.raw)}, so it is no wider"
+            assert len(fields) > len(lower), (
+                f"{rung.tier} answers {len(fields)} field(s) and {below.rung.tier} "
+                f"answers {len(lower)}, so it is no wider"
             )
-        below = answer
+        if rung.tier != "trial":
+            below = answer
+
+
+def _tier_fields(raw: dict[str, object]) -> set[str]:
+    """The fields a tier serves: trial_expired marks a trial key's answers, and no other,
+    so it is not one."""
+    return set(raw) - {"trial_expired"}
+
+
+def test_a_trial_keys_answer_is_a_paid_one_or_unlimiteds_and_says_which() -> None:
+    reason = tiers.TRIAL.skip_reason()
+    if reason:
+        pytest.skip(reason)
+    raw = answer_for(tiers.TRIAL).raw
+
+    assert isinstance(raw.get("trial_expired"), bool), "a trial key answers trial_expired"
+    # The organization's first 100 lookups of the UTC day are answered in full, and the
+    # rest as Unlimited's: which half a run sees depends on the day.
+    assert ("is_hosting" in raw) is not raw["trial_expired"]
+
+
+def test_a_trial_keys_batch_of_two_is_refused_as_a_bad_request_once() -> None:
+    reason = tiers.TRIAL.skip_reason()
+    if reason:
+        pytest.skip(reason)
+    client, recorder = staging.client_for(tiers.TRIAL)
+    try:
+        got = client.lookup_batch([PROBE, "8.8.8.8"])
+    finally:
+        client.close()
+
+    for ip in (PROBE, "8.8.8.8"):
+        refused = got[ip]
+        assert isinstance(refused, VPNDetectionError), f"{ip}: a trial key's batch of two answered"
+        assert (refused.kind, refused.status, refused.retryable) == ("bad_request", 402, False)
+    assert [fact.path for fact in recorder.facts] == ["/batch"], "one request, never retried"
+
+
+def test_a_trial_keys_batch_of_one_is_answered() -> None:
+    reason = tiers.TRIAL.skip_reason()
+    if reason:
+        pytest.skip(reason)
+    client, _ = staging.client_for(tiers.TRIAL)
+    try:
+        got = client.lookup_batch([PROBE])
+    finally:
+        client.close()
+
+    answer = got[PROBE]
+    assert not isinstance(answer, Exception), f"{PROBE} failed: {answer}"
+    assert isinstance(answer.raw.get("trial_expired"), bool)
 
 
 def test_a_field_a_higher_tier_serves_is_absent_on_a_lower_one_never_false() -> None:
@@ -127,11 +180,11 @@ def test_a_batch_without_a_key_is_refused_once_and_its_bogon_still_answered() ->
 
 
 def test_a_batch_collapses_duplicates_and_keeps_bogons_off_the_wire() -> None:
-    # A batch needs a key, and the free one is the cheapest that has it.
-    reason = tiers.FREE.skip_reason()
+    # A batch needs a paid plan, and starter is the cheapest.
+    reason = tiers.PAID.skip_reason()
     if reason:
         pytest.skip(reason)
-    client, recorder = staging.client_for(tiers.FREE)
+    client, recorder = staging.client_for(tiers.PAID)
     try:
         got = client.lookup_batch([PROBE, "8.8.8.8", PROBE, "10.0.0.1", "8.8.8.8"])
     finally:
@@ -139,7 +192,7 @@ def test_a_batch_collapses_duplicates_and_keeps_bogons_off_the_wire() -> None:
 
     assert sorted(got) == sorted([PROBE, "8.8.8.8", "10.0.0.1"])
     assert {fact.path for fact in recorder.facts} == {"/batch"}
-    assert all(fact.carried_key for fact in recorder.facts), "the free key never reached the wire"
+    assert all(fact.carried_key for fact in recorder.facts), "the paid key never reached the wire"
     # Per request rather than a call count, so a retry against a wobbling staging cannot
     # read as a failure to deduplicate.
     for fact in recorder.facts:

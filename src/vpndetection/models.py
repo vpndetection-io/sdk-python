@@ -124,7 +124,7 @@ class PubproxyDetail:
 
 @dataclass(frozen=True, slots=True)
 class Location:
-    """Where the address is, on every keyed answer.
+    """Where the address is, on every answer, with or without a key.
 
     Every field is set whenever the object is, an empty string where it is not known.
     """
@@ -143,7 +143,8 @@ class Location:
 
 @dataclass(frozen=True, slots=True)
 class Asn:
-    """The AS announcing the address, on every keyed answer: `asn` is 0 where none does."""
+    """The AS announcing the address, on every answer, with or without a key: `asn` is 0
+    where none does."""
 
     asn: int = 0
     name: str = ""
@@ -195,6 +196,10 @@ class Result:
 
     raw: dict[str, Any] = field(default_factory=dict)
 
+    #: On a Trial key's answers only: False while the organization's 100 full answers for
+    #: the UTC day last, True once the answer is Unlimited's.
+    trial_expired: bool | None = None
+
     def flagged(self, flag: Flag) -> bool:
         """Whether a flag is present AND true, with anything your plan does not include
         reading as false.
@@ -220,7 +225,7 @@ def to_result(body: dict[str, Any]) -> Result:
     # 2026-10-15). Each is the server's failure, raised for the caller to report as one.
     if not isinstance(parsed.ip, str) or parsed.ip == "":
         raise TypeError(f"the answer's ip is not an address: {parsed.ip!r}")
-    for flag in _FLAGS:
+    for flag in (*_FLAGS, "trial_expired"):
         value = getattr(parsed, flag)
         if not isinstance(value, bool) and not (
             flag != "is_vpn" and isinstance(value, Unset | None)
@@ -250,6 +255,7 @@ def to_result(body: dict[str, Any]) -> Result:
         location=_location(parsed.location),
         asn=_asn(parsed.asn),
         raw=body,
+        trial_expired=_opt(parsed.trial_expired),
     )
 
 

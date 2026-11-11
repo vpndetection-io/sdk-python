@@ -15,7 +15,7 @@ class BatchLookupError:
 
     Attributes:
         status (int): The HTTP status `GET /{ip}` would have answered for this entry: `400`
-            for a string that is not an address, `429` for a spent allowance,
+            for a string that is not an address, `429` for a reached overage cap,
             `500` when the VPN dataset could not be consulted. A `429` here is
             never a throttle; the whole call is refused instead.
              Example: 400.

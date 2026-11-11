@@ -211,7 +211,7 @@ def answer_for(rung: Rung) -> Answer:
         answer = Answer(rung=rung, result=result, carried_key=recorder.carried_key())
         # Checked here rather than in one test, so no comparison anywhere can be made
         # against a tier that silently ran unauthenticated: an empty or unsent key answers
-        # the free shape, which satisfies every containment check vacuously.
+        # the keyless shape, which satisfies every containment check vacuously.
         if rung.secret is not None and not answer.carried_key:
             pytest.fail(f"{rung.tier}: the key never reached the wire")
         _answers[rung.tier] = answer

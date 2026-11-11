@@ -202,9 +202,7 @@ def test_an_entry_error_is_classified_by_its_status(make_client: ClientFactory) 
             "1.1.1.1": {"body": {"ip": "1.1.1.1", "is_vpn": False}},
             "8.8.8.8": {
                 "status": 429,
-                "body": {
-                    "error": "monthly request allowance spent; upgrade your plan for more lookups"
-                },
+                "body": {"error": "overage cap reached; raise or remove it in Billing"},
             },
             "9.9.9.9": {"status": 500, "body": {"error": "lookup failed"}},
         }

@@ -81,8 +81,8 @@ class Lookup:
 @dataclass(slots=True)
 class Options(Generic[Req]):
     """How a middleware behaves. Everything is optional except that you almost
-    certainly want an api_key: without one a lookup leaves out the hosting, CDN and
-    proxy flags."""
+    certainly want an api_key on a paid plan: without one a lookup leaves out the
+    hosting, CDN and proxy flags."""
 
     #: An existing client to use. Prefer this if you already hold one: two clients mean
     #: two caches, and a cache is per instance because two keys can be on different

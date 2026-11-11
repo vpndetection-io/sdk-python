@@ -20,9 +20,11 @@ class Rung:
     """One plan tier, and how a run reaches it.
 
     `widens` is what the rung promises against whichever observable rung sits below it:
-    a free key serves strictly more than no key, and the first paid tier strictly more
-    than a free key; every paid plan answers the same fields, so a higher paid tier only
-    keeps what the one under it serves.
+    the first paid tier serves strictly more than no key; every paid plan answers the same
+    fields, so a higher paid tier only keeps what the one under it serves. The trial key's
+    answer is a paid one for its organization's first 100 lookups of the UTC day and
+    Unlimited's after, so it promises nothing and is never the rung a later one is
+    compared against.
 
     Field COUNTS are deliberately absent. Pinning "starter answers seven fields" turns a
     pricing change into a red SDK build; the relation between the tiers is what the
@@ -48,15 +50,17 @@ class Rung:
 # Ascending, one rung per plan tier.
 RUNGS = [
     Rung("unauth", None, widens=False),
-    Rung("free", "VPNDETECTION_STAGING_KEY_FREE", widens=True),
+    Rung("trial", "VPNDETECTION_STAGING_KEY_FREE", widens=False),
     Rung("starter", "VPNDETECTION_STAGING_KEY_STARTER", widens=True),
     Rung("scale", "VPNDETECTION_STAGING_KEY_SCALE", widens=False),
     Rung("max", "VPNDETECTION_STAGING_KEY_MAX", widens=False),
 ]
 
 UNAUTH = RUNGS[0]
-# The cheapest rung a batch can run on: POST /batch needs a key.
-FREE = RUNGS[1]
+# A key on no paid plan, on its trial.
+TRIAL = RUNGS[1]
+# The cheapest rung a batch can run on: POST /batch needs a paid plan.
+PAID = RUNGS[2]
 # The tier holding the dataset licenses: `db.download` is a scope the other three keys do
 # not carry.
 MAX = RUNGS[-1]

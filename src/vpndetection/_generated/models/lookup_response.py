@@ -22,9 +22,9 @@ T = TypeVar("T", bound="LookupResponse")
 
 @_attrs_define
 class LookupResponse:
-    """The union of every plan's answer. Every answer carries `ip`, `is_vpn`,
+    """The union of every tier's answer. Every answer carries `ip`, `is_vpn`,
     the Tor and relay members, `location` and `asn`, with or without a key;
-    each remaining field is present when your key includes it, and absent
+    each remaining field is present when your tier includes it, and absent
     otherwise. A client that must work across plans should treat an absent
     flag as unknown rather than as `false`.
 
@@ -33,17 +33,17 @@ class LookupResponse:
             is_vpn (bool): Whether the address is VPN infrastructure. Keys off presence in the
                 VPN dataset, so an unattributed range with no provider is still
                 `true`.
-            is_hosting (bool | Unset): Whether the address belongs to a hosting or cloud provider. Free and paid plans.
+            is_hosting (bool | Unset): Whether the address belongs to a hosting or cloud provider. Paid plans.
             is_relay (bool | Unset): Whether the address is privacy relay or enterprise web gateway egress, such as iCloud
                 Private Relay or Zscaler. Every answer, with or without a key.
             is_tor (bool | Unset): Whether the address is a Tor node. Every answer, with or without a key.
-            is_cdn (bool | Unset): Whether the address belongs to a CDN. Free and paid plans.
-            is_resproxy (bool | Unset): Whether the address was seen in a residential proxy pool. Free and paid plans.
+            is_cdn (bool | Unset): Whether the address belongs to a CDN. Paid plans.
+            is_resproxy (bool | Unset): Whether the address was seen in a residential proxy pool. Paid plans.
             is_dcproxy (bool | Unset): Whether the address is one a datacenter proxy service sells or runs on, a proxy
-                company's own ranges included. Free and paid plans.
-            is_mobproxy (bool | Unset): Whether the address was seen in a mobile proxy pool. Free and paid plans.
+                company's own ranges included. Paid plans.
+            is_mobproxy (bool | Unset): Whether the address was seen in a mobile proxy pool. Paid plans.
             is_pubproxy (bool | Unset): Whether a public proxy, one anyone can connect through, listens on the address or
-                sends its traffic out from it. Free and paid plans.
+                sends its traffic out from it. Paid plans.
             vpn (VpnDetail | Unset): What is known about the VPN attribution. Every key is present when the
                 object is populated, empty values included; the object is `{}` when
                 `is_vpn` is false.
@@ -89,6 +89,9 @@ class LookupResponse:
                 without a key.
                 Each field is present whenever the object is: `asn` is 0 and the rest
                 empty where no announcement covers the address.
+            trial_expired (bool | Unset): On every answer to a trial key, an organization on no paid plan, and
+                on no other: `false` while the organization's 100 full answers for
+                the UTC day last, `true` once the answer is Unlimited's.
     """
 
     ip: str
@@ -112,6 +115,7 @@ class LookupResponse:
     pubproxy: PubproxyDetail | Unset = UNSET
     location: Location | Unset = UNSET
     asn: Asn | Unset = UNSET
+    trial_expired: bool | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -179,6 +183,8 @@ class LookupResponse:
         if not isinstance(self.asn, Unset):
             asn = self.asn.to_dict()
 
+        trial_expired = self.trial_expired
+
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update(
@@ -225,6 +231,8 @@ class LookupResponse:
             field_dict["location"] = location
         if asn is not UNSET:
             field_dict["asn"] = asn
+        if trial_expired is not UNSET:
+            field_dict["trial_expired"] = trial_expired
 
         return field_dict
 
@@ -335,6 +343,8 @@ class LookupResponse:
         else:
             asn = Asn.from_dict(_asn)
 
+        trial_expired = d.pop("trial_expired", UNSET)
+
         lookup_response = cls(
             ip=ip,
             is_vpn=is_vpn,
@@ -357,6 +367,7 @@ class LookupResponse:
             pubproxy=pubproxy,
             location=location,
             asn=asn,
+            trial_expired=trial_expired,
         )
 
         lookup_response.additional_properties = d
