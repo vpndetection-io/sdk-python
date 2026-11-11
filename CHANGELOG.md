@@ -2,6 +2,14 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.13.1 - 2026-11-11
+
+### Fixes
+
+- Refuse a client concurrency that is not a whole number from 1 ([`73716d1`](https://github.com/vpndetection-io/sdk-python/commit/73716d11ca8e97afe94baef75a410b01e4ba6588))
+- Re-pin the spec to 2026.11.10: a plainer datacenter proxy description ([`27c6267`](https://github.com/vpndetection-io/sdk-python/commit/27c62675ba716a5d4fc002dac06ed657b6e8e91e))
+- Re-pin the spec to 2026.11.08: plainer endpoint descriptions ([`b1476e4`](https://github.com/vpndetection-io/sdk-python/commit/b1476e4c66619dd5d061f83ae228be1abe3a1da5))
+
 ## 5.13.0 - 2026-11-07
 
 ### Features
