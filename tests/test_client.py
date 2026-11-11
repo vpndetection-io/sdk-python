@@ -181,7 +181,9 @@ def test_without_an_override_the_client_concurrency_still_applies(
     assert meter.peak <= 2, f"peak in flight was {meter.peak}, expected at most 2"
 
 
-@pytest.mark.parametrize("concurrency", [0, -1, 0.5, 1.5, float("nan")])
+@pytest.mark.parametrize(
+    "concurrency", [0, -1, 0.5, 1.5, 2.0, float("nan"), math.inf, "2", "", "x", True, [2], object()]
+)
 def test_a_per_call_concurrency_below_one_is_refused_before_any_request(
     make_client: ClientFactory, concurrency: Any
 ) -> None:
@@ -200,6 +202,26 @@ def test_a_per_call_concurrency_below_one_is_refused_before_any_request(
     assert outcome.retryable is False
     assert "concurrency" in str(outcome)
     assert stub.calls == []
+
+
+@pytest.mark.parametrize("client", [VPNDetection, AsyncVPNDetection])
+@pytest.mark.parametrize(
+    "concurrency",
+    [0, -1, 1.5, 2.0, float("nan"), math.inf, "2", "", "x", None, True, [2], object()],
+)
+def test_a_concurrency_that_is_not_a_whole_number_from_1_is_refused_when_the_client_is_built(
+    client: type[VPNDetection | AsyncVPNDetection], concurrency: Any
+) -> None:
+    """5.13.0 took each: 0, -1, NaN and True ran a batch one chunk at a time, 1.5 two, and a
+    string, None or a list failed every batch that sent anything with a raw TypeError."""
+    with pytest.raises(ValueError, match="concurrency"):
+        client(concurrency=concurrency)
+
+
+@pytest.mark.parametrize("concurrency", [1, 2, 2**63])
+def test_a_whole_concurrency_from_1_is_taken_when_the_client_is_built(concurrency: int) -> None:
+    VPNDetection(concurrency=concurrency).close()
+    asyncio.run(AsyncVPNDetection(concurrency=concurrency).aclose())
 
 
 @pytest.mark.parametrize("client", [VPNDetection, AsyncVPNDetection])

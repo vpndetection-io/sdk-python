@@ -613,6 +613,19 @@ def call_retries(retries: float | None) -> float | None:
     return None if retries is None else check_retries(retries)
 
 
+def check_client_concurrency(concurrency: int) -> int:
+    """A client's `concurrency`, once it is a whole number of at least 1.
+
+    Refused where it is SET, as a retry count is: 5.13.0 took any value, so 0, -1, NaN and
+    `True` ran each batch one chunk at a time, 1.5 two, and a string, None or a list failed
+    every batch that sent anything with a raw `TypeError`, while a batch of bogons or cached
+    answers still answered (measured 2026-11-11).
+    """
+    if isinstance(concurrency, bool) or not isinstance(concurrency, int) or concurrency < 1:
+        raise ValueError(f"concurrency must be a whole number of at least 1, not {concurrency!r}")
+    return concurrency
+
+
 def check_concurrency(concurrency: int | None) -> None:
     """Refuse a per-call concurrency that could never send a chunk, before anything is sent,
     rather than quietly running it as 1."""

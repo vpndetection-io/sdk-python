@@ -41,6 +41,7 @@ from ._core import (
     build_client,
     build_transfer_client,
     call_retries,
+    check_client_concurrency,
     check_concurrency,
     check_retries,
     check_timeout,
@@ -122,6 +123,10 @@ class VPNDetection:
     from 0, or `math.inf` to retry until the call succeeds. Anything else, on the client or
     a call, is a `ValueError` where it is set too.
 
+    `concurrency` is how many chunks of a batch are in flight at once, 8 unless given: a
+    whole number of at least 1. Anything else is a `ValueError` here, and a `bad_request`
+    from `lookup_batch` when a call sets it.
+
     Holds an HTTP connection pool, so use it as a context manager or call `close()` when
     you are done with it.
     """
@@ -146,6 +151,7 @@ class VPNDetection:
         transport: httpx.BaseTransport | None = None,
     ) -> None:
         timeout = check_timeout(timeout)
+        concurrency = check_client_concurrency(concurrency)
         self._client = build_client(api_key, base_url, timeout, transport)
         self._base_url = base_url
         self._transfer = build_transfer_client(timeout, transport)

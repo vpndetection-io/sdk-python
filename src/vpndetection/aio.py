@@ -45,6 +45,7 @@ from ._core import (
     build_async_transfer_client,
     build_client,
     call_retries,
+    check_client_concurrency,
     check_concurrency,
     check_retries,
     check_timeout,
@@ -132,6 +133,7 @@ class AsyncVPNDetection:
         transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:
         timeout = check_timeout(timeout)
+        concurrency = check_client_concurrency(concurrency)
         self._client = build_client(api_key, base_url, timeout, transport)
         self._base_url = base_url
         self._transfer = build_async_transfer_client(timeout, transport)
