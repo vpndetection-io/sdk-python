@@ -106,8 +106,8 @@ class VPNDetection:
     """A client for the VPNDetection API.
 
     No API key is needed to start: without one a lookup answers `ip`, `is_vpn`, the Tor
-    and relay members, `location` and `asn`, up to 60 a minute from each address, and a
-    batch is refused as `unauthorized`.
+    and relay members, `location` and `asn`, with no daily or monthly cap, and a batch is
+    refused as `unauthorized`.
 
     The cache is per instance, so an answer is never shared between two clients holding
     different API keys and therefore entitled to different fields.
