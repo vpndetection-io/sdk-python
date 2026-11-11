@@ -84,7 +84,7 @@ def sync_detailed(
 
      Answers what is known about a single IPv4 or IPv6 address. Which fields
     come back is decided by the presented key; with no key the answer is
-    `ip` and `is_vpn`.
+    `ip`, `is_vpn`, the Tor and relay members, `location` and `asn`.
 
     Args:
         ip (str):
@@ -117,7 +117,7 @@ def sync(
 
      Answers what is known about a single IPv4 or IPv6 address. Which fields
     come back is decided by the presented key; with no key the answer is
-    `ip` and `is_vpn`.
+    `ip`, `is_vpn`, the Tor and relay members, `location` and `asn`.
 
     Args:
         ip (str):
@@ -145,7 +145,7 @@ async def asyncio_detailed(
 
      Answers what is known about a single IPv4 or IPv6 address. Which fields
     come back is decided by the presented key; with no key the answer is
-    `ip` and `is_vpn`.
+    `ip`, `is_vpn`, the Tor and relay members, `location` and `asn`.
 
     Args:
         ip (str):
@@ -176,7 +176,7 @@ async def asyncio(
 
      Answers what is known about a single IPv4 or IPv6 address. Which fields
     come back is decided by the presented key; with no key the answer is
-    `ip` and `is_vpn`.
+    `ip`, `is_vpn`, the Tor and relay members, `location` and `asn`.
 
     Args:
         ip (str):

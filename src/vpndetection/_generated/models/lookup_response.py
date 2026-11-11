@@ -22,8 +22,9 @@ T = TypeVar("T", bound="LookupResponse")
 
 @_attrs_define
 class LookupResponse:
-    """The union of every plan's answer. Only `ip` and `is_vpn` are guaranteed;
-    each remaining field is present when your plan includes it, and absent
+    """The union of every plan's answer. Every answer carries `ip`, `is_vpn`,
+    the Tor and relay members, `location` and `asn`, with or without a key;
+    each remaining field is present when your key includes it, and absent
     otherwise. A client that must work across plans should treat an absent
     flag as unknown rather than as `false`.
 
@@ -32,17 +33,17 @@ class LookupResponse:
             is_vpn (bool): Whether the address is VPN infrastructure. Keys off presence in the
                 VPN dataset, so an unattributed range with no provider is still
                 `true`.
-            is_hosting (bool | Unset): Whether the address belongs to a hosting or cloud provider. Paid plans.
+            is_hosting (bool | Unset): Whether the address belongs to a hosting or cloud provider. Free and paid plans.
             is_relay (bool | Unset): Whether the address is privacy relay or enterprise web gateway egress, such as iCloud
-                Private Relay or Zscaler. Free and paid plans.
-            is_tor (bool | Unset): Whether the address is a Tor node. Free and paid plans.
-            is_cdn (bool | Unset): Whether the address belongs to a CDN. Paid plans.
-            is_resproxy (bool | Unset): Whether the address was seen in a residential proxy pool. Paid plans.
+                Private Relay or Zscaler. Every answer, with or without a key.
+            is_tor (bool | Unset): Whether the address is a Tor node. Every answer, with or without a key.
+            is_cdn (bool | Unset): Whether the address belongs to a CDN. Free and paid plans.
+            is_resproxy (bool | Unset): Whether the address was seen in a residential proxy pool. Free and paid plans.
             is_dcproxy (bool | Unset): Whether the address is one a datacenter proxy service sells or runs on, a proxy
-                company's own ranges included. Paid plans.
-            is_mobproxy (bool | Unset): Whether the address was seen in a mobile proxy pool. Paid plans.
+                company's own ranges included. Free and paid plans.
+            is_mobproxy (bool | Unset): Whether the address was seen in a mobile proxy pool. Free and paid plans.
             is_pubproxy (bool | Unset): Whether a public proxy, one anyone can connect through, listens on the address or
-                sends its traffic out from it. Paid plans.
+                sends its traffic out from it. Free and paid plans.
             vpn (VpnDetail | Unset): What is known about the VPN attribution. Every key is present when the
                 object is populated, empty values included; the object is `{}` when
                 `is_vpn` is false.
@@ -81,10 +82,11 @@ class LookupResponse:
                 leaves from. Every key is present when the object is populated; the
                 object is `{}` when `is_pubproxy` is false.
             location (Location | Unset): Where the address is, to the country: the fields of our IP Country
-                database. Free and paid plans. Each field is present whenever the
-                object is, so an address in no country, or a private one, answers
-                empty strings.
-            asn (Asn | Unset): The autonomous system that announces the address. Free and paid plans.
+                database. Every answer, with or without a key. Each field is present
+                whenever the object is, so an address in no country, or a private one,
+                answers empty strings.
+            asn (Asn | Unset): The autonomous system that announces the address. Every answer, with or
+                without a key.
                 Each field is present whenever the object is: `asn` is 0 and the rest
                 empty where no announcement covers the address.
     """

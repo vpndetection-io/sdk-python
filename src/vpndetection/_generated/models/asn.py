@@ -11,7 +11,8 @@ T = TypeVar("T", bound="Asn")
 
 @_attrs_define
 class Asn:
-    """The autonomous system that announces the address. Free and paid plans.
+    """The autonomous system that announces the address. Every answer, with or
+    without a key.
     Each field is present whenever the object is: `asn` is 0 and the rest
     empty where no announcement covers the address.
 

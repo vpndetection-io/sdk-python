@@ -105,6 +105,9 @@ def sync_detailed(
     whole by the rate limit, so a per-entry `429` is always a spent
     allowance and never a throttle.
 
+    A batch needs an API key, a free one included: without one the call is
+    refused with `401`. Keyless lookups are one address at a time.
+
     Args:
         body (BatchLookupRequest):
 
@@ -152,6 +155,9 @@ def sync(
     whole by the rate limit, so a per-entry `429` is always a spent
     allowance and never a throttle.
 
+    A batch needs an API key, a free one included: without one the call is
+    refused with `401`. Keyless lookups are one address at a time.
+
     Args:
         body (BatchLookupRequest):
 
@@ -193,6 +199,9 @@ async def asyncio_detailed(
     call always carries `Retry-After`: the batch is admitted or refused
     whole by the rate limit, so a per-entry `429` is always a spent
     allowance and never a throttle.
+
+    A batch needs an API key, a free one included: without one the call is
+    refused with `401`. Keyless lookups are one address at a time.
 
     Args:
         body (BatchLookupRequest):
@@ -238,6 +247,9 @@ async def asyncio(
     call always carries `Retry-After`: the batch is admitted or refused
     whole by the rate limit, so a per-entry `429` is always a spent
     allowance and never a throttle.
+
+    A batch needs an API key, a free one included: without one the call is
+    refused with `401`. Keyless lookups are one address at a time.
 
     Args:
         body (BatchLookupRequest):

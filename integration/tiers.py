@@ -55,6 +55,8 @@ RUNGS = [
 ]
 
 UNAUTH = RUNGS[0]
+# The cheapest rung a batch can run on: POST /batch needs a key.
+FREE = RUNGS[1]
 # The tier holding the dataset licenses: `db.download` is a scope the other three keys do
 # not carry.
 MAX = RUNGS[-1]

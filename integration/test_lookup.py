@@ -18,10 +18,10 @@ import staging
 import tiers
 from staging import PROBE, STAGING, answer_for, assert_served_by_tier, modelled
 
-from vpndetection import VPNDetection, is_bogon
+from vpndetection import VPNDetection, VPNDetectionError, is_bogon
 
 
-def test_an_unauthenticated_lookup_answers_ip_and_is_vpn() -> None:
+def test_a_lookup_without_a_key_answers_ip_and_is_vpn_at_the_least() -> None:
     answer = answer_for(tiers.UNAUTH)
 
     assert answer.raw["ip"] == PROBE
@@ -111,8 +111,27 @@ def test_a_bogon_is_answered_without_touching_the_network() -> None:
         )
 
 
-def test_a_batch_collapses_duplicates_and_keeps_bogons_off_the_wire() -> None:
+def test_a_batch_without_a_key_is_refused_once_and_its_bogon_still_answered() -> None:
     client, recorder = staging.client_for(tiers.UNAUTH)
+    try:
+        got = client.lookup_batch([PROBE, "10.0.0.1"])
+    finally:
+        client.close()
+
+    bogon = got["10.0.0.1"]
+    assert not isinstance(bogon, Exception) and bogon.is_bogon, "10.0.0.1 reached the network"
+    refused = got[PROBE]
+    assert isinstance(refused, VPNDetectionError), f"a batch without a key answered {refused}"
+    assert (refused.kind, refused.status, refused.retryable) == ("unauthorized", 401, False)
+    assert [fact.path for fact in recorder.facts] == ["/batch"], "one request, never retried"
+
+
+def test_a_batch_collapses_duplicates_and_keeps_bogons_off_the_wire() -> None:
+    # A batch needs a key, and the free one is the cheapest that has it.
+    reason = tiers.FREE.skip_reason()
+    if reason:
+        pytest.skip(reason)
+    client, recorder = staging.client_for(tiers.FREE)
     try:
         got = client.lookup_batch([PROBE, "8.8.8.8", PROBE, "10.0.0.1", "8.8.8.8"])
     finally:
@@ -120,6 +139,7 @@ def test_a_batch_collapses_duplicates_and_keeps_bogons_off_the_wire() -> None:
 
     assert sorted(got) == sorted([PROBE, "8.8.8.8", "10.0.0.1"])
     assert {fact.path for fact in recorder.facts} == {"/batch"}
+    assert all(fact.carried_key for fact in recorder.facts), "the free key never reached the wire"
     # Per request rather than a call count, so a retry against a wobbling staging cannot
     # read as a failure to deduplicate.
     for fact in recorder.facts:

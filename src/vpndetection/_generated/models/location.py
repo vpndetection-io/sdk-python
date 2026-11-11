@@ -12,9 +12,9 @@ T = TypeVar("T", bound="Location")
 @_attrs_define
 class Location:
     """Where the address is, to the country: the fields of our IP Country
-    database. Free and paid plans. Each field is present whenever the
-    object is, so an address in no country, or a private one, answers
-    empty strings.
+    database. Every answer, with or without a key. Each field is present
+    whenever the object is, so an address in no country, or a private one,
+    answers empty strings.
 
         Attributes:
             continent (str): Continent code: AF, AN (Antarctica), AS, EU, NA, OC or SA. Example: EU.

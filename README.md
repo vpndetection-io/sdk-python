@@ -17,7 +17,7 @@ Requires Python 3.11 or newer. Type hints are included, and the package ships `p
 
 ## Usage
 
-**No API key needed to start.** Without a key, a lookup answers `ip` and `is_vpn`, up to 1000 a day per source address.
+**No API key needed to start.** Without a key a lookup answers `ip`, `is_vpn`, Tor and relay detection, `location` and `asn`, with no daily or monthly cap: up to 60 lookups a minute from each address.
 
 ```python
 from vpndetection import VPNDetection
@@ -25,7 +25,9 @@ from vpndetection import VPNDetection
 client = VPNDetection()
 
 result = client.lookup("45.83.91.1")
-print(result.is_vpn)   # True
+print(result.is_vpn)              # True
+print(result.location.country)    # the ISO 3166 country code
+print(result.asn.name)            # who runs the announcing network
 ```
 
 The client holds an HTTP connection pool, so use it as a context manager, or call `client.close()` when you are done with it:
@@ -37,7 +39,7 @@ with VPNDetection() as client:
 
 ### With an API key
 
-A free key adds Tor and relay detection, where the address is and the AS that announces it. Every paid plan answers every field, the same on each, and the plans differ only in how many lookups they include. Create a key in the [console](https://app.vpndetection.io), then pass it in:
+A free key adds every other flag, `is_hosting`, `is_cdn` and the four proxy flags, at 50,000 lookups a month, and every paid plan answers every field, the provider, confidence and last-seen detail behind each flag included. The paid plans differ only in how many lookups they include. Batch lookups need a key. Create one in the [console](https://app.vpndetection.io), then pass it in:
 
 ```python
 import os
@@ -46,10 +48,8 @@ client = VPNDetection(os.environ["VPNDETECTION_API_KEY"])
 
 result = client.lookup("45.83.91.1")
 print(result.is_vpn)              # True
-print(result.location.country)    # the ISO 3166 country code
-print(result.asn.name)            # who runs the announcing network
+print(result.is_hosting)          # True, with any key, a free one included
 print(result.vpn.provider)        # 'nordvpn', on a paid plan
-print(result.is_hosting)          # True, on a paid plan
 ```
 
 ### Async
@@ -92,7 +92,7 @@ Both are on the async client too: `await client.my_ip()` and `await client.my_en
 
 ### Batch lookup
 
-Look up as many addresses as you like at once. Bogons and cached answers are handled locally, and everything else goes to the batch endpoint in chunks of up to 1000 addresses, in parallel:
+Look up as many addresses as you like at once. Bogons and cached answers are handled locally, and everything else goes to the batch endpoint in chunks of up to 1000 addresses, in parallel. The batch endpoint needs an API key, a free one included:
 
 ```python
 results = client.lookup_batch(["45.83.91.1", "8.8.8.8", "1.1.1.1"])
@@ -184,7 +184,7 @@ result = client.lookup("45.83.91.1", timeout=2)
 
 **Changed in 5.3.0:** a timeout of 0 or less, NaN, infinity or a string used to be accepted, and then failed every call.
 
-Note that `rate_limited` and `quota_exceeded` both arrive as HTTP 429 and are not the same thing. A rate limit is when the API faces extreme traffic bursts and so retrying later works; but a spent quota needs your allowance raised or the window to roll over. The library retries rate limits for you, but not if your quota is exceeded.
+Note that `rate_limited` and `quota_exceeded` both arrive as HTTP 429 and are not the same thing. A rate limit is when the API faces extreme traffic bursts, or a lookup without a key passes 60 a minute, and so retrying later works; but a spent quota needs your allowance raised or the window to roll over. The library retries rate limits for you, but not if your quota is exceeded.
 
 ### Database downloads
 
@@ -272,11 +272,12 @@ Each redirect URI must be https on a public host name, or http on a loopback add
 
 ### Fields your plan does not include
 
-Without a key only `ip` and `is_vpn` come back, and a free key adds Tor, relay, `location` and `asn`. The rest are `None` when your key does not include them, which means "not in your plan" rather than "checked, and no".
+Without a key a lookup leaves out `is_hosting`, `is_cdn` and the four proxy flags, and a free key leaves out `vpn` and the detail behind each flag. Those are `None` when your key does not include them, which means "not in your plan" rather than "checked, and no".
 
 ```python
 result.flagged("is_hosting")   # False rather than None on a plan without it
-result.is_hosting is None      # True when hosting is not in your plan
+result.is_hosting is None      # True without a key: not in your plan
+result.vpn is None             # True on a free key: not in your plan
 ```
 
 ## Other Libraries

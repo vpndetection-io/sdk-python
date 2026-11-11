@@ -105,8 +105,9 @@ T = TypeVar("T")
 class VPNDetection:
     """A client for the VPNDetection API.
 
-    No API key is needed to start: the free tier answers `ip` and `is_vpn` and allows
-    1000 requests per day per source address.
+    No API key is needed to start: without one a lookup answers `ip`, `is_vpn`, the Tor
+    and relay members, `location` and `asn`, up to 60 a minute from each address, and a
+    batch is refused as `unauthorized`.
 
     The cache is per instance, so an answer is never shared between two clients holding
     different API keys and therefore entitled to different fields.
@@ -303,7 +304,9 @@ class VPNDetection:
         line two lists up. An address that fails carries its error as its value, so one
         bad entry cannot lose the rest of the answers: the API reports a per-entry
         failure with the status the single lookup would have answered, and a chunk that
-        fails as a whole marks every address in it.
+        fails as a whole marks every address in it. The batch endpoint needs an API key, a
+        free one included: without one, every address sent to it carries an
+        `unauthorized` error.
 
         Each batch gets its own thread pool sized for THIS call, so a per-call
         concurrency really is the ceiling rather than being silently capped by the

@@ -74,7 +74,7 @@ def sync_detailed(
      Answers what is known about the address this request came from, which is
     the same answer `GET /{ip}` gives for that address: the presented key
     decides which fields come back, and the request counts against the same
-    allowance.
+    limit or allowance.
 
     The address is the one our edge observed, so a request through a proxy
     or a VPN reports the exit it left through rather than the machine that
@@ -106,7 +106,7 @@ def sync(
      Answers what is known about the address this request came from, which is
     the same answer `GET /{ip}` gives for that address: the presented key
     decides which fields come back, and the request counts against the same
-    allowance.
+    limit or allowance.
 
     The address is the one our edge observed, so a request through a proxy
     or a VPN reports the exit it left through rather than the machine that
@@ -134,7 +134,7 @@ async def asyncio_detailed(
      Answers what is known about the address this request came from, which is
     the same answer `GET /{ip}` gives for that address: the presented key
     decides which fields come back, and the request counts against the same
-    allowance.
+    limit or allowance.
 
     The address is the one our edge observed, so a request through a proxy
     or a VPN reports the exit it left through rather than the machine that
@@ -164,7 +164,7 @@ async def asyncio(
      Answers what is known about the address this request came from, which is
     the same answer `GET /{ip}` gives for that address: the presented key
     decides which fields come back, and the request counts against the same
-    allowance.
+    limit or allowance.
 
     The address is the one our edge observed, so a request through a proxy
     or a VPN reports the exit it left through rather than the machine that

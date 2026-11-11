@@ -284,7 +284,9 @@ class AsyncVPNDetection:
         line two lists up. An address that fails carries its error as its value, so one
         bad entry cannot lose the rest of the answers: the API reports a per-entry
         failure with the status the single lookup would have answered, and a chunk that
-        fails as a whole marks every address in it.
+        fails as a whole marks every address in it. The batch endpoint needs an API key, a
+        free one included: without one, every address sent to it carries an
+        `unauthorized` error.
 
         Each batch gets its own semaphore sized for THIS call, so a per-call concurrency
         really is the ceiling rather than being silently capped by the client's. A per-call
