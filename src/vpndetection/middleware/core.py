@@ -81,8 +81,8 @@ class Lookup:
 @dataclass(slots=True)
 class Options(Generic[Req]):
     """How a middleware behaves. Everything is optional except that you almost
-    certainly want an api_key: the free allowance is counted per source address, and a
-    server is one source address."""
+    certainly want an api_key: without one, lookups are limited to 60 a minute from each
+    source address, and a server is one source address."""
 
     #: An existing client to use. Prefer this if you already hold one: two clients mean
     #: two caches, and a cache is per instance because two keys can be on different
