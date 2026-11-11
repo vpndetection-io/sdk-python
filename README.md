@@ -272,11 +272,11 @@ Each redirect URI must be https on a public host name, or http on a loopback add
 
 ### Fields your plan does not include
 
-The Unlimited tier leaves out `is_hosting`, `is_cdn` and the four proxy flags, and of the detail behind each flag it answers only Tor's and relay's; a free-plan key's answer carries `trial_expired`, true once its daily trial is spent. Those are `None` when your key does not include them, which means "not in your plan" rather than "checked, and no".
+Unlimited leaves out `is_hosting`, `is_cdn` and the four proxy flags, and of the detail behind each flag it answers only Tor's and relay's; a free-plan key's answer carries `trial_expired`, true once its daily trial is spent. Those are `None` when your key does not include them, which means "not in your plan" rather than "checked, and no".
 
 ```python
 result.flagged("is_hosting")   # False rather than None on a plan without it
-result.is_hosting is None      # True on the Unlimited tier: not in your plan
+result.is_hosting is None      # True on Unlimited: not in your plan
 result.trial_expired is True    # a free-plan key's daily trial is spent
 ```
 

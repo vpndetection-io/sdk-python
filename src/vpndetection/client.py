@@ -105,9 +105,9 @@ T = TypeVar("T")
 class VPNDetection:
     """A client for the VPNDetection API.
 
-    No API key is needed to start: without one a lookup is on the Unlimited tier, answering
-    `ip`, `is_vpn`, the Tor and relay members, `location` and `asn` with no daily or monthly
-    cap. A batch needs a paid plan.
+    No API key is needed to start: without one a lookup is on Unlimited, the free plan,
+    answering `ip`, `is_vpn`, the Tor and relay members, `location` and `asn` with no daily or
+    monthly cap. A batch needs a paid plan.
 
     The cache is per instance, so an answer is never shared between two clients holding
     different API keys and therefore entitled to different fields.
