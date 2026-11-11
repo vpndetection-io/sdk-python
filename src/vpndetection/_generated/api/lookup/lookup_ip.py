@@ -83,8 +83,9 @@ def sync_detailed(
     """Lookup
 
      Answers what is known about a single IPv4 or IPv6 address. Which fields
-    come back is decided by the presented key; with no key the answer is
-    `ip`, `is_vpn`, the Tor and relay members, `location` and `asn`.
+    come back is decided by the presented key; with no key, the Unlimited
+    tier, the answer is `ip`, `is_vpn`, the Tor and relay members,
+    `location` and `asn`.
 
     Args:
         ip (str):
@@ -116,8 +117,9 @@ def sync(
     """Lookup
 
      Answers what is known about a single IPv4 or IPv6 address. Which fields
-    come back is decided by the presented key; with no key the answer is
-    `ip`, `is_vpn`, the Tor and relay members, `location` and `asn`.
+    come back is decided by the presented key; with no key, the Unlimited
+    tier, the answer is `ip`, `is_vpn`, the Tor and relay members,
+    `location` and `asn`.
 
     Args:
         ip (str):
@@ -144,8 +146,9 @@ async def asyncio_detailed(
     """Lookup
 
      Answers what is known about a single IPv4 or IPv6 address. Which fields
-    come back is decided by the presented key; with no key the answer is
-    `ip`, `is_vpn`, the Tor and relay members, `location` and `asn`.
+    come back is decided by the presented key; with no key, the Unlimited
+    tier, the answer is `ip`, `is_vpn`, the Tor and relay members,
+    `location` and `asn`.
 
     Args:
         ip (str):
@@ -175,8 +178,9 @@ async def asyncio(
     """Lookup
 
      Answers what is known about a single IPv4 or IPv6 address. Which fields
-    come back is decided by the presented key; with no key the answer is
-    `ip`, `is_vpn`, the Tor and relay members, `location` and `asn`.
+    come back is decided by the presented key; with no key, the Unlimited
+    tier, the answer is `ip`, `is_vpn`, the Tor and relay members,
+    `location` and `asn`.
 
     Args:
         ip (str):

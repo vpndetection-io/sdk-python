@@ -106,7 +106,7 @@ def sync_detailed(
     allowance and never a throttle.
 
     A batch needs an API key, a free one included: without one the call is
-    refused with `401`. Keyless lookups are one address at a time.
+    refused with `401`. The Unlimited tier looks up one address at a time.
 
     Args:
         body (BatchLookupRequest):
@@ -156,7 +156,7 @@ def sync(
     allowance and never a throttle.
 
     A batch needs an API key, a free one included: without one the call is
-    refused with `401`. Keyless lookups are one address at a time.
+    refused with `401`. The Unlimited tier looks up one address at a time.
 
     Args:
         body (BatchLookupRequest):
@@ -201,7 +201,7 @@ async def asyncio_detailed(
     allowance and never a throttle.
 
     A batch needs an API key, a free one included: without one the call is
-    refused with `401`. Keyless lookups are one address at a time.
+    refused with `401`. The Unlimited tier looks up one address at a time.
 
     Args:
         body (BatchLookupRequest):
@@ -249,7 +249,7 @@ async def asyncio(
     allowance and never a throttle.
 
     A batch needs an API key, a free one included: without one the call is
-    refused with `401`. Keyless lookups are one address at a time.
+    refused with `401`. The Unlimited tier looks up one address at a time.
 
     Args:
         body (BatchLookupRequest):
