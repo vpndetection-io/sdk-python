@@ -38,7 +38,8 @@ class LookupResponse:
             is_tor (bool | Unset): Whether the address is a Tor node. Free and paid plans.
             is_cdn (bool | Unset): Whether the address belongs to a CDN. Paid plans.
             is_resproxy (bool | Unset): Whether the address was seen in a residential proxy pool. Paid plans.
-            is_dcproxy (bool | Unset): Whether the address was seen in a datacenter proxy pool. Paid plans.
+            is_dcproxy (bool | Unset): Whether the address is one a datacenter proxy service sells or runs on, a proxy
+                company's own ranges included. Paid plans.
             is_mobproxy (bool | Unset): Whether the address was seen in a mobile proxy pool. Paid plans.
             is_pubproxy (bool | Unset): Whether a public proxy, one anyone can connect through, listens on the address or
                 sends its traffic out from it. Paid plans.
