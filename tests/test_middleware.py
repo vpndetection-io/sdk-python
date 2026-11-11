@@ -9,10 +9,12 @@ knowing when a sibling SDK's test file is full of renaming.
 from __future__ import annotations
 
 import asyncio
+import http.server
 import json
 import pathlib
+import threading
 import time
-from typing import Any
+from typing import Any, Self
 
 import pytest
 from helpers import Stall, Stub
@@ -189,6 +191,58 @@ def test_an_injected_client_is_used_rather_than_a_second_one_built() -> None:
     # The second call must come from the shared cache, which is only observable
     # because it is the SAME client the caller still holds.
     assert shared.lookup(PUBLIC_IP).is_vpn is True
+
+
+class _KeyServer:
+    """A local API that answers every lookup and records the Authorization each one carried."""
+
+    def __init__(self) -> None:
+        self.authorizations: list[str | None] = []
+        recorded = self.authorizations
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self) -> None:
+                recorded.append(self.headers.get("Authorization"))
+                body = json.dumps({"ip": PUBLIC_IP, "is_vpn": True}).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *_: Any) -> None:
+                pass
+
+        self._server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.url = f"http://127.0.0.1:{self._server.server_address[1]}"
+
+    def __enter__(self) -> Self:
+        threading.Thread(target=self._server.serve_forever, daemon=True).start()
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        self._server.shutdown()
+        self._server.server_close()
+
+
+@pytest.mark.parametrize("flavor", ["sync", "async"])
+def test_a_core_built_from_a_key_sends_that_key(flavor: str) -> None:
+    """Every other middleware test hands the core a client, so a core that built its own
+    without the key it was given passed them all."""
+    with _KeyServer() as server:
+        options: Options[Req] = Options(api_key="k_middleware", base_url=server.url)
+        if flavor == "sync":
+            lookup = Core(options, SELECTORS.default).evaluate(Req())
+        else:
+
+            async def evaluate() -> Lookup | None:
+                return await AsyncCore(options, SELECTORS.default).evaluate(Req())
+
+            lookup = asyncio.run(evaluate())
+
+    assert lookup is not None and lookup.error is None, lookup
+    assert lookup.result is not None and lookup.result.is_vpn is True
+    assert server.authorizations == ["Bearer k_middleware"]
 
 
 def test_the_timeout_bounds_a_lookup_through_a_client_passed_in() -> None:
