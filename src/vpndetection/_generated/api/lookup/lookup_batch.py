@@ -111,9 +111,9 @@ def sync_detailed(
     and never a throttle.
 
     A batch needs a paid plan: without a key the call is refused with `401`,
-    and with a trial key with `402`, unless it names one address, which is
-    answered as `GET /{ip}` would answer it. Unlimited and a trial look up
-    one address at a time.
+    and with a key on the free plan with `402`, unless it names one address,
+    which is answered as `GET /{ip}` would answer it. Unlimited looks up one
+    address at a time.
 
     Args:
         body (BatchLookupRequest):
@@ -163,9 +163,9 @@ def sync(
     and never a throttle.
 
     A batch needs a paid plan: without a key the call is refused with `401`,
-    and with a trial key with `402`, unless it names one address, which is
-    answered as `GET /{ip}` would answer it. Unlimited and a trial look up
-    one address at a time.
+    and with a key on the free plan with `402`, unless it names one address,
+    which is answered as `GET /{ip}` would answer it. Unlimited looks up one
+    address at a time.
 
     Args:
         body (BatchLookupRequest):
@@ -210,9 +210,9 @@ async def asyncio_detailed(
     and never a throttle.
 
     A batch needs a paid plan: without a key the call is refused with `401`,
-    and with a trial key with `402`, unless it names one address, which is
-    answered as `GET /{ip}` would answer it. Unlimited and a trial look up
-    one address at a time.
+    and with a key on the free plan with `402`, unless it names one address,
+    which is answered as `GET /{ip}` would answer it. Unlimited looks up one
+    address at a time.
 
     Args:
         body (BatchLookupRequest):
@@ -260,9 +260,9 @@ async def asyncio(
     and never a throttle.
 
     A batch needs a paid plan: without a key the call is refused with `401`,
-    and with a trial key with `402`, unless it names one address, which is
-    answered as `GET /{ip}` would answer it. Unlimited and a trial look up
-    one address at a time.
+    and with a key on the free plan with `402`, unless it names one address,
+    which is answered as `GET /{ip}` would answer it. Unlimited looks up one
+    address at a time.
 
     Args:
         body (BatchLookupRequest):

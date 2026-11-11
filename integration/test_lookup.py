@@ -69,24 +69,24 @@ def test_each_tier_serves_a_superset_of_the_tier_below() -> None:
 
 
 def _tier_fields(raw: dict[str, object]) -> set[str]:
-    """The fields a tier serves: trial_expired marks a trial key's answers, and no other,
-    so it is not one."""
+    """The fields a tier serves: trial_expired marks a free-plan key's answers, and no
+    other, so it is not one."""
     return set(raw) - {"trial_expired"}
 
 
-def test_a_trial_keys_answer_is_a_paid_one_or_unlimiteds_and_says_which() -> None:
+def test_a_free_plan_keys_answer_is_a_paid_one_or_unlimiteds_and_says_which() -> None:
     reason = tiers.TRIAL.skip_reason()
     if reason:
         pytest.skip(reason)
     raw = answer_for(tiers.TRIAL).raw
 
-    assert isinstance(raw.get("trial_expired"), bool), "a trial key answers trial_expired"
+    assert isinstance(raw.get("trial_expired"), bool), "a free-plan key answers trial_expired"
     # The organization's first 100 lookups of the UTC day are answered in full, and the
     # rest as Unlimited's: which half a run sees depends on the day.
     assert ("is_hosting" in raw) is not raw["trial_expired"]
 
 
-def test_a_trial_keys_batch_of_two_is_refused_as_a_bad_request_once() -> None:
+def test_a_free_plan_keys_batch_of_two_is_refused_as_a_bad_request_once() -> None:
     reason = tiers.TRIAL.skip_reason()
     if reason:
         pytest.skip(reason)
@@ -98,12 +98,14 @@ def test_a_trial_keys_batch_of_two_is_refused_as_a_bad_request_once() -> None:
 
     for ip in (PROBE, "8.8.8.8"):
         refused = got[ip]
-        assert isinstance(refused, VPNDetectionError), f"{ip}: a trial key's batch of two answered"
+        assert isinstance(refused, VPNDetectionError), (
+            f"{ip}: a free-plan key's batch of two answered"
+        )
         assert (refused.kind, refused.status, refused.retryable) == ("bad_request", 402, False)
     assert [fact.path for fact in recorder.facts] == ["/batch"], "one request, never retried"
 
 
-def test_a_trial_keys_batch_of_one_is_answered() -> None:
+def test_a_free_plan_keys_batch_of_one_is_answered() -> None:
     reason = tiers.TRIAL.skip_reason()
     if reason:
         pytest.skip(reason)

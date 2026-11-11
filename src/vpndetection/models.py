@@ -196,8 +196,9 @@ class Result:
 
     raw: dict[str, Any] = field(default_factory=dict)
 
-    #: On a Trial key's answers only: False while the organization's 100 full answers for
-    #: the UTC day last, True once the answer is Unlimited's.
+    #: On answers to a key on the free plan only: False while its organization's daily trial
+    #: lasts (every field for the first 100 lookups each UTC day), True once the answer has
+    #: Unlimited's.
     trial_expired: bool | None = None
 
     def flagged(self, flag: Flag) -> bool:

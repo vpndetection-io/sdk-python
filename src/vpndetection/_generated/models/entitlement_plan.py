@@ -15,12 +15,12 @@ T = TypeVar("T", bound="EntitlementPlan")
 class EntitlementPlan:
     """
     Attributes:
-        key (str): The plan the organization is on, or `trial` on none: a trial
-            answers every field for the organization's first 100 lookups each
-            UTC day, and Unlimited's answer after them.
+        key (str): The plan the organization is on: `free` for the free plan,
+            Unlimited, or a paid plan's key. On `free`, usage counts the
+            day's lookups answered with every field, its daily trial.
              Example: max.
         tier (EntitlementPlanTier): The field tier, which decides how much of a lookup answer comes
-            back; `free` is a trial's. What each tier includes is documented
+            back; `free` is the free plan's. What each tier includes is documented
             on the lookup endpoint rather than repeated here, so there is one
             place it can be wrong.
     """

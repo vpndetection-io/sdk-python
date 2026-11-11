@@ -89,9 +89,9 @@ class LookupResponse:
                 without a key.
                 Each field is present whenever the object is: `asn` is 0 and the rest
                 empty where no announcement covers the address.
-            trial_expired (bool | Unset): On every answer to a trial key, an organization on no paid plan, and
-                on no other: `false` while the organization's 100 full answers for
-                the UTC day last, `true` once the answer is Unlimited's.
+            trial_expired (bool | Unset): On every answer to a key on the free plan, and on no other: `false`
+                while its organization's daily trial lasts (every field for the first
+                100 lookups each UTC day), `true` once the answer has Unlimited's.
     """
 
     ip: str
