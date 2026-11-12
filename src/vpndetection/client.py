@@ -306,8 +306,10 @@ class VPNDetection:
         bad entry cannot lose the rest of the answers: the API reports a per-entry
         failure with the status the single lookup would have answered, and a chunk that
         fails as a whole marks every address in it. The batch endpoint needs a paid plan:
-        without a key every address sent to it carries an `unauthorized` error, and a
-        free-plan key's batch of two or more a `bad_request` (HTTP 402).
+        without a key every address in a request of two or more carries an
+        `unauthorized` error, and a free-plan key's request of two or more a
+        `bad_request` (HTTP 402). A request of one address is answered as its lookup
+        would be.
 
         Each batch gets its own thread pool sized for THIS call, so a per-call
         concurrency really is the ceiling rather than being silently capped by the
