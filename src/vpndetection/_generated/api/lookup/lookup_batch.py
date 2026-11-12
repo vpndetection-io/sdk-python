@@ -112,8 +112,8 @@ def sync_detailed(
 
     A batch needs a paid plan: without a key the call is refused with `401`,
     and with a key on the free plan with `402`, unless it names one address,
-    which is answered as `GET /{ip}` would answer it. Unlimited looks up one
-    address at a time.
+    which is answered as `GET /{ip}` would answer it, under the same rate
+    limit. Unlimited looks up one address at a time.
 
     Args:
         body (BatchLookupRequest):
@@ -164,8 +164,8 @@ def sync(
 
     A batch needs a paid plan: without a key the call is refused with `401`,
     and with a key on the free plan with `402`, unless it names one address,
-    which is answered as `GET /{ip}` would answer it. Unlimited looks up one
-    address at a time.
+    which is answered as `GET /{ip}` would answer it, under the same rate
+    limit. Unlimited looks up one address at a time.
 
     Args:
         body (BatchLookupRequest):
@@ -211,8 +211,8 @@ async def asyncio_detailed(
 
     A batch needs a paid plan: without a key the call is refused with `401`,
     and with a key on the free plan with `402`, unless it names one address,
-    which is answered as `GET /{ip}` would answer it. Unlimited looks up one
-    address at a time.
+    which is answered as `GET /{ip}` would answer it, under the same rate
+    limit. Unlimited looks up one address at a time.
 
     Args:
         body (BatchLookupRequest):
@@ -261,8 +261,8 @@ async def asyncio(
 
     A batch needs a paid plan: without a key the call is refused with `401`,
     and with a key on the free plan with `402`, unless it names one address,
-    which is answered as `GET /{ip}` would answer it. Unlimited looks up one
-    address at a time.
+    which is answered as `GET /{ip}` would answer it, under the same rate
+    limit. Unlimited looks up one address at a time.
 
     Args:
         body (BatchLookupRequest):
