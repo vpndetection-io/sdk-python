@@ -169,7 +169,8 @@ def test_a_bogon_is_answered_without_touching_the_network() -> None:
 def test_a_batch_without_a_key_is_refused_once_and_its_bogon_still_answered() -> None:
     client, recorder = staging.client_for(tiers.UNAUTH)
     try:
-        got = client.lookup_batch([PROBE, "10.0.0.1"])
+        # Two addresses on the wire: a keyless batch of one is answered as its lookup.
+        got = client.lookup_batch([PROBE, "8.8.8.8", "10.0.0.1"])
     finally:
         client.close()
 
