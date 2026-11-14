@@ -2,6 +2,17 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.16.0 - 2026-11-14
+
+### Features
+
+- Re-pin the spec to 2026.11.14: is_bogon on every answer, and provider_name beside each provider ([`7ff4f74`](https://github.com/vpndetection-io/sdk-python/commit/7ff4f742d0e6fb9f9788fff36501c4ccc7970b39))
+
+### Fixes
+
+- Re-pin the spec to 2026.11.12: plainer words on the 401 and the batch rate limit ([`86edbd5`](https://github.com/vpndetection-io/sdk-python/commit/86edbd5fd851b6b7235693a41b618777ca1c64ab))
+- Say that a batch request of one address is answered as its lookup ([`b16159a`](https://github.com/vpndetection-io/sdk-python/commit/b16159a9672a6b01da9cfb6e9e5eb76613d77202))
+
 ## 5.15.2 - 2026-11-11
 
 ### Fixes
