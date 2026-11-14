@@ -37,12 +37,22 @@ class Detail:
     optional: tuple[str, ...] = ()
 
 
-CLASS_KEYS = ("provider", "confidence", "last_seen")
-PROXY_KEYS = ("provider", "first_seen", "last_seen", "hits", "hits_days_pct", "providers_num")
+CLASS_KEYS = ("provider", "provider_name", "confidence", "last_seen")
+PROXY_KEYS = (
+    "provider",
+    "provider_name",
+    "first_seen",
+    "last_seen",
+    "hits",
+    "hits_days_pct",
+    "providers_num",
+)
 
 # One entry per dataset the API answers about.
 MEMBERS = {
-    "vpn": Detail(required=("provider", "last_seen"), optional=("confidence", "method")),
+    "vpn": Detail(
+        required=("provider", "provider_name", "last_seen"), optional=("confidence", "method")
+    ),
     "hosting": Detail(required=CLASS_KEYS),
     "relay": Detail(required=CLASS_KEYS),
     "tor": Detail(required=CLASS_KEYS),
