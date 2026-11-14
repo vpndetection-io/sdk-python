@@ -51,8 +51,7 @@ def bogon_result(ip: str) -> Result:
     every flag present and false, every detail object present and empty, and
     `location` and `asn` with every field empty, as the API answers a bogon.
 
-    `is_bogon` is set so a caller can always tell a locally computed answer from a
-    served one. Note this is deliberately the WIDEST shape regardless of your plan, so
+    `is_bogon` is True, as the API answers reserved space. Note this is deliberately the WIDEST shape regardless of your plan, so
     do not infer which fields your plan includes from a bogon answer.
     """
     return Result(

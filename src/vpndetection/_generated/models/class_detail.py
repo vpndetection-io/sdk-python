@@ -19,19 +19,25 @@ class ClassDetail:
     when its flag is false.
 
         Attributes:
-            provider (str | Unset): The provider, or an empty string where the dataset has none. Example: m247.
+            provider (str | Unset): The provider's ID, or an empty string where the dataset has none. Example: m247.
+            provider_name (str | Unset): The name the provider catalog gives the provider; an empty string where the
+                catalog names none or the dataset has no provider.
+                 Example: M247.
             confidence (str | Unset): How strongly the classification is supported. Example: high.
             last_seen (datetime.date | Unset): The most recent date this address was observed in this dataset. Example:
                 2026-09-02.
     """
 
     provider: str | Unset = UNSET
+    provider_name: str | Unset = UNSET
     confidence: str | Unset = UNSET
     last_seen: datetime.date | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         provider = self.provider
+
+        provider_name = self.provider_name
 
         confidence = self.confidence
 
@@ -44,6 +50,8 @@ class ClassDetail:
         field_dict.update({})
         if provider is not UNSET:
             field_dict["provider"] = provider
+        if provider_name is not UNSET:
+            field_dict["provider_name"] = provider_name
         if confidence is not UNSET:
             field_dict["confidence"] = confidence
         if last_seen is not UNSET:
@@ -56,6 +64,8 @@ class ClassDetail:
         d = dict(src_dict)
         provider = d.pop("provider", UNSET)
 
+        provider_name = d.pop("provider_name", UNSET)
+
         confidence = d.pop("confidence", UNSET)
 
         _last_seen = d.pop("last_seen", UNSET)
@@ -67,6 +77,7 @@ class ClassDetail:
 
         class_detail = cls(
             provider=provider,
+            provider_name=provider_name,
             confidence=confidence,
             last_seen=last_seen,
         )

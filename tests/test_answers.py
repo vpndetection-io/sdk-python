@@ -79,8 +79,19 @@ ENTITLEMENT: dict[str, Any] = {
     },
 }
 DETAILS: dict[str, dict[str, Any]] = {
-    "vpn": {"provider": "nordvpn", "confidence": "high", "last_seen": "2026-10-01"},
-    "dcproxy": {"provider": "p", "hits": 3, "hits_days_pct": 50, "providers_num": 1},
+    "vpn": {
+        "provider": "nordvpn",
+        "provider_name": "NordVPN",
+        "confidence": "high",
+        "last_seen": "2026-10-01",
+    },
+    "dcproxy": {
+        "provider": "p",
+        "provider_name": "P",
+        "hits": 3,
+        "hits_days_pct": 50,
+        "providers_num": 1,
+    },
     "pubproxy": {
         "entry": True,
         "exit": True,
@@ -245,6 +256,8 @@ MALFORMED = {
     "a lookup's pubproxy entry a string": ("lookup", _detailed("pubproxy", entry="yes")),
     "a lookup's pubproxy protocols of numbers": ("lookup", _detailed("pubproxy", protocols=[1])),
     "a lookup's vpn provider a list": ("lookup", _detailed("vpn", provider=["x"])),
+    "a lookup's vpn provider_name a number": ("lookup", _detailed("vpn", provider_name=1)),
+    "a lookup's is_bogon a string": ("lookup", {**LOOKUP, "is_bogon": "no"}),
     "my_ip's dcproxy hits a numeric string": ("my_ip", _detailed("dcproxy", hits="3")),
     "the entitlement's quota a numeric string": (
         "my_entitlement",
@@ -271,6 +284,17 @@ def test_a_member_the_api_always_sends_sent_as_null_or_the_wrong_type_is_its_fai
     assert isinstance(outcome, VPNDetectionError), f"{name} answered {outcome!r}"
     assert (outcome.kind, outcome.status) == ("server_error", 200), repr(outcome)
     assert origin.paths == [path] * 3
+
+
+def test_a_served_is_bogon_reaches_the_result(make_client: ClientFactory) -> None:
+    for served in (True, False):
+        origin = Raw(200, json.dumps({**LOOKUP, "is_bogon": served}))
+        client = make_client(transport=origin.transport, cache=False)
+
+        result = client.lookup("8.8.8.8")
+
+        assert result.is_bogon is served
+        assert origin.paths == ["/8.8.8.8"]
 
 
 def test_the_fixtures_above_read_as_answers(make_client: ClientFactory) -> None:

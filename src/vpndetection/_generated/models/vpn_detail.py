@@ -19,7 +19,10 @@ class VpnDetail:
     `is_vpn` is false.
 
         Attributes:
-            provider (str | Unset): The VPN provider, or an empty string for an unattributed range. Example: mullvad.
+            provider (str | Unset): The VPN provider's ID, or an empty string for an unattributed range. Example: mullvad.
+            provider_name (str | Unset): The name the provider catalog gives the provider, beside the ID to key on;
+                an empty string where the catalog names none or the range is unattributed.
+                 Example: Mullvad.
             last_seen (datetime.date | Unset): The most recent date this address was observed as VPN infrastructure.
                 Example: 2026-09-02.
             confidence (str | Unset): How strongly the attribution is supported. Example: high.
@@ -29,6 +32,7 @@ class VpnDetail:
     """
 
     provider: str | Unset = UNSET
+    provider_name: str | Unset = UNSET
     last_seen: datetime.date | Unset = UNSET
     confidence: str | Unset = UNSET
     method: str | Unset = UNSET
@@ -36,6 +40,8 @@ class VpnDetail:
 
     def to_dict(self) -> dict[str, Any]:
         provider = self.provider
+
+        provider_name = self.provider_name
 
         last_seen: str | Unset = UNSET
         if not isinstance(self.last_seen, Unset):
@@ -50,6 +56,8 @@ class VpnDetail:
         field_dict.update({})
         if provider is not UNSET:
             field_dict["provider"] = provider
+        if provider_name is not UNSET:
+            field_dict["provider_name"] = provider_name
         if last_seen is not UNSET:
             field_dict["last_seen"] = last_seen
         if confidence is not UNSET:
@@ -64,6 +72,8 @@ class VpnDetail:
         d = dict(src_dict)
         provider = d.pop("provider", UNSET)
 
+        provider_name = d.pop("provider_name", UNSET)
+
         _last_seen = d.pop("last_seen", UNSET)
         last_seen: datetime.date | Unset
         if isinstance(_last_seen, Unset):
@@ -77,6 +87,7 @@ class VpnDetail:
 
         vpn_detail = cls(
             provider=provider,
+            provider_name=provider_name,
             last_seen=last_seen,
             confidence=confidence,
             method=method,

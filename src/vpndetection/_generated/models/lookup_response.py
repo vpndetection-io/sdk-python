@@ -22,8 +22,8 @@ T = TypeVar("T", bound="LookupResponse")
 
 @_attrs_define
 class LookupResponse:
-    """The union of every tier's answer. Every answer carries `ip`, `is_vpn`,
-    the Tor and relay members, `location` and `asn`, with or without a key;
+    """The union of every tier's answer. Every answer carries `ip`, `is_bogon`,
+    `is_vpn`, the Tor and relay members, `location` and `asn`, with or without a key;
     each remaining field is present when your tier includes it, and absent
     otherwise. A client that must work across plans should treat an absent
     flag as unknown rather than as `false`.
@@ -33,6 +33,9 @@ class LookupResponse:
             is_vpn (bool): Whether the address is VPN infrastructure. Keys off presence in the
                 VPN dataset, so an unattributed range with no provider is still
                 `true`.
+            is_bogon (bool | Unset): Whether the address is reserved space (RFC 1918, loopback, link-local,
+                documentation ranges and their IPv6 equivalents), answered from the
+                address alone. Every answer, with or without a key.
             is_hosting (bool | Unset): Whether the address belongs to a hosting or cloud provider. Paid plans.
             is_relay (bool | Unset): Whether the address is privacy relay or enterprise web gateway egress, such as iCloud
                 Private Relay or Zscaler. Every answer, with or without a key.
@@ -96,6 +99,7 @@ class LookupResponse:
 
     ip: str
     is_vpn: bool
+    is_bogon: bool | Unset = UNSET
     is_hosting: bool | Unset = UNSET
     is_relay: bool | Unset = UNSET
     is_tor: bool | Unset = UNSET
@@ -122,6 +126,8 @@ class LookupResponse:
         ip = self.ip
 
         is_vpn = self.is_vpn
+
+        is_bogon = self.is_bogon
 
         is_hosting = self.is_hosting
 
@@ -193,6 +199,8 @@ class LookupResponse:
                 "is_vpn": is_vpn,
             }
         )
+        if is_bogon is not UNSET:
+            field_dict["is_bogon"] = is_bogon
         if is_hosting is not UNSET:
             field_dict["is_hosting"] = is_hosting
         if is_relay is not UNSET:
@@ -249,6 +257,8 @@ class LookupResponse:
         ip = d.pop("ip")
 
         is_vpn = d.pop("is_vpn")
+
+        is_bogon = d.pop("is_bogon", UNSET)
 
         is_hosting = d.pop("is_hosting", UNSET)
 
@@ -348,6 +358,7 @@ class LookupResponse:
         lookup_response = cls(
             ip=ip,
             is_vpn=is_vpn,
+            is_bogon=is_bogon,
             is_hosting=is_hosting,
             is_relay=is_relay,
             is_tor=is_tor,

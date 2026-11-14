@@ -21,7 +21,10 @@ class ProxyDetail:
     the object is populated; the object is `{}` when its flag is false.
 
         Attributes:
-            provider (str | Unset): The proxy network, or an empty string where unattributed. Example: brightdata.
+            provider (str | Unset): The proxy network's ID, or an empty string where unattributed. Example: brightdata.
+            provider_name (str | Unset): The name the provider catalog gives the proxy network; an empty string where
+                the catalog names none or the address is unattributed.
+                 Example: Bright Data.
             first_seen (datetime.date | Unset): The earliest date within the window this address was seen in the
                 pool, as of its last day in the window once it has left.
                  Example: 2026-06-14.
@@ -40,6 +43,7 @@ class ProxyDetail:
     """
 
     provider: str | Unset = UNSET
+    provider_name: str | Unset = UNSET
     first_seen: datetime.date | Unset = UNSET
     last_seen: datetime.date | Unset = UNSET
     hits: int | Unset = UNSET
@@ -49,6 +53,8 @@ class ProxyDetail:
 
     def to_dict(self) -> dict[str, Any]:
         provider = self.provider
+
+        provider_name = self.provider_name
 
         first_seen: str | Unset = UNSET
         if not isinstance(self.first_seen, Unset):
@@ -69,6 +75,8 @@ class ProxyDetail:
         field_dict.update({})
         if provider is not UNSET:
             field_dict["provider"] = provider
+        if provider_name is not UNSET:
+            field_dict["provider_name"] = provider_name
         if first_seen is not UNSET:
             field_dict["first_seen"] = first_seen
         if last_seen is not UNSET:
@@ -86,6 +94,8 @@ class ProxyDetail:
     def from_dict(cls, src_dict: Mapping[str, Any]) -> Self:
         d = dict(src_dict)
         provider = d.pop("provider", UNSET)
+
+        provider_name = d.pop("provider_name", UNSET)
 
         _first_seen = d.pop("first_seen", UNSET)
         first_seen: datetime.date | Unset
@@ -109,6 +119,7 @@ class ProxyDetail:
 
         proxy_detail = cls(
             provider=provider,
+            provider_name=provider_name,
             first_seen=first_seen,
             last_seen=last_seen,
             hits=hits,

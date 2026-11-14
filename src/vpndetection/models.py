@@ -68,7 +68,8 @@ class VpnDetail:
     """What is known about the VPN attribution.
 
     Every field is populated when the object itself is, empty values included.
-    `method` is deprecated: no plan is answered with it since 2026-10-20, so it is
+    `provider` is the ID to key on, and `provider_name` the name the provider catalog
+    gives it, as every detail with a provider carries. `method` is deprecated: no plan is answered with it since 2026-10-20, so it is
     `None`; read `confidence` instead. It stays until the next major.
     """
 
@@ -76,6 +77,7 @@ class VpnDetail:
     last_seen: datetime.date | None = None
     confidence: str | None = None
     method: str | None = None
+    provider_name: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,6 +87,7 @@ class ClassDetail:
     provider: str | None = None
     confidence: str | None = None
     last_seen: datetime.date | None = None
+    provider_name: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,6 +101,7 @@ class ProxyDetail:
     hits: int | None = None
     hits_days_pct: int | None = None
     providers_num: int | None = None
+    provider_name: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -226,7 +230,7 @@ def to_result(body: dict[str, Any]) -> Result:
     # 2026-10-15). Each is the server's failure, raised for the caller to report as one.
     if not isinstance(parsed.ip, str) or parsed.ip == "":
         raise TypeError(f"the answer's ip is not an address: {parsed.ip!r}")
-    for flag in (*_FLAGS, "trial_expired"):
+    for flag in (*_FLAGS, "is_bogon", "trial_expired"):
         value = getattr(parsed, flag)
         if not isinstance(value, bool) and not (
             flag != "is_vpn" and isinstance(value, Unset | None)
@@ -235,7 +239,7 @@ def to_result(body: dict[str, Any]) -> Result:
     return Result(
         ip=parsed.ip,
         is_vpn=parsed.is_vpn,
-        is_bogon=False,
+        is_bogon=parsed.is_bogon is True,
         is_hosting=_opt(parsed.is_hosting),
         is_relay=_opt(parsed.is_relay),
         is_tor=_opt(parsed.is_tor),
@@ -454,6 +458,7 @@ def _vpn(value: Any) -> VpnDetail | None:
         last_seen=_opt(value.last_seen),
         confidence=_opt(value.confidence),
         method=_opt(value.method),
+        provider_name=_opt(value.provider_name),
     )
 
 
@@ -489,6 +494,7 @@ def _class(value: Any) -> ClassDetail | None:
         provider=_opt(value.provider),
         confidence=_opt(value.confidence),
         last_seen=_opt(value.last_seen),
+        provider_name=_opt(value.provider_name),
     )
 
 
@@ -502,6 +508,7 @@ def _proxy(value: Any) -> ProxyDetail | None:
         hits=_opt(value.hits),
         hits_days_pct=_opt(value.hits_days_pct),
         providers_num=_opt(value.providers_num),
+        provider_name=_opt(value.provider_name),
     )
 
 
