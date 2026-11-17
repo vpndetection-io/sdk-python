@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.17.0 - 2026-11-17
+
+### Features
+
+- Hand back a vocabulary value this release was not built with, and read the plan's name ([`de76573`](https://github.com/vpndetection-io/sdk-python/commit/de765731a8e5b0b8d83de21ab5d1b6ec21fb22e8))
+
 ## 5.16.0 - 2026-11-14
 
 ### Features
