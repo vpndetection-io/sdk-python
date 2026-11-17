@@ -43,5 +43,32 @@ openapi-python-client generate \
 # not use anywhere. Normalizing them here keeps generation deterministic.
 find src/vpndetection/_generated -name '*.py' -exec sed -i 's/\xe2\x80\x94/ - /g' {} +
 
+# A value the API adds to a closed vocabulary in an ANSWER comes back as served rather
+# than failing the whole call, so a release already installed keeps reading the API's
+# answers. Each response enum gains a `_missing_` returning a member that carries the
+# value. A wrong type is still refused, a request still refuses a value outside the
+# pinned list before the network (`wire_format`), and a listed file the generator stops
+# emitting stops this script rather than leaving one enum closed.
+for enum in entitlement_plan_tier standing database_format download_outcome \
+    database_license_type_type_1 database_license_type_type_2_type_1 \
+    database_license_type_type_3_type_1 ; do
+    file="src/vpndetection/_generated/models/${enum}.py"
+    [ -f "$file" ] || { echo "no ${file}: the generated enums moved" >&2 ; exit 1 ; }
+    class="$(sed -n 's/^class \([A-Za-z0-9]*\)(StrEnum):$/\1/p' "$file")"
+    [ -n "$class" ] || { echo "${file} holds no StrEnum" >&2 ; exit 1 ; }
+    cat >> "$file" <<EOF
+
+    @classmethod
+    def _missing_(cls, value: object) -> "${class} | None":
+        # A value the API added after this release, handed back as served.
+        if not isinstance(value, str):
+            return None
+        member = str.__new__(cls, value)
+        member._name_ = value
+        member._value_ = value
+        return member
+EOF
+done
+
 echo "src/vpndetection/_generated <- spec/openapi.yaml"
 grep -m1 '^  version:' spec/openapi.yaml

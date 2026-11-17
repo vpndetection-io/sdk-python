@@ -69,7 +69,7 @@ METADATA: dict[str, Any] = {
 ENTITLEMENT: dict[str, Any] = {
     "org_id": "85bb51e4-2eb6-4a31-8e4d-02ba8b98fe61",
     "apikey": {"id": "0ab424cc-7619-4dad-b027-afacdc2cedb0", "expires": None, "allowed_cidrs": []},
-    "plan": {"key": "max", "tier": "max"},
+    "plan": {"key": "max", "name": "Max", "tier": "max"},
     "usage": {
         "requests": 580,
         "quota": 5000000,
@@ -265,7 +265,24 @@ MALFORMED = {
     ),
     "the entitlement's tier a number": (
         "my_entitlement",
-        {**ENTITLEMENT, "plan": {"key": "max", "tier": 1}},
+        {**ENTITLEMENT, "plan": {"key": "max", "name": "Max", "tier": 1}},
+    ),
+    "the entitlement's plan name a number": (
+        "my_entitlement",
+        {**ENTITLEMENT, "plan": {"key": "max", "name": 7, "tier": "max"}},
+    ),
+    "the entitlement's plan name null": (
+        "my_entitlement",
+        {**ENTITLEMENT, "plan": {"key": "max", "name": None, "tier": "max"}},
+    ),
+    "the entitlement's plan name missing": (
+        "my_entitlement",
+        {**ENTITLEMENT, "plan": {"key": "max", "tier": "max"}},
+    ),
+    "a database's standing a number": ("list", {"databases": [{**DATABASE, "standing": 7}]}),
+    "a download's outcome a number": (
+        "downloads",
+        {"downloads": [{**DOWNLOAD, "outcome": 1}]},
     ),
 }
 

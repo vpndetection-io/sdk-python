@@ -670,7 +670,7 @@ ENTITLEMENT_BODY = {
         "expires": None,
         "allowed_cidrs": [],
     },
-    "plan": {"key": "max", "tier": "max"},
+    "plan": {"key": "max", "name": "Max", "tier": "max"},
     "usage": {
         "requests": 580,
         "quota": 5000000,
@@ -710,6 +710,7 @@ def test_my_entitlement_reports_the_plan_and_the_usage(make_client: ClientFactor
     ent = client.my_entitlement()
 
     assert ent.plan.key == "max"
+    assert ent.plan.name == "Max"
     assert ent.plan.tier == "max"
     assert ent.usage.requests == 580
     assert ent.usage.quota == 5000000

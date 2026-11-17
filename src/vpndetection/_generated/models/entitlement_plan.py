@@ -15,22 +15,31 @@ T = TypeVar("T", bound="EntitlementPlan")
 class EntitlementPlan:
     """
     Attributes:
-        key (str): The plan the organization is on: `free` for the free plan,
-            Unlimited, or a paid plan's key. On `free`, usage counts the
+        key (str): The plan the organization is on, as an identifier that is never
+            renamed or reused: `free` for the free plan, or a paid plan's key.
+            Compare against it and show `name`. On `free`, usage counts the
             day's lookups answered with every field, its daily trial.
              Example: max.
+        name (str): The plan's name, as the site and console show it: `Unlimited` for
+            the free plan. Show this rather than a name built from `key`: a
+            plan's name can change, and its key never does.
+             Example: Max.
         tier (EntitlementPlanTier): The field tier, which decides how much of a lookup answer comes
-            back; `free` is the free plan's. What each tier includes is documented
+            back; `free` is the free plan's. This list never gains a value: a
+            new plan reports one of these. What each tier includes is documented
             on the lookup endpoint rather than repeated here, so there is one
             place it can be wrong.
     """
 
     key: str
+    name: str
     tier: EntitlementPlanTier
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         key = self.key
+
+        name = self.name
 
         tier = self.tier.value
 
@@ -39,6 +48,7 @@ class EntitlementPlan:
         field_dict.update(
             {
                 "key": key,
+                "name": name,
                 "tier": tier,
             }
         )
@@ -50,10 +60,13 @@ class EntitlementPlan:
         d = dict(src_dict)
         key = d.pop("key")
 
+        name = d.pop("name")
+
         tier = EntitlementPlanTier(d.pop("tier"))
 
         entitlement_plan = cls(
             key=key,
+            name=name,
             tier=tier,
         )
 

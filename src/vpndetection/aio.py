@@ -80,7 +80,6 @@ from ._generated.api.lookup import lookup_batch, lookup_ip, lookup_my_ip
 from ._generated.client import AuthenticatedClient
 from ._generated.models.batch_lookup_request import BatchLookupRequest
 from ._generated.models.database import Database
-from ._generated.models.database_format import DatabaseFormat
 from ._generated.models.database_metadata import DatabaseMetadata
 from ._generated.models.download import Download
 from ._generated.models.entitlement import Entitlement
@@ -99,6 +98,7 @@ from .models import (
     to_oauth_metadata,
     to_result,
     to_token_response,
+    wire_format,
 )
 
 __all__ = ["AsyncDatabaseApi", "AsyncOauthApi", "AsyncVPNDetection"]
@@ -475,7 +475,7 @@ class AsyncDatabaseApi:
                 self._client,
                 self._bound(timeout),
                 id=dataset_id,
-                format_=DatabaseFormat(format),
+                format_=wire_format(format),
             )
             return parse_body(res, checksums_of)
 
@@ -527,7 +527,7 @@ class AsyncDatabaseApi:
                 self._client,
                 self._bound(timeout),
                 id=dataset_id,
-                format_=DatabaseFormat(format),
+                format_=wire_format(format),
                 build=build,
             )
             return redirect_location(res)

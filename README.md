@@ -81,7 +81,8 @@ Same answer `lookup` would give for that address, and the same cost against your
 
 ```python
 acct = client.my_entitlement()
-print(acct.plan.key)          # max
+print(acct.plan.name)         # Max, what to show
+print(acct.plan.key)          # max, what to compare against
 print(acct.usage.requests)    # 580
 print(acct.usage.window_end)  # when the allowance resets
 ```

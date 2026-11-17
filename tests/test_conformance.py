@@ -7,8 +7,10 @@ disagreeing about the same address.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
+import httpx
 import pytest
 from helpers import TESTDATA, ClientFactory, Stub, as_wire
 
@@ -239,3 +241,64 @@ def test_caching_can_be_turned_off(make_client: ClientFactory) -> None:
 
 def _batch(name: str) -> dict[str, Any]:
     return next(case for case in TESTDATA["batch"] if case["name"] == name)
+
+
+# Each vocabulary case names the call its answer is for. The typed result is written back
+# out through the models' own to_dict, so the comparison reads what a caller reads.
+VOCABULARY_CALLS: dict[str, tuple[str, Callable[[Any], Any]]] = {
+    "myEntitlement": ("/api/v1/entitlement", lambda c: c.my_entitlement().to_dict()),
+    "listDatabases": (
+        "/api/v1/database/list",
+        lambda c: {"databases": [d.to_dict() for d in c.database.list()]},
+    ),
+    "listDownloads": (
+        "/api/v1/database/downloads",
+        lambda c: {"downloads": [d.to_dict() for d in c.database.downloads()]},
+    ),
+}
+
+
+def _at(value: Any, path: str) -> Any:
+    for segment in path.split("."):
+        value = value[int(segment)] if isinstance(value, list) else value[segment]
+    return value
+
+
+@pytest.mark.parametrize("case", TESTDATA["vocabulary"]["cases"], ids=lambda c: c["name"])
+def test_a_vocabulary_value_no_published_list_holds_comes_back_as_served(
+    make_client: ClientFactory, case: dict[str, Any]
+) -> None:
+    path, call = VOCABULARY_CALLS[case["call"]]
+    seen: list[str] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        seen.append(request.url.path)
+        return httpx.Response(200, json=case["answer"])
+
+    client = make_client(transport=httpx.MockTransport(handle), cache=False, retries=0)
+    read = call(client)
+
+    assert seen == [path]
+    for member, want in case["expect"].items():
+        assert _at(read, member) == want, f"{case['name']}: {member}"
+
+
+@pytest.mark.parametrize("format", ["parquet", "MMDB", "", 7])
+def test_a_request_naming_a_format_outside_the_pinned_list_is_refused_before_the_network(
+    make_client: ClientFactory, format: Any
+) -> None:
+    seen: list[str] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        seen.append(request.url.path)
+        return httpx.Response(500)
+
+    client = make_client(transport=httpx.MockTransport(handle), retries=0)
+    for call in (
+        lambda: client.database.checksums("vpn_ip_v1", format),
+        lambda: client.database.download_url("vpn_ip_v1", format),
+        lambda: client.database.download_bytes("vpn_ip_v1", format),
+    ):
+        with pytest.raises(ValueError, match="is not a valid DatabaseFormat"):
+            call()
+    assert seen == []

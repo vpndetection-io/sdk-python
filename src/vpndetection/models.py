@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from typing import Any, Literal, TypeVar, get_args
 
 from ._generated import models as _generated_models
+from ._generated.models.database_format import DatabaseFormat
 from ._generated.models.database_license_type_type_1 import DatabaseLicenseTypeType1
 from ._generated.models.lookup_response import LookupResponse
 from ._generated.models.standing import Standing
@@ -54,6 +55,16 @@ DATABASE_FORMATS: tuple[Format, ...] = get_args(Format)
 A `Literal` is erased to nothing a program can check against, so a format read from a flag,
 a form or a config file has these to be tested against before a call.
 """
+
+
+def wire_format(format: object) -> DatabaseFormat:
+    """`format` as a request names it. An answer may carry a format this release was not
+    built with, which reads as served, but a request naming one is refused here, before the
+    network, as the API would refuse it a round trip later."""
+    if not isinstance(format, str) or format not in DATABASE_FORMATS:
+        raise ValueError(f"{format!r} is not a valid DatabaseFormat")
+    return DatabaseFormat(format)
+
 
 STANDINGS: tuple[str, ...] = tuple(member.value for member in Standing)
 """Every `standing` a database family can carry, at runtime, read off the pinned spec."""
