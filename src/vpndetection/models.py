@@ -216,6 +216,11 @@ class Result:
     #: Unlimited's.
     trial_expired: bool | None = None
 
+    #: On answers to a key on a paid plan only: False while the answer has every field, True
+    #: once its organization's overage cap is reached and the answer has Unlimited's. Lookups
+    #: answered past the cap are not billed.
+    cap_reached: bool | None = None
+
     def flagged(self, flag: Flag) -> bool:
         """Whether a flag is present AND true, with anything your plan does not include
         reading as false.
@@ -241,7 +246,7 @@ def to_result(body: dict[str, Any]) -> Result:
     # 2026-10-15). Each is the server's failure, raised for the caller to report as one.
     if not isinstance(parsed.ip, str) or parsed.ip == "":
         raise TypeError(f"the answer's ip is not an address: {parsed.ip!r}")
-    for flag in (*_FLAGS, "is_bogon", "trial_expired"):
+    for flag in (*_FLAGS, "is_bogon", "trial_expired", "cap_reached"):
         value = getattr(parsed, flag)
         if not isinstance(value, bool) and not (
             flag != "is_vpn" and isinstance(value, Unset | None)
@@ -272,6 +277,7 @@ def to_result(body: dict[str, Any]) -> Result:
         asn=_asn(parsed.asn),
         raw=body,
         trial_expired=_opt(parsed.trial_expired),
+        cap_reached=_opt(parsed.cap_reached),
     )
 
 

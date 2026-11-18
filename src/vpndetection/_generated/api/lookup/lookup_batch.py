@@ -102,13 +102,12 @@ def sync_detailed(
     normalized form. An address that could not be answered sits in `errors`
     with the status and message the single lookup would have given, and
     never disturbs the others: a string that is not an address is a `400`
-    there, and an overage cap reached part way through leaves the remaining
-    entries as `429`s.
+    there. An overage cap reached part way through answers the remaining
+    entries with Unlimited's fields and `cap_reached` `true`, in `results`.
 
     The call itself fails only for the reasons below, and a `429` on the
     call always carries `Retry-After`: the batch is admitted or refused
-    whole by the rate limit, so a per-entry `429` is always the overage cap
-    and never a throttle.
+    whole by the rate limit, never per entry.
 
     A batch needs a paid plan: without a key the call is refused with `401`,
     and with a key on the free plan with `402`, unless it names one address,
@@ -154,13 +153,12 @@ def sync(
     normalized form. An address that could not be answered sits in `errors`
     with the status and message the single lookup would have given, and
     never disturbs the others: a string that is not an address is a `400`
-    there, and an overage cap reached part way through leaves the remaining
-    entries as `429`s.
+    there. An overage cap reached part way through answers the remaining
+    entries with Unlimited's fields and `cap_reached` `true`, in `results`.
 
     The call itself fails only for the reasons below, and a `429` on the
     call always carries `Retry-After`: the batch is admitted or refused
-    whole by the rate limit, so a per-entry `429` is always the overage cap
-    and never a throttle.
+    whole by the rate limit, never per entry.
 
     A batch needs a paid plan: without a key the call is refused with `401`,
     and with a key on the free plan with `402`, unless it names one address,
@@ -201,13 +199,12 @@ async def asyncio_detailed(
     normalized form. An address that could not be answered sits in `errors`
     with the status and message the single lookup would have given, and
     never disturbs the others: a string that is not an address is a `400`
-    there, and an overage cap reached part way through leaves the remaining
-    entries as `429`s.
+    there. An overage cap reached part way through answers the remaining
+    entries with Unlimited's fields and `cap_reached` `true`, in `results`.
 
     The call itself fails only for the reasons below, and a `429` on the
     call always carries `Retry-After`: the batch is admitted or refused
-    whole by the rate limit, so a per-entry `429` is always the overage cap
-    and never a throttle.
+    whole by the rate limit, never per entry.
 
     A batch needs a paid plan: without a key the call is refused with `401`,
     and with a key on the free plan with `402`, unless it names one address,
@@ -251,13 +248,12 @@ async def asyncio(
     normalized form. An address that could not be answered sits in `errors`
     with the status and message the single lookup would have given, and
     never disturbs the others: a string that is not an address is a `400`
-    there, and an overage cap reached part way through leaves the remaining
-    entries as `429`s.
+    there. An overage cap reached part way through answers the remaining
+    entries with Unlimited's fields and `cap_reached` `true`, in `results`.
 
     The call itself fails only for the reasons below, and a `429` on the
     call always carries `Retry-After`: the batch is admitted or refused
-    whole by the rate limit, so a per-entry `429` is always the overage cap
-    and never a throttle.
+    whole by the rate limit, never per entry.
 
     A batch needs a paid plan: without a key the call is refused with `401`,
     and with a key on the free plan with `402`, unless it names one address,

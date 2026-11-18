@@ -17,9 +17,12 @@ class EntitlementUsage:
         requests (int): Requests counted in the current window. The same number the lookup
             API gates on, and it can lag by a few seconds.
         quota (int): What the plan includes. Zero on a plan that includes none.
-        hard_limit (int | None): Where we stop serving. NULL means never, which is the normal state
-            of an uncapped paid plan and is not the same as zero. Above the
-            quota and below this, requests are served and billed as overage.
+        hard_limit (int | None): Where full answers stop: past it, a paid key is answered with
+            Unlimited's fields and `cap_reached: true`, uncharged, until the
+            window ends or the cap is raised. NULL means never, which is the
+            normal state of an uncapped paid plan and is not the same as zero.
+            Above the quota and below this, requests are served and billed as
+            overage.
         window_start (datetime.datetime): When the current allowance period began.
         window_end (datetime.datetime): When the allowance next resets.
     """
