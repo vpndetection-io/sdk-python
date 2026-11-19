@@ -238,7 +238,7 @@ if tokens.apikey is None:
 client = VPNDetection(tokens.apikey)
 ```
 
-A refusal raises `OauthAccessDeniedError` and a code that ran out raises `OauthExpiredTokenError`, and client IDs are issued on request from support@vpndetection.io. `client.oauth.revoke("your-client-id", tokens.refresh_token)` signs the machine out.
+A refusal raises `OauthAccessDeniedError` and a code that ran out raises `OauthExpiredTokenError`. `client.oauth.revoke("your-client-id", tokens.refresh_token)` signs the machine out. Only a client we registered, such as our CLI, can use the device flow: an app of your own signs people in with the authorization code flow below.
 
 ### Sign in with OAuth (authorization code)
 
