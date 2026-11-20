@@ -366,9 +366,8 @@ class Result:
 
     raw: dict[str, Any] = field(default_factory=dict)
 
-    #: On answers to a key on the free plan only: False while its organization's daily trial
-    #: lasts (every field for the first 100 lookups each UTC day), True once the answer has
-    #: Unlimited's.
+    #: On answers to a key on the free plan only: False while its organization's trial of
+    #: every field lasts, True once the answer has Unlimited's.
     trial_expired: bool | None = None
 
     #: On answers to a key on a paid plan only: False while the answer has every field, True
