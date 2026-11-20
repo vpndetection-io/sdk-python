@@ -17,8 +17,8 @@ class EntitlementPlan:
     Attributes:
         key (str): The plan the organization is on, as an identifier that is never
             renamed or reused: `free` for the free plan, or a paid plan's key.
-            Compare against it and show `name`. On `free`, usage counts the
-            day's lookups answered with every field, its daily trial.
+            Compare against it and show `name`. On `free`, usage counts its
+            trial, the lookups answered with every field.
              Example: max.
         name (str): The plan's name, as the site and console show it: `Unlimited` for
             the free plan. Show this rather than a name built from `key`: a

@@ -1,5 +1,6 @@
 """Contains all the data models used in inputs/outputs"""
 
+from .abuse_contact import AbuseContact
 from .account_create_apikey_request import AccountCreateApikeyRequest
 from .account_created_apikey import AccountCreatedApikey
 from .account_org import AccountOrg
@@ -16,9 +17,12 @@ from .batch_lookup_request import BatchLookupRequest
 from .batch_lookup_response import BatchLookupResponse
 from .batch_lookup_response_errors import BatchLookupResponseErrors
 from .batch_lookup_response_results import BatchLookupResponseResults
+from .bit_torrent_detail import BitTorrentDetail
+from .carrier_detail import CarrierDetail
 from .class_detail import ClassDetail
 from .client_registration import ClientRegistration
 from .client_registration_request import ClientRegistrationRequest
+from .company import Company
 from .database import Database
 from .database_checksum_response_200 import DatabaseChecksumResponse200
 from .database_format import DatabaseFormat
@@ -39,6 +43,7 @@ from .database_version import DatabaseVersion
 from .db_checksums import DbChecksums
 from .device_authorization import DeviceAuthorization
 from .device_authorization_request import DeviceAuthorizationRequest
+from .dns_resolver_detail import DnsResolverDetail
 from .download import Download
 from .download_outcome import DownloadOutcome
 from .entitlement import Entitlement
@@ -62,12 +67,17 @@ from .oauth_revoke_response_200 import OauthRevokeResponse200
 from .proxy_detail import ProxyDetail
 from .pubproxy_detail import PubproxyDetail
 from .revoke_request import RevokeRequest
+from .satellite_detail import SatelliteDetail
+from .smtp_detail import SmtpDetail
+from .ssh_detail import SshDetail
 from .standing import Standing
 from .token_request import TokenRequest
 from .token_response import TokenResponse
 from .vpn_detail import VpnDetail
+from .web_detail import WebDetail
 
 __all__ = (
+    "AbuseContact",
     "AccountCreateApikeyRequest",
     "AccountCreatedApikey",
     "AccountOrg",
@@ -84,9 +94,12 @@ __all__ = (
     "BatchLookupResponse",
     "BatchLookupResponseErrors",
     "BatchLookupResponseResults",
+    "BitTorrentDetail",
+    "CarrierDetail",
     "ClassDetail",
     "ClientRegistration",
     "ClientRegistrationRequest",
+    "Company",
     "Database",
     "DatabaseChecksumResponse200",
     "DatabaseFormat",
@@ -105,6 +118,7 @@ __all__ = (
     "DbChecksums",
     "DeviceAuthorization",
     "DeviceAuthorizationRequest",
+    "DnsResolverDetail",
     "Download",
     "DownloadOutcome",
     "Entitlement",
@@ -128,8 +142,12 @@ __all__ = (
     "ProxyDetail",
     "PubproxyDetail",
     "RevokeRequest",
+    "SatelliteDetail",
+    "SmtpDetail",
+    "SshDetail",
     "Standing",
     "TokenRequest",
     "TokenResponse",
     "VpnDetail",
+    "WebDetail",
 )
