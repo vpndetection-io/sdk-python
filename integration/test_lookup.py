@@ -81,8 +81,8 @@ def test_a_free_plan_keys_answer_is_a_paid_one_or_unlimiteds_and_says_which() ->
     raw = answer_for(tiers.TRIAL).raw
 
     assert isinstance(raw.get("trial_expired"), bool), "a free-plan key answers trial_expired"
-    # The organization's first 100 lookups of the UTC day are answered in full, and the
-    # rest as Unlimited's: which half a run sees depends on the day.
+    # Answered in full while the organization's trial lasts, and as Unlimited's after:
+    # which half a run sees depends on when it runs.
     assert ("is_hosting" in raw) is not raw["trial_expired"]
 
 
@@ -157,13 +157,18 @@ def test_a_bogon_is_answered_without_touching_the_network() -> None:
     assert result.is_vpn is False, "a private address cannot be VPN infrastructure"
     assert is_bogon("10.0.0.1"), "the standalone function must agree with the client"
     # Computed rather than served, so it carries every field whatever the plan.
-    for name in staging.MEMBERS:
+    for name, spec in staging.MEMBERS.items():
+        if not staging.installed_since(spec.since):
+            continue
         assert getattr(result, f"is_{name}") is False, f"is_{name} must be present and false"
         detail = getattr(result, name)
         assert detail is not None, f"{name} must be present and empty on a bogon"
         assert all(value is None for value in dataclasses.asdict(detail).values()), (
             f"{name} must be present and EMPTY on a bogon, got {detail}"
         )
+    if staging.installed_since(staging.WEB_SINCE):
+        assert result.is_web is False, "is_web must be present and false"
+        assert result.web == (), "web must be present and empty on a bogon"
 
 
 def test_a_batch_without_a_key_is_refused_once_and_its_bogon_still_answered() -> None:

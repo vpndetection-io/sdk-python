@@ -35,6 +35,9 @@ class Detail:
 
     required: tuple[str, ...]
     optional: tuple[str, ...] = ()
+    #: The first release whose `Result` carries this member. The wire is checked whatever
+    #: is installed; the typed field only from this release on.
+    since: tuple[int, ...] = (0,)
 
 
 CLASS_KEYS = ("provider", "provider_name", "confidence", "last_seen")
@@ -60,7 +63,81 @@ MEMBERS = {
     "resproxy": Detail(required=PROXY_KEYS),
     "dcproxy": Detail(required=PROXY_KEYS),
     "mobproxy": Detail(required=PROXY_KEYS),
+    "carrier": Detail(required=("name", "mcc", "mnc", "country", "confidence"), since=(5, 19)),
+    "satellite": Detail(
+        required=(
+            "provider",
+            "provider_name",
+            "orbit",
+            "segment",
+            "country",
+            "asn",
+            "confidence",
+        ),
+        since=(5, 19),
+    ),
+    "ssh": Detail(
+        required=("port", "banner", "host_key_fp", "session_ok", "first_seen", "last_seen"),
+        since=(5, 19),
+    ),
+    "smtp": Detail(
+        required=("port", "banner", "session_ok", "first_seen", "last_seen"), since=(5, 19)
+    ),
+    "dns_resolver": Detail(
+        required=(
+            "port",
+            "recursion_available",
+            "rcode",
+            "answer_correct",
+            "first_seen",
+            "last_seen",
+        ),
+        since=(5, 19),
+    ),
+    "bittorrent": Detail(
+        required=(
+            "verified",
+            "id_matches_ip",
+            "first_seen",
+            "last_seen",
+            "last_reachable",
+            "days_seen",
+            "num_ports",
+            "peak_num_ports",
+            "indexer",
+            "clients",
+        ),
+        since=(5, 19),
+    ),
 }
+
+# A row of `web`, a list with one per port that answered, `[]` under a false `is_web`.
+WEB_KEYS = (
+    "port",
+    "tls_ok",
+    "session_ok",
+    "status_code",
+    "server",
+    "location",
+    "title",
+    "cert_subject_cn",
+    "cert_subject_o",
+    "cert_issuer_dn",
+    "cert_browser_trusted",
+    "tls_version",
+    "first_seen",
+    "last_seen",
+)
+WEB_SINCE = (5, 19)
+
+
+def installed_since(release: tuple[int, ...]) -> bool:
+    """Whether the installed package is `release` or later, read off its metadata rather
+    than probed, so a member a release drops fails instead of skipping."""
+    version = importlib.metadata.version(PACKAGE)
+    parts = tuple(int(part) for part in version.split(".")[:3] if part.isdigit())
+    return parts >= release
+
 
 # Everything on a Result that came off the wire. The other two are the library's own: one
 # is computed rather than served, the other is the wire itself.
@@ -255,13 +332,18 @@ def assert_shape(tier: str, result: Result) -> None:
             assert isinstance(raw[flag], bool), (
                 f"{tier}: {flag} is present, so it must be a real boolean, not {raw[flag]!r}"
             )
-            assert getattr(result, flag) is raw[flag], f"{tier}: {flag} did not survive the mapping"
+            if installed_since(spec.since):
+                assert getattr(result, flag) is raw[flag], (
+                    f"{tier}: {flag} did not survive the mapping"
+                )
         if name not in raw:
             continue
         # A detail object without its flag would leave a caller reading the object to find
         # out whether the address is flagged at all.
         assert flag in raw, f"{tier}: {name} is served without {flag}"
         assert_detail(tier, name, spec, raw[name], raw[flag])
+    if "web" in raw:
+        assert_web(tier, raw["web"], raw.get("is_web"))
 
 
 def assert_detail(tier: str, name: str, spec: Detail, detail: Any, flag: Any) -> None:
@@ -277,6 +359,18 @@ def assert_detail(tier: str, name: str, spec: Detail, detail: Any, flag: Any) ->
         assert key in spec.required or key in spec.optional, (
             f"{tier}: {name}.{key} is not a documented key of this detail object"
         )
+
+
+def assert_web(tier: str, web: Any, flag: Any) -> None:
+    assert isinstance(web, list), f"{tier}: web must be a list when present, got {web!r}"
+    assert isinstance(flag, bool), f"{tier}: web is served without a boolean is_web"
+    assert (web != []) is flag, f"{tier}: web holds {len(web)} row(s) under is_web {flag}"
+    for row in web:
+        assert isinstance(row, dict), f"{tier}: a row of web must be an object, got {row!r}"
+        for key in WEB_KEYS:
+            assert key in row, f"{tier}: a row of web carries no {key}"
+        for key in row:
+            assert key in WEB_KEYS, f"{tier}: web.{key} is not a documented key of a web row"
 
 
 def modelled(result: Result, wire: str) -> tuple[Any, bool]:
