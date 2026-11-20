@@ -22,7 +22,7 @@ from typing import IO, Any, TypeVar, cast
 from urllib.parse import quote
 
 import httpx
-from cachetools import TTLCache
+from cachetools import TLRUCache
 
 from ._generated.client import AuthenticatedClient, Client
 from ._generated.models.database import Database
@@ -37,6 +37,8 @@ DEFAULT_CONCURRENCY = 8
 DEFAULT_RETRIES = 2
 DEFAULT_CACHE_MAX_SIZE = 10_000
 DEFAULT_CACHE_TTL = 3600.0
+# The longest a spent trial's or a reached cap's answer is cached, in seconds.
+REDUCED_TTL = 60.0
 DEFAULT_TIMEOUT = 30.0
 DEFAULT_DOWNLOADS_LIMIT = 50
 
@@ -752,12 +754,26 @@ class Cache:
     Never global or static: two clients with different keys are on different plans and
     entitled to different fields, so a shared cache would serve one of them the other's
     shape. The lock is not optional, because the sync batch drives lookups from a thread
-    pool and `TTLCache` is not thread-safe.
+    pool and `TLRUCache` is not thread-safe.
+
+    A reduced answer, a spent trial's or a reached cap's, ends with a renewed trial or a
+    raised cap, so it stays a minute at most rather than the TTL. It is still cached, or a
+    busy process would send every repeat of an address to the API.
     """
 
-    def __init__(self, max_size: int, ttl: float) -> None:
-        self._entries: TTLCache[str, Result] = TTLCache(maxsize=max_size, ttl=ttl)
+    def __init__(
+        self, max_size: int, ttl: float, timer: Callable[[], float] = time.monotonic
+    ) -> None:
+        self._ttl = ttl
+        self._entries: TLRUCache[str, Result] = TLRUCache(
+            maxsize=max_size, ttu=self._expires, timer=timer
+        )
         self._lock = threading.Lock()
+
+    def _expires(self, _ip: str, result: Result, now: float) -> float:
+        if result.trial_expired is True or result.cap_reached is True:
+            return now + min(self._ttl, REDUCED_TTL)
+        return now + self._ttl
 
     def get(self, ip: str) -> Result | None:
         with self._lock:
