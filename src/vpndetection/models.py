@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import datetime
 import enum
 import re
@@ -23,16 +24,25 @@ __all__ = [
     "DATABASE_FORMATS",
     "LICENSE_TYPES",
     "STANDINGS",
+    "AbuseContact",
+    "BitTorrentDetail",
+    "CarrierDetail",
     "ClassDetail",
+    "Company",
     "DeviceAuthorization",
+    "DnsResolverDetail",
     "Flag",
     "Format",
     "OauthMetadata",
     "ProxyDetail",
     "PubproxyDetail",
     "Result",
+    "SatelliteDetail",
+    "SmtpDetail",
+    "SshDetail",
     "TokenResponse",
     "VpnDetail",
+    "WebDetail",
 ]
 
 Flag = Literal[
@@ -45,6 +55,14 @@ Flag = Literal[
     "is_dcproxy",
     "is_mobproxy",
     "is_pubproxy",
+    "is_anycast",
+    "is_carrier",
+    "is_satellite",
+    "is_ssh",
+    "is_smtp",
+    "is_web",
+    "is_dns_resolver",
+    "is_bittorrent",
 ]
 
 Format = Literal["csvgz", "mmdb"]
@@ -138,10 +156,109 @@ class PubproxyDetail:
 
 
 @dataclass(frozen=True, slots=True)
+class CarrierDetail:
+    """The mobile carrier, from Carrier IP. Empty (every field `None`) when `is_carrier`
+    is false."""
+
+    name: str | None = None
+    mcc: str | None = None
+    mnc: str | None = None
+    country: str | None = None
+    confidence: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class SatelliteDetail:
+    """The satellite operator, from Satellite IP. Empty when `is_satellite` is false."""
+
+    provider: str | None = None
+    provider_name: str | None = None
+    orbit: str | None = None
+    segment: str | None = None
+    country: str | None = None
+    asn: int | None = None
+    confidence: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class SshDetail:
+    """The SSH server answering here. Empty when `is_ssh` is false."""
+
+    port: int | None = None
+    banner: str | None = None
+    host_key_fp: str | None = None
+    session_ok: bool | None = None
+    first_seen: str | None = None
+    last_seen: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class SmtpDetail:
+    """The SMTP server answering here. Empty when `is_smtp` is false."""
+
+    port: int | None = None
+    banner: str | None = None
+    session_ok: bool | None = None
+    first_seen: str | None = None
+    last_seen: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class WebDetail:
+    """One port of Web IP that answered. `Result.web` is a tuple of these, empty when
+    `is_web` is false."""
+
+    port: int
+    tls_ok: bool
+    session_ok: bool
+    status_code: int
+    server: str
+    location: str
+    title: str
+    cert_subject_cn: str
+    cert_subject_o: str
+    cert_issuer_dn: str
+    cert_browser_trusted: bool
+    tls_version: str
+    first_seen: str
+    last_seen: str
+
+
+@dataclass(frozen=True, slots=True)
+class DnsResolverDetail:
+    """The open DNS resolver answering here. Empty when `is_dns_resolver` is false."""
+
+    port: int | None = None
+    recursion_available: bool | None = None
+    rcode: int | None = None
+    answer_correct: bool | None = None
+    first_seen: str | None = None
+    last_seen: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class BitTorrentDetail:
+    """BitTorrent clients seen here. Empty when `is_bittorrent` is false."""
+
+    verified: bool | None = None
+    id_matches_ip: bool | None = None
+    first_seen: str | None = None
+    last_seen: str | None = None
+    last_reachable: str | None = None
+    days_seen: int | None = None
+    num_ports: int | None = None
+    peak_num_ports: int | None = None
+    indexer: bool | None = None
+    clients: tuple[str, ...] | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class Location:
     """Where the address is, on every answer, with or without a key.
 
-    Every field is set whenever the object is, an empty string where it is not known.
+    Every field is set whenever the object is, an empty string where it is not known. The
+    region, city, postal code, coordinates and the rest from `region` on are on a paid
+    plan's answers, and `None` where your plan does not include them.
     """
 
     continent: str = ""
@@ -154,18 +271,56 @@ class Location:
     currency_symbol: str = ""
     flag_emoji: str = ""
     flag_unicode: str = ""
+    region: str | None = None
+    region_code: str | None = None
+    city: str | None = None
+    postal_code: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    accuracy_radius: int | None = None
+    geoname_id: str | None = None
+    dma_code: str | None = None
+    last_changed: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class Asn:
     """The AS announcing the address, on every answer, with or without a key: `asn` is 0
-    where none does."""
+    where none does. `country` and `rpki_status` are `None` on an answer that predates
+    them."""
 
     asn: int = 0
     name: str = ""
     domain: str = ""
     type: str = ""
     prefix: str = ""
+    country: str | None = None
+    rpki_status: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class Company:
+    """Who uses the address, from IP Company, on a paid plan's answers."""
+
+    name: str = ""
+    domain: str = ""
+    type: str | None = None
+    country: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AbuseContact:
+    """Where to report abuse from the address, from IP Abuse Contact, on a paid plan's
+    answers."""
+
+    email: str = ""
+    name: str | None = None
+    phone: str | None = None
+    address: str | None = None
+    country: str | None = None
+    network: str | None = None
+    validated: bool | None = None
+    unvalidated_since: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -177,8 +332,8 @@ class Result:
     your plan", `False` is "checked, and no". Use `flagged()` when you only care whether
     the address is flagged.
 
-    A detail object that is present but empty (every field `None`) means the flag above
-    it is false. A populated one always carries every one of its keys.
+    A detail object that is present but empty (every field `None`, `web` an empty tuple)
+    means the flag above it is false. A populated one always carries every one of its keys.
 
     Frozen, because a cached answer is handed to every later caller of the same address.
     """
@@ -220,6 +375,32 @@ class Result:
     #: once its organization's overage cap is reached and the answer has Unlimited's. Lookups
     #: answered past the cap are not billed.
     cap_reached: bool | None = None
+
+    # The members below came after the ones above, and go last so a `Result` built by hand
+    # positionally still builds. `is_anycast` and `hostname` are on every plan's answers,
+    # the rest on a paid plan's.
+    is_anycast: bool | None = None
+    is_carrier: bool | None = None
+    is_satellite: bool | None = None
+    is_ssh: bool | None = None
+    is_smtp: bool | None = None
+    is_web: bool | None = None
+    is_dns_resolver: bool | None = None
+    is_bittorrent: bool | None = None
+
+    carrier: CarrierDetail | None = None
+    satellite: SatelliteDetail | None = None
+    ssh: SshDetail | None = None
+    smtp: SmtpDetail | None = None
+    #: Every port of Web IP that answered, an empty tuple when `is_web` is false.
+    web: tuple[WebDetail, ...] | None = None
+    dns_resolver: DnsResolverDetail | None = None
+    bittorrent: BitTorrentDetail | None = None
+
+    company: Company | None = None
+    #: The address's reverse DNS name, the empty string where it has none.
+    hostname: str | None = None
+    abuse: AbuseContact | None = None
 
     def flagged(self, flag: Flag) -> bool:
         """Whether a flag is present AND true, with anything your plan does not include
@@ -278,6 +459,24 @@ def to_result(body: dict[str, Any]) -> Result:
         raw=body,
         trial_expired=_opt(parsed.trial_expired),
         cap_reached=_opt(parsed.cap_reached),
+        is_anycast=_opt(parsed.is_anycast),
+        is_carrier=_opt(parsed.is_carrier),
+        is_satellite=_opt(parsed.is_satellite),
+        is_ssh=_opt(parsed.is_ssh),
+        is_smtp=_opt(parsed.is_smtp),
+        is_web=_opt(parsed.is_web),
+        is_dns_resolver=_opt(parsed.is_dns_resolver),
+        is_bittorrent=_opt(parsed.is_bittorrent),
+        carrier=_detail(CarrierDetail, parsed.carrier),
+        satellite=_detail(SatelliteDetail, parsed.satellite),
+        ssh=_detail(SshDetail, parsed.ssh),
+        smtp=_detail(SmtpDetail, parsed.smtp),
+        web=_web(parsed.web),
+        dns_resolver=_detail(DnsResolverDetail, parsed.dns_resolver),
+        bittorrent=_bittorrent(parsed.bittorrent),
+        company=_company(parsed.company),
+        hostname=_opt(parsed.hostname),
+        abuse=_detail(AbuseContact, parsed.abuse),
     )
 
 
@@ -458,6 +657,14 @@ _FLAGS = (
     "is_dcproxy",
     "is_mobproxy",
     "is_pubproxy",
+    "is_anycast",
+    "is_carrier",
+    "is_satellite",
+    "is_ssh",
+    "is_smtp",
+    "is_web",
+    "is_dns_resolver",
+    "is_bittorrent",
 )
 
 T = TypeVar("T")
@@ -493,6 +700,16 @@ def _location(value: Any) -> Location | None:
         currency_symbol=value.currency_symbol,
         flag_emoji=value.flag_emoji,
         flag_unicode=value.flag_unicode,
+        region=_opt(value.region),
+        region_code=_opt(value.region_code),
+        city=_opt(value.city),
+        postal_code=_opt(value.postal_code),
+        latitude=None if isinstance(value.latitude, Unset) else float(value.latitude),
+        longitude=None if isinstance(value.longitude, Unset) else float(value.longitude),
+        accuracy_radius=_opt(value.accuracy_radius),
+        geoname_id=_opt(value.geoname_id),
+        dma_code=_opt(value.dma_code),
+        last_changed=_opt(value.last_changed),
     )
 
 
@@ -500,7 +717,60 @@ def _asn(value: Any) -> Asn | None:
     if isinstance(value, Unset):
         return None
     return Asn(
-        asn=value.asn, name=value.name, domain=value.domain, type=value.type_, prefix=value.prefix
+        asn=value.asn,
+        name=value.name,
+        domain=value.domain,
+        type=value.type_,
+        prefix=value.prefix,
+        country=_opt(value.country),
+        rpki_status=_opt(value.rpki_status),
+    )
+
+
+D = TypeVar("D")
+
+
+def _detail(cls: type[D], value: Any) -> D | None:
+    """A detail whose wire members carry the same names as its fields, each `UNSET` read
+    as `None`."""
+    if isinstance(value, Unset):
+        return None
+    fields = dataclasses.fields(cls)  # type: ignore[arg-type]
+    return cls(**{f.name: _opt(getattr(value, f.name)) for f in fields})
+
+
+def _web(value: Any) -> tuple[WebDetail, ...] | None:
+    if isinstance(value, Unset):
+        return None
+    return tuple(
+        WebDetail(**{f.name: getattr(row, f.name) for f in dataclasses.fields(WebDetail)})
+        for row in value
+    )
+
+
+def _bittorrent(value: Any) -> BitTorrentDetail | None:
+    if isinstance(value, Unset):
+        return None
+    clients = _opt(value.clients)
+    return BitTorrentDetail(
+        verified=_opt(value.verified),
+        id_matches_ip=_opt(value.id_matches_ip),
+        first_seen=_opt(value.first_seen),
+        last_seen=_opt(value.last_seen),
+        last_reachable=_opt(value.last_reachable),
+        days_seen=_opt(value.days_seen),
+        num_ports=_opt(value.num_ports),
+        peak_num_ports=_opt(value.peak_num_ports),
+        indexer=_opt(value.indexer),
+        clients=None if clients is None else tuple(clients),
+    )
+
+
+def _company(value: Any) -> Company | None:
+    if isinstance(value, Unset):
+        return None
+    return Company(
+        name=value.name, domain=value.domain, type=_opt(value.type_), country=_opt(value.country)
     )
 
 

@@ -16,7 +16,27 @@ from helpers import TESTDATA, ClientFactory, Stub, as_wire
 
 from vpndetection import DEFAULT_BASE_URL, Result, VPNDetectionError, is_bogon
 
-DETAIL_OBJECTS = ("vpn", "hosting", "dcproxy", "pubproxy", "location", "asn")
+# Every member a lookup case's `expect` may compare whole. A key the runner reads nowhere
+# fails the case rather than passing it unread.
+DETAIL_OBJECTS = (
+    "vpn",
+    "hosting",
+    "dcproxy",
+    "pubproxy",
+    "carrier",
+    "satellite",
+    "ssh",
+    "smtp",
+    "web",
+    "dns_resolver",
+    "bittorrent",
+    "location",
+    "asn",
+    "company",
+    "hostname",
+    "abuse",
+)
+EXPECT_KEYS = {"ip", "isBogon", "present", "absent", "emptyPresent", *DETAIL_OBJECTS}
 
 
 def test_is_bogon_matches_the_canonical_ranges() -> None:
@@ -68,9 +88,9 @@ def test_a_bogon_is_answered_locally_in_the_full_max_shape(make_client: ClientFa
     for name in TESTDATA["bogonResponse"]["emptyObjects"]:
         detail = getattr(result, name)
         assert detail is not None and as_wire(detail) == {}, f"{name} must be present and empty"
-    for name in ("location", "asn"):
+    for name in ("location", "asn", "company", "abuse", "web", "hostname"):
         expected = TESTDATA["bogonResponse"][name]
-        assert as_wire(getattr(result, name)) == expected, f"{name} must carry every key, empty"
+        assert served(getattr(result, name)) == expected, f"{name} must carry every key, empty"
     assert stub.calls == [], "a bogon must not reach the network"
 
 
@@ -84,6 +104,8 @@ def test_lookup_preserves_absent_versus_false_across_every_plan_shape(
         result = client.lookup(body["ip"])
         expect = case["expect"]
         name = case["name"]
+        unread = set(expect) - EXPECT_KEYS
+        assert unread == set(), f"{name}: the runner reads no {sorted(unread)}"
 
         assert result.ip == expect["ip"], name
         assert result.is_bogon is expect["isBogon"], name
@@ -102,7 +124,17 @@ def test_lookup_preserves_absent_versus_false_across_every_plan_shape(
             )
         for key in DETAIL_OBJECTS:
             if key in expect:
-                assert as_wire(getattr(result, key)) == expect[key], f"{name}: {key}"
+                assert served(getattr(result, key)) == expect[key], f"{name}: {key}"
+
+
+def served(member: Any) -> Any:
+    """A member of a `Result` in the shape the corpus writes it in: a detail object as its
+    wire dict, `web`'s tuple as a list of them, and `hostname` as it is."""
+    if isinstance(member, tuple):
+        return [as_wire(row) for row in member]
+    if member is None or isinstance(member, str):
+        return member
+    return as_wire(member)
 
 
 def test_a_429_is_classified_by_retry_after_not_by_its_status(make_client: ClientFactory) -> None:

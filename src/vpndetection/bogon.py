@@ -5,7 +5,23 @@ from __future__ import annotations
 import ipaddress
 
 from ._bogons import BOGON_V4, BOGON_V6
-from .models import Asn, ClassDetail, Location, ProxyDetail, PubproxyDetail, Result, VpnDetail
+from .models import (
+    AbuseContact,
+    Asn,
+    BitTorrentDetail,
+    CarrierDetail,
+    ClassDetail,
+    Company,
+    DnsResolverDetail,
+    Location,
+    ProxyDetail,
+    PubproxyDetail,
+    Result,
+    SatelliteDetail,
+    SmtpDetail,
+    SshDetail,
+    VpnDetail,
+)
 
 __all__ = ["bogon_result", "is_bogon"]
 
@@ -48,8 +64,9 @@ def unmapped(ip: str) -> str:
 
 def bogon_result(ip: str) -> Result:
     """The answer a bogon gets, in the full shape the API serves at its widest plan:
-    every flag present and false, every detail object present and empty, and
-    `location` and `asn` with every field empty, as the API answers a bogon.
+    every flag present and false, every detail object present and empty, `web` an empty
+    tuple, `hostname` the empty string, and `location`, `asn`, `company` and `abuse` with
+    every field empty or zero, as the API answers a bogon.
 
     `is_bogon` is True, as the API answers reserved space. Note this is deliberately the WIDEST shape regardless of your plan, so
     do not infer which fields your plan includes from a bogon answer.
@@ -75,9 +92,46 @@ def bogon_result(ip: str) -> Result:
         dcproxy=ProxyDetail(),
         mobproxy=ProxyDetail(),
         pubproxy=PubproxyDetail(),
-        location=Location(),
-        asn=Asn(),
+        location=Location(
+            region="",
+            region_code="",
+            city="",
+            postal_code="",
+            latitude=0.0,
+            longitude=0.0,
+            accuracy_radius=0,
+            geoname_id="",
+            dma_code="",
+            last_changed="",
+        ),
+        asn=Asn(country="", rpki_status=""),
         raw={},
+        is_anycast=False,
+        is_carrier=False,
+        is_satellite=False,
+        is_ssh=False,
+        is_smtp=False,
+        is_web=False,
+        is_dns_resolver=False,
+        is_bittorrent=False,
+        carrier=CarrierDetail(),
+        satellite=SatelliteDetail(),
+        ssh=SshDetail(),
+        smtp=SmtpDetail(),
+        web=(),
+        dns_resolver=DnsResolverDetail(),
+        bittorrent=BitTorrentDetail(),
+        company=Company(type="", country=""),
+        hostname="",
+        abuse=AbuseContact(
+            name="",
+            phone="",
+            address="",
+            country="",
+            network="",
+            validated=False,
+            unvalidated_since="",
+        ),
     )
 
 
