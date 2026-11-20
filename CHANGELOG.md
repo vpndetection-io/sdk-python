@@ -2,6 +2,18 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.19.0 - 2026-11-20
+
+### Features
+
+- Re-pin the spec to 2026.11.20: the network, service, company and abuse members ([`4e85389`](https://github.com/vpndetection-io/sdk-python/commit/4e853894f10e14fbfd4df4d3f5ef9f0419607f1b))
+- Read the network, service, company and abuse members of an answer ([`abd234d`](https://github.com/vpndetection-io/sdk-python/commit/abd234d2a0bfbd21feb400ed16b1208537033671))
+
+### Fixes
+
+- Cache a spent trial's or a reached cap's answer for a minute at most ([`4a2ff93`](https://github.com/vpndetection-io/sdk-python/commit/4a2ff93c8b7033be87d8249ee6db5ee8f911274d))
+- Describe the free plan's trial without a count or a period ([`61899c2`](https://github.com/vpndetection-io/sdk-python/commit/61899c22ec3f563877eee6f2d0b263b4a1f53d67))
+
 ## 5.18.1 - 2026-11-19
 
 ### Fixes
