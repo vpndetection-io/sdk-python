@@ -63,6 +63,18 @@ MEMBERS = {
     "resproxy": Detail(required=PROXY_KEYS),
     "dcproxy": Detail(required=PROXY_KEYS),
     "mobproxy": Detail(required=PROXY_KEYS),
+    "pubproxy": Detail(
+        required=(
+            "entry",
+            "exit",
+            "protocols",
+            "num_ports",
+            "num_proxies",
+            "last_seen",
+            "last_usable",
+        ),
+        since=(5, 9),
+    ),
     "carrier": Detail(required=("name", "mcc", "mnc", "country", "confidence"), since=(5, 19)),
     "satellite": Detail(
         required=(
