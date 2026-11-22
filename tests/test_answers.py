@@ -99,6 +99,18 @@ DETAILS: dict[str, dict[str, Any]] = {
         "num_ports": 2,
         "num_proxies": 3,
     },
+    "bot": {
+        "provider": "google",
+        "provider_name": "Google",
+        "agents": ["GoogleOther", "Googlebot"],
+        "categories": ["other", "search_engine"],
+        "verified": True,
+        "identity": "verified",
+        "verified_by": "list",
+        "confidence": "high",
+        "first_seen": "2026-11-21",
+        "last_seen": "2026-11-21",
+    },
 }
 ASN: dict[str, Any] = {
     "asn": 15169,
@@ -280,6 +292,10 @@ MALFORMED = {
     ),
     "my_ip's asn country missing": ("my_ip", _asn_without("country")),
     "my_ip's asn rpki_status null": ("my_ip", {**LOOKUP, "asn": {**ASN, "rpki_status": None}}),
+    "a lookup's is_bot a string": ("lookup", {**LOOKUP, "is_bot": "yes"}),
+    "a lookup's bot agents of numbers": ("lookup", _detailed("bot", agents=[1])),
+    "a lookup's bot categories a string": ("lookup", _detailed("bot", categories="seo")),
+    "a lookup's bot verified a string": ("lookup", _detailed("bot", verified="yes")),
     "my_ip's dcproxy hits a numeric string": ("my_ip", _detailed("dcproxy", hits="3")),
     "the entitlement's quota a numeric string": (
         "my_entitlement",
@@ -356,6 +372,7 @@ def test_the_fixtures_above_read_as_answers(make_client: ClientFactory) -> None:
         ("lookup", _detailed("vpn")),
         ("lookup", _detailed("dcproxy")),
         ("lookup", _detailed("pubproxy")),
+        ("lookup", _detailed("bot")),
         ("lookup", {**LOOKUP, "asn": ASN}),
         ("my_ip", _detailed("dcproxy")),
         ("my_ip", {**LOOKUP, "asn": ASN}),

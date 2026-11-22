@@ -30,6 +30,7 @@ DETAIL_OBJECTS = (
     "web",
     "dns_resolver",
     "bittorrent",
+    "bot",
     "location",
     "asn",
     "company",

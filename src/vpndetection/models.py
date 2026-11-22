@@ -26,6 +26,7 @@ __all__ = [
     "STANDINGS",
     "AbuseContact",
     "BitTorrentDetail",
+    "BotDetail",
     "CarrierDetail",
     "ClassDetail",
     "Company",
@@ -63,6 +64,7 @@ Flag = Literal[
     "is_web",
     "is_dns_resolver",
     "is_bittorrent",
+    "is_bot",
 ]
 
 Format = Literal["csvgz", "mmdb"]
@@ -253,6 +255,29 @@ class BitTorrentDetail:
 
 
 @dataclass(frozen=True, slots=True)
+class BotDetail:
+    """Whose bot uses the address, from Bot IP. Empty (every field `None`) when `is_bot` is
+    false.
+
+    `agents` names the bots the address serves as their user agents name them, or, for an
+    address that is not verified, the bots it claimed to be, and `categories` what they do:
+    both in the order served, empty where none is known. `verified` is whether the operator
+    vouches for the address, and `verified_by` how, the empty string when it does not.
+    """
+
+    provider: str | None = None
+    provider_name: str | None = None
+    agents: tuple[str, ...] | None = None
+    categories: tuple[str, ...] | None = None
+    verified: bool | None = None
+    identity: str | None = None
+    verified_by: str | None = None
+    confidence: str | None = None
+    first_seen: str | None = None
+    last_seen: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class Location:
     """Where the address is, on every answer, with or without a key.
 
@@ -402,6 +427,11 @@ class Result:
     hostname: str | None = None
     abuse: AbuseContact | None = None
 
+    #: On every plan's answers: whether an automated client, a crawler, a monitor, a scanner
+    #: or a webhook sender, uses the address. `bot`, whose it is, is on a paid plan's.
+    is_bot: bool | None = None
+    bot: BotDetail | None = None
+
     def flagged(self, flag: Flag) -> bool:
         """Whether a flag is present AND true, with anything your plan does not include
         reading as false.
@@ -477,6 +507,8 @@ def to_result(body: dict[str, Any]) -> Result:
         company=_company(parsed.company),
         hostname=_opt(parsed.hostname),
         abuse=_detail(AbuseContact, parsed.abuse),
+        is_bot=_opt(parsed.is_bot),
+        bot=_bot(parsed.bot),
     )
 
 
@@ -665,6 +697,7 @@ _FLAGS = (
     "is_web",
     "is_dns_resolver",
     "is_bittorrent",
+    "is_bot",
 )
 
 T = TypeVar("T")
@@ -763,6 +796,25 @@ def _bittorrent(value: Any) -> BitTorrentDetail | None:
         peak_num_ports=_opt(value.peak_num_ports),
         indexer=_opt(value.indexer),
         clients=None if clients is None else tuple(clients),
+    )
+
+
+def _bot(value: Any) -> BotDetail | None:
+    if isinstance(value, Unset):
+        return None
+    agents = _opt(value.agents)
+    categories = _opt(value.categories)
+    return BotDetail(
+        provider=_opt(value.provider),
+        provider_name=_opt(value.provider_name),
+        agents=None if agents is None else tuple(agents),
+        categories=None if categories is None else tuple(categories),
+        verified=_opt(value.verified),
+        identity=_opt(value.identity),
+        verified_by=_opt(value.verified_by),
+        confidence=_opt(value.confidence),
+        first_seen=_opt(value.first_seen),
+        last_seen=_opt(value.last_seen),
     )
 
 

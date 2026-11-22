@@ -96,6 +96,40 @@ def test_enriches_without_blocking_when_no_condition_is_configured() -> None:
     assert lookup.ip == PUBLIC_IP
 
 
+BOT = {
+    "provider": "google",
+    "provider_name": "Google",
+    "agents": ["GoogleOther", "Googlebot"],
+    "categories": ["other", "search_engine"],
+    "verified": True,
+    "identity": "verified",
+    "verified_by": "list",
+    "confidence": "high",
+    "first_seen": "2026-11-21",
+    "last_seen": "2026-11-21",
+}
+
+
+@pytest.mark.parametrize("condition", [{"is_bot": True}, {"bot": {"verified": True}}])
+def test_a_condition_on_a_bot_blocks_a_served_bot_and_passes_the_rest(
+    condition: dict[str, Any],
+) -> None:
+    for is_bot, bot in ((True, BOT), (False, {})):
+        body = {"ip": PUBLIC_IP, "is_vpn": False, "is_bot": is_bot, "bot": bot}
+        lookup = _core(client=_serving(body), block_condition=condition).evaluate(Req())
+        assert lookup is not None and lookup.error is None, lookup
+        assert lookup.result is not None and lookup.result.is_bot is is_bot
+        assert lookup.blocked is is_bot, f"{condition} against is_bot {is_bot}"
+
+
+def test_a_condition_inside_a_member_held_as_a_list_never_matches() -> None:
+    body = {"ip": PUBLIC_IP, "is_vpn": False, "is_bot": True, "bot": BOT}
+    for condition in ({"bot": {"agents": "Googlebot"}}, {"bot": {"agents": ["Googlebot"]}}):
+        lookup = _core(client=_serving(body), block_condition=condition).evaluate(Req())
+        assert lookup is not None and lookup.result is not None
+        assert lookup.blocked is False, condition
+
+
 def test_skip_claims_the_request() -> None:
     core = _core(client=_serving({"ip": PUBLIC_IP, "is_vpn": True}), skip=lambda _: True)
     assert core.evaluate(Req()) is None

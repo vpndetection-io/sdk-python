@@ -9,6 +9,7 @@ from .models import (
     AbuseContact,
     Asn,
     BitTorrentDetail,
+    BotDetail,
     CarrierDetail,
     ClassDetail,
     Company,
@@ -132,6 +133,8 @@ def bogon_result(ip: str) -> Result:
             validated=False,
             unvalidated_since="",
         ),
+        is_bot=False,
+        bot=BotDetail(),
     )
 
 
