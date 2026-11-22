@@ -121,6 +121,21 @@ MEMBERS = {
         ),
         since=(5, 19),
     ),
+    "bot": Detail(
+        required=(
+            "provider",
+            "provider_name",
+            "agents",
+            "categories",
+            "verified",
+            "identity",
+            "verified_by",
+            "confidence",
+            "first_seen",
+            "last_seen",
+        ),
+        since=(5, 20),
+    ),
 }
 
 # A row of `web`, a list with one per port that answered, `[]` under a false `is_web`.
