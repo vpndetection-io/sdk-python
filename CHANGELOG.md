@@ -2,6 +2,17 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.20.0 - 2026-11-22
+
+### Features
+
+- Re-pin the spec to 2026.11.21: is_bot and bot, and the AS's country and RPKI status required ([`c9a62b7`](https://github.com/vpndetection-io/sdk-python/commit/c9a62b7be4b2c47a436495e13438c33724d9d574))
+- Read is_bot and bot on every answer ([`c25368a`](https://github.com/vpndetection-io/sdk-python/commit/c25368a6bf85417e2abfb5ea6639891b52a93ff1))
+
+### Fixes
+
+- Require the AS's country and RPKI status, as the API always sends them ([`6139511`](https://github.com/vpndetection-io/sdk-python/commit/613951126c8acf1d0b19f726cc66e3cbb23a968c))
+
 ## 5.19.0 - 2026-11-20
 
 ### Features
