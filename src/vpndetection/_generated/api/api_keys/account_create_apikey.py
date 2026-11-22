@@ -82,6 +82,8 @@ def sync_detailed(
     Store the secret now. Reading it back later takes `reveal` and the
     `apikeys.reveal` scope.
 
+    Needs the `apikeys.manage` scope.
+
     Args:
         body (AccountCreateApikeyRequest):
 
@@ -116,6 +118,8 @@ def sync(
     Store the secret now. Reading it back later takes `reveal` and the
     `apikeys.reveal` scope.
 
+    Needs the `apikeys.manage` scope.
+
     Args:
         body (AccountCreateApikeyRequest):
 
@@ -144,6 +148,8 @@ async def asyncio_detailed(
 
     Store the secret now. Reading it back later takes `reveal` and the
     `apikeys.reveal` scope.
+
+    Needs the `apikeys.manage` scope.
 
     Args:
         body (AccountCreateApikeyRequest):
@@ -176,6 +182,8 @@ async def asyncio(
 
     Store the secret now. Reading it back later takes `reveal` and the
     `apikeys.reveal` scope.
+
+    Needs the `apikeys.manage` scope.
 
     Args:
         body (AccountCreateApikeyRequest):

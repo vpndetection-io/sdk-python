@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from ..models.abuse_contact import AbuseContact
     from ..models.asn import Asn
     from ..models.bit_torrent_detail import BitTorrentDetail
+    from ..models.bot_detail import BotDetail
     from ..models.carrier_detail import CarrierDetail
     from ..models.class_detail import ClassDetail
     from ..models.company import Company
@@ -22,6 +23,7 @@ if TYPE_CHECKING:
     from ..models.satellite_detail import SatelliteDetail
     from ..models.smtp_detail import SmtpDetail
     from ..models.ssh_detail import SshDetail
+    from ..models.user_agent_verdict import UserAgentVerdict
     from ..models.vpn_detail import VpnDetail
     from ..models.web_detail import WebDetail
 
@@ -51,6 +53,9 @@ class LookupResponse:
                 Private Relay or Zscaler. Every answer, with or without a key.
             is_tor (bool | Unset): Whether the address is a Tor node. Every answer, with or without a key.
             is_cdn (bool | Unset): Whether the address belongs to a CDN. Paid plans.
+            is_bot (bool | Unset): Whether an automated client uses the address, such as a search engine's or an AI
+                company's crawler, an uptime monitor, an internet scanner or a webhook sender. `bot` says whose, what it does
+                and whether its operator vouches for the address. Every answer, with or without a key.
             is_resproxy (bool | Unset): Whether the address was seen in a residential proxy pool. Paid plans.
             is_dcproxy (bool | Unset): Whether the address is one a datacenter proxy service sells or runs on, a proxy
                 company's own ranges included. Paid plans.
@@ -83,6 +88,8 @@ class LookupResponse:
             cdn (ClassDetail | Unset): The shared detail shape for the hosting, relay, tor and cdn datasets.
                 Every key is present when the object is populated; the object is `{}`
                 when its flag is false.
+            bot (BotDetail | Unset): Bot IP's row: whose bot uses the address, the bots it serves or claimed to be, what
+                they do, and how that is known.
             resproxy (ProxyDetail | Unset): The shared detail shape for the residential, datacenter and mobile proxy
                 families, measured over a rolling 90 day window. An address that leaves
                 the window keeps its flag and the values of its last day in it, so
@@ -142,6 +149,7 @@ class LookupResponse:
             abuse (AbuseContact | Unset): Where to report abuse from the address, from our IP Abuse Contact
                 database. Paid plans. Every key is present whenever the object is: empty
                 strings where no record covers the address.
+            user_agent (UserAgentVerdict | Unset):
             trial_expired (bool | Unset): On every answer to a key on the free plan, and on no other: `false`
                 while its organization's trial of every field lasts, `true` once the
                 answer has Unlimited's.
@@ -159,6 +167,7 @@ class LookupResponse:
     is_relay: bool | Unset = UNSET
     is_tor: bool | Unset = UNSET
     is_cdn: bool | Unset = UNSET
+    is_bot: bool | Unset = UNSET
     is_resproxy: bool | Unset = UNSET
     is_dcproxy: bool | Unset = UNSET
     is_mobproxy: bool | Unset = UNSET
@@ -176,6 +185,7 @@ class LookupResponse:
     relay: ClassDetail | Unset = UNSET
     tor: ClassDetail | Unset = UNSET
     cdn: ClassDetail | Unset = UNSET
+    bot: BotDetail | Unset = UNSET
     resproxy: ProxyDetail | Unset = UNSET
     dcproxy: ProxyDetail | Unset = UNSET
     mobproxy: ProxyDetail | Unset = UNSET
@@ -192,6 +202,7 @@ class LookupResponse:
     company: Company | Unset = UNSET
     hostname: str | Unset = UNSET
     abuse: AbuseContact | Unset = UNSET
+    user_agent: UserAgentVerdict | Unset = UNSET
     trial_expired: bool | Unset = UNSET
     cap_reached: bool | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
@@ -210,6 +221,8 @@ class LookupResponse:
         is_tor = self.is_tor
 
         is_cdn = self.is_cdn
+
+        is_bot = self.is_bot
 
         is_resproxy = self.is_resproxy
 
@@ -254,6 +267,10 @@ class LookupResponse:
         cdn: dict[str, Any] | Unset = UNSET
         if not isinstance(self.cdn, Unset):
             cdn = self.cdn.to_dict()
+
+        bot: dict[str, Any] | Unset = UNSET
+        if not isinstance(self.bot, Unset):
+            bot = self.bot.to_dict()
 
         resproxy: dict[str, Any] | Unset = UNSET
         if not isinstance(self.resproxy, Unset):
@@ -320,6 +337,10 @@ class LookupResponse:
         if not isinstance(self.abuse, Unset):
             abuse = self.abuse.to_dict()
 
+        user_agent: dict[str, Any] | Unset = UNSET
+        if not isinstance(self.user_agent, Unset):
+            user_agent = self.user_agent.to_dict()
+
         trial_expired = self.trial_expired
 
         cap_reached = self.cap_reached
@@ -342,6 +363,8 @@ class LookupResponse:
             field_dict["is_tor"] = is_tor
         if is_cdn is not UNSET:
             field_dict["is_cdn"] = is_cdn
+        if is_bot is not UNSET:
+            field_dict["is_bot"] = is_bot
         if is_resproxy is not UNSET:
             field_dict["is_resproxy"] = is_resproxy
         if is_dcproxy is not UNSET:
@@ -376,6 +399,8 @@ class LookupResponse:
             field_dict["tor"] = tor
         if cdn is not UNSET:
             field_dict["cdn"] = cdn
+        if bot is not UNSET:
+            field_dict["bot"] = bot
         if resproxy is not UNSET:
             field_dict["resproxy"] = resproxy
         if dcproxy is not UNSET:
@@ -408,6 +433,8 @@ class LookupResponse:
             field_dict["hostname"] = hostname
         if abuse is not UNSET:
             field_dict["abuse"] = abuse
+        if user_agent is not UNSET:
+            field_dict["user_agent"] = user_agent
         if trial_expired is not UNSET:
             field_dict["trial_expired"] = trial_expired
         if cap_reached is not UNSET:
@@ -420,6 +447,7 @@ class LookupResponse:
         from ..models.abuse_contact import AbuseContact
         from ..models.asn import Asn
         from ..models.bit_torrent_detail import BitTorrentDetail
+        from ..models.bot_detail import BotDetail
         from ..models.carrier_detail import CarrierDetail
         from ..models.class_detail import ClassDetail
         from ..models.company import Company
@@ -430,6 +458,7 @@ class LookupResponse:
         from ..models.satellite_detail import SatelliteDetail
         from ..models.smtp_detail import SmtpDetail
         from ..models.ssh_detail import SshDetail
+        from ..models.user_agent_verdict import UserAgentVerdict
         from ..models.vpn_detail import VpnDetail
         from ..models.web_detail import WebDetail
 
@@ -447,6 +476,8 @@ class LookupResponse:
         is_tor = d.pop("is_tor", UNSET)
 
         is_cdn = d.pop("is_cdn", UNSET)
+
+        is_bot = d.pop("is_bot", UNSET)
 
         is_resproxy = d.pop("is_resproxy", UNSET)
 
@@ -506,6 +537,13 @@ class LookupResponse:
             cdn = UNSET
         else:
             cdn = ClassDetail.from_dict(_cdn)
+
+        _bot = d.pop("bot", UNSET)
+        bot: BotDetail | Unset
+        if isinstance(_bot, Unset):
+            bot = UNSET
+        else:
+            bot = BotDetail.from_dict(_bot)
 
         _resproxy = d.pop("resproxy", UNSET)
         resproxy: ProxyDetail | Unset
@@ -616,6 +654,13 @@ class LookupResponse:
         else:
             abuse = AbuseContact.from_dict(_abuse)
 
+        _user_agent = d.pop("user_agent", UNSET)
+        user_agent: UserAgentVerdict | Unset
+        if isinstance(_user_agent, Unset):
+            user_agent = UNSET
+        else:
+            user_agent = UserAgentVerdict.from_dict(_user_agent)
+
         trial_expired = d.pop("trial_expired", UNSET)
 
         cap_reached = d.pop("cap_reached", UNSET)
@@ -628,6 +673,7 @@ class LookupResponse:
             is_relay=is_relay,
             is_tor=is_tor,
             is_cdn=is_cdn,
+            is_bot=is_bot,
             is_resproxy=is_resproxy,
             is_dcproxy=is_dcproxy,
             is_mobproxy=is_mobproxy,
@@ -645,6 +691,7 @@ class LookupResponse:
             relay=relay,
             tor=tor,
             cdn=cdn,
+            bot=bot,
             resproxy=resproxy,
             dcproxy=dcproxy,
             mobproxy=mobproxy,
@@ -661,6 +708,7 @@ class LookupResponse:
             company=company,
             hostname=hostname,
             abuse=abuse,
+            user_agent=user_agent,
             trial_expired=trial_expired,
             cap_reached=cap_reached,
         )

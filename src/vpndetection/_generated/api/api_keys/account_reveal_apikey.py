@@ -81,6 +81,8 @@ def sync_detailed(
     Refused with `NOT_RETRIEVABLE` for a key issued before we kept secrets.
     Rotate that key instead.
 
+    Needs the `apikeys.reveal` scope.
+
     Args:
         id (UUID):
 
@@ -118,6 +120,8 @@ def sync(
     Refused with `NOT_RETRIEVABLE` for a key issued before we kept secrets.
     Rotate that key instead.
 
+    Needs the `apikeys.reveal` scope.
+
     Args:
         id (UUID):
 
@@ -149,6 +153,8 @@ async def asyncio_detailed(
 
     Refused with `NOT_RETRIEVABLE` for a key issued before we kept secrets.
     Rotate that key instead.
+
+    Needs the `apikeys.reveal` scope.
 
     Args:
         id (UUID):
@@ -184,6 +190,8 @@ async def asyncio(
 
     Refused with `NOT_RETRIEVABLE` for a key issued before we kept secrets.
     Rotate that key instead.
+
+    Needs the `apikeys.reveal` scope.
 
     Args:
         id (UUID):

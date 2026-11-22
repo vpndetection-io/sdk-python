@@ -6,8 +6,6 @@ from typing import Any, Self, TypeVar
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
-from ..types import UNSET, Unset
-
 T = TypeVar("T", bound="Asn")
 
 
@@ -25,8 +23,8 @@ class Asn:
             type_ (str): The kind of network the AS runs: isp, hosting, education, government or business. Example: hosting.
             prefix (str): The announced BGP prefix that covers the address, the most specific when several do. Example:
                 146.70.116.0/24.
-            country (str | Unset): The country the AS's registry assigned it to. Example: RO.
-            rpki_status (str | Unset): The announcement's RPKI status: valid, invalid or not_found. Example: not_found.
+            country (str): The country the AS's registry assigned it to. Example: RO.
+            rpki_status (str): The announcement's RPKI status: valid, invalid or not_found. Example: not_found.
     """
 
     asn: int
@@ -34,8 +32,8 @@ class Asn:
     domain: str
     type_: str
     prefix: str
-    country: str | Unset = UNSET
-    rpki_status: str | Unset = UNSET
+    country: str
+    rpki_status: str
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -62,12 +60,10 @@ class Asn:
                 "domain": domain,
                 "type": type_,
                 "prefix": prefix,
+                "country": country,
+                "rpki_status": rpki_status,
             }
         )
-        if country is not UNSET:
-            field_dict["country"] = country
-        if rpki_status is not UNSET:
-            field_dict["rpki_status"] = rpki_status
 
         return field_dict
 
@@ -84,9 +80,9 @@ class Asn:
 
         prefix = d.pop("prefix")
 
-        country = d.pop("country", UNSET)
+        country = d.pop("country")
 
-        rpki_status = d.pop("rpki_status", UNSET)
+        rpki_status = d.pop("rpki_status")
 
         asn = cls(
             asn=asn,

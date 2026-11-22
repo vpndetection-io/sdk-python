@@ -76,6 +76,8 @@ def sync_detailed(
     `revoked_at`, because the organization still owns whatever it did while
     it was alive.
 
+    Needs the `apikeys.manage` scope.
+
     Args:
         id (UUID):
 
@@ -109,6 +111,8 @@ def sync(
     `revoked_at`, because the organization still owns whatever it did while
     it was alive.
 
+    Needs the `apikeys.manage` scope.
+
     Args:
         id (UUID):
 
@@ -136,6 +140,8 @@ async def asyncio_detailed(
      Stops the key working. Revocation is soft: the key stays listed with a
     `revoked_at`, because the organization still owns whatever it did while
     it was alive.
+
+    Needs the `apikeys.manage` scope.
 
     Args:
         id (UUID):
@@ -167,6 +173,8 @@ async def asyncio(
      Stops the key working. Revocation is soft: the key stays listed with a
     `revoked_at`, because the organization still owns whatever it did while
     it was alive.
+
+    Needs the `apikeys.manage` scope.
 
     Args:
         id (UUID):

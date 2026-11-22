@@ -64,6 +64,8 @@ def sync_detailed(
 
     Read-only. Members are invited by email from the console.
 
+    Needs the `org.read` scope.
+
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
@@ -91,6 +93,8 @@ def sync(
 
     Read-only. Members are invited by email from the console.
 
+    Needs the `org.read` scope.
+
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
@@ -113,6 +117,8 @@ async def asyncio_detailed(
      The members of the organization this credential is scoped to.
 
     Read-only. Members are invited by email from the console.
+
+    Needs the `org.read` scope.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -138,6 +144,8 @@ async def asyncio(
      The members of the organization this credential is scoped to.
 
     Read-only. Members are invited by email from the console.
+
+    Needs the `org.read` scope.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.

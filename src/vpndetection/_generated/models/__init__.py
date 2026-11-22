@@ -14,10 +14,12 @@ from .apikey_list import ApikeyList
 from .asn import Asn
 from .batch_lookup_error import BatchLookupError
 from .batch_lookup_request import BatchLookupRequest
+from .batch_lookup_request_user_agents import BatchLookupRequestUserAgents
 from .batch_lookup_response import BatchLookupResponse
 from .batch_lookup_response_errors import BatchLookupResponseErrors
 from .batch_lookup_response_results import BatchLookupResponseResults
 from .bit_torrent_detail import BitTorrentDetail
+from .bot_detail import BotDetail
 from .carrier_detail import CarrierDetail
 from .class_detail import ClassDetail
 from .client_registration import ClientRegistration
@@ -73,6 +75,8 @@ from .ssh_detail import SshDetail
 from .standing import Standing
 from .token_request import TokenRequest
 from .token_response import TokenResponse
+from .user_agent_verdict import UserAgentVerdict
+from .user_agent_verdict_verdict import UserAgentVerdictVerdict
 from .vpn_detail import VpnDetail
 from .web_detail import WebDetail
 
@@ -91,10 +95,12 @@ __all__ = (
     "Asn",
     "BatchLookupError",
     "BatchLookupRequest",
+    "BatchLookupRequestUserAgents",
     "BatchLookupResponse",
     "BatchLookupResponseErrors",
     "BatchLookupResponseResults",
     "BitTorrentDetail",
+    "BotDetail",
     "CarrierDetail",
     "ClassDetail",
     "ClientRegistration",
@@ -148,6 +154,8 @@ __all__ = (
     "Standing",
     "TokenRequest",
     "TokenResponse",
+    "UserAgentVerdict",
+    "UserAgentVerdictVerdict",
     "VpnDetail",
     "WebDetail",
 )

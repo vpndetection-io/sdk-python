@@ -65,6 +65,8 @@ def sync_detailed(
 
     A credential belongs to one organization, so this takes no ID.
 
+    Needs the `org.read` scope.
+
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
@@ -92,6 +94,8 @@ def sync(
 
     A credential belongs to one organization, so this takes no ID.
 
+    Needs the `org.read` scope.
+
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
@@ -114,6 +118,8 @@ async def asyncio_detailed(
      The organization this credential is scoped to.
 
     A credential belongs to one organization, so this takes no ID.
+
+    Needs the `org.read` scope.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -139,6 +145,8 @@ async def asyncio(
      The organization this credential is scoped to.
 
     A credential belongs to one organization, so this takes no ID.
+
+    Needs the `org.read` scope.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.

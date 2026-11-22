@@ -7,14 +7,24 @@ from ... import errors
 from ...client import AuthenticatedClient, Client
 from ...models.lookup_error import LookupError_
 from ...models.lookup_response import LookupResponse
-from ...types import Response
+from ...types import UNSET, Response, Unset
 
 
-def _get_kwargs() -> dict[str, Any]:
+def _get_kwargs(
+    *,
+    user_agent: str | Unset = UNSET,
+) -> dict[str, Any]:
+
+    params: dict[str, Any] = {}
+
+    params["user_agent"] = user_agent
+
+    params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
 
     _kwargs: dict[str, Any] = {
         "method": "get",
         "url": "/myip",
+        "params": params,
     }
 
     return _kwargs
@@ -68,6 +78,7 @@ def _build_response(
 def sync_detailed(
     *,
     client: AuthenticatedClient,
+    user_agent: str | Unset = UNSET,
 ) -> Response[LookupError_ | LookupResponse]:
     """My IP
 
@@ -80,6 +91,9 @@ def sync_detailed(
     or a VPN reports the exit it left through rather than the machine that
     made it. That is usually the point of asking.
 
+    Args:
+        user_agent (str | Unset):
+
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
@@ -88,7 +102,9 @@ def sync_detailed(
         Response[LookupError_ | LookupResponse]
     """
 
-    kwargs = _get_kwargs()
+    kwargs = _get_kwargs(
+        user_agent=user_agent,
+    )
 
     response = client.get_httpx_client().request(
         **kwargs,
@@ -100,6 +116,7 @@ def sync_detailed(
 def sync(
     *,
     client: AuthenticatedClient,
+    user_agent: str | Unset = UNSET,
 ) -> LookupError_ | LookupResponse | None:
     """My IP
 
@@ -112,6 +129,9 @@ def sync(
     or a VPN reports the exit it left through rather than the machine that
     made it. That is usually the point of asking.
 
+    Args:
+        user_agent (str | Unset):
+
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
@@ -122,12 +142,14 @@ def sync(
 
     return sync_detailed(
         client=client,
+        user_agent=user_agent,
     ).parsed
 
 
 async def asyncio_detailed(
     *,
     client: AuthenticatedClient,
+    user_agent: str | Unset = UNSET,
 ) -> Response[LookupError_ | LookupResponse]:
     """My IP
 
@@ -140,6 +162,9 @@ async def asyncio_detailed(
     or a VPN reports the exit it left through rather than the machine that
     made it. That is usually the point of asking.
 
+    Args:
+        user_agent (str | Unset):
+
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
@@ -148,7 +173,9 @@ async def asyncio_detailed(
         Response[LookupError_ | LookupResponse]
     """
 
-    kwargs = _get_kwargs()
+    kwargs = _get_kwargs(
+        user_agent=user_agent,
+    )
 
     response = await client.get_async_httpx_client().request(**kwargs)
 
@@ -158,6 +185,7 @@ async def asyncio_detailed(
 async def asyncio(
     *,
     client: AuthenticatedClient,
+    user_agent: str | Unset = UNSET,
 ) -> LookupError_ | LookupResponse | None:
     """My IP
 
@@ -169,6 +197,9 @@ async def asyncio(
     The address is the one our edge observed, so a request through a proxy
     or a VPN reports the exit it left through rather than the machine that
     made it. That is usually the point of asking.
+
+    Args:
+        user_agent (str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -181,5 +212,6 @@ async def asyncio(
     return (
         await asyncio_detailed(
             client=client,
+            user_agent=user_agent,
         )
     ).parsed
