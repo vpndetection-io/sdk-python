@@ -286,8 +286,9 @@ class Location:
 @dataclass(frozen=True, slots=True)
 class Asn:
     """The AS announcing the address, on every answer, with or without a key: `asn` is 0
-    where none does. `country` and `rpki_status` are `None` on an answer that predates
-    them."""
+    where none does. Every answer carries `country` and `rpki_status`, and one without
+    them is refused as the server's failure; they are `None` only on an `Asn` built by
+    hand."""
 
     asn: int = 0
     name: str = ""

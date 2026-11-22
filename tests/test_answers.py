@@ -100,6 +100,15 @@ DETAILS: dict[str, dict[str, Any]] = {
         "num_proxies": 3,
     },
 }
+ASN: dict[str, Any] = {
+    "asn": 15169,
+    "name": "Google LLC",
+    "domain": "google.com",
+    "type": "hosting",
+    "prefix": "66.249.64.0/20",
+    "country": "US",
+    "rpki_status": "valid",
+}
 
 
 def _database(version: dict[str, Any]) -> dict[str, Any]:
@@ -108,6 +117,10 @@ def _database(version: dict[str, Any]) -> dict[str, Any]:
 
 def _detailed(detail: str, **members: Any) -> dict[str, Any]:
     return {**LOOKUP, f"is_{detail}": True, detail: {**DETAILS[detail], **members}}
+
+
+def _asn_without(member: str) -> dict[str, Any]:
+    return {**LOOKUP, "asn": {name: value for name, value in ASN.items() if name != member}}
 
 
 CALLS: dict[str, tuple[str, Callable[[Any], Any]]] = {
@@ -258,6 +271,15 @@ MALFORMED = {
     "a lookup's vpn provider a list": ("lookup", _detailed("vpn", provider=["x"])),
     "a lookup's vpn provider_name a number": ("lookup", _detailed("vpn", provider_name=1)),
     "a lookup's is_bogon a string": ("lookup", {**LOOKUP, "is_bogon": "no"}),
+    "a lookup's asn country missing": ("lookup", _asn_without("country")),
+    "a lookup's asn rpki_status missing": ("lookup", _asn_without("rpki_status")),
+    "a lookup's asn country null": ("lookup", {**LOOKUP, "asn": {**ASN, "country": None}}),
+    "a lookup's asn rpki_status null": (
+        "lookup",
+        {**LOOKUP, "asn": {**ASN, "rpki_status": None}},
+    ),
+    "my_ip's asn country missing": ("my_ip", _asn_without("country")),
+    "my_ip's asn rpki_status null": ("my_ip", {**LOOKUP, "asn": {**ASN, "rpki_status": None}}),
     "my_ip's dcproxy hits a numeric string": ("my_ip", _detailed("dcproxy", hits="3")),
     "the entitlement's quota a numeric string": (
         "my_entitlement",
@@ -334,7 +356,9 @@ def test_the_fixtures_above_read_as_answers(make_client: ClientFactory) -> None:
         ("lookup", _detailed("vpn")),
         ("lookup", _detailed("dcproxy")),
         ("lookup", _detailed("pubproxy")),
+        ("lookup", {**LOOKUP, "asn": ASN}),
         ("my_ip", _detailed("dcproxy")),
+        ("my_ip", {**LOOKUP, "asn": ASN}),
     ]:
         path, call = CALLS[name]
         origin = Raw(200, json.dumps(body))
