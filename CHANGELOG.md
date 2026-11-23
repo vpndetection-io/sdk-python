@@ -2,6 +2,16 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.21.0 - 2026-11-23
+
+### Features
+
+- Send a user agent with a lookup, and let a verified crawler through the middleware ([`f49ebeb`](https://github.com/vpndetection-io/sdk-python/commit/f49ebebb8b74fc32631c9a5d58d344fb8602abe5))
+
+### Fixes
+
+- Re-pin the spec to 2026.11.22: the bot detail's provider wording ([`35865c8`](https://github.com/vpndetection-io/sdk-python/commit/35865c83a00ddd5f7b1ec5b4c3662138a5f1db42))
+
 ## 5.20.0 - 2026-11-22
 
 ### Features
