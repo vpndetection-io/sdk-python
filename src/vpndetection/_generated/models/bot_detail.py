@@ -16,8 +16,9 @@ class BotDetail:
     """Bot IP's row: whose bot uses the address, the bots it serves or claimed to be, what they do, and how that is known.
 
     Attributes:
-        provider (str | Unset): The bot operator's ID, empty where no operator is known.
-        provider_name (str | Unset): The operator's name, empty where no operator is known.
+        provider (str | Unset): The bot operator's ID; for an address that is not verified, the operator its claim
+            named. Empty where no operator is known.
+        provider_name (str | Unset): That operator's name, empty where no operator is known.
         agents (list[str] | Unset): The bots the address serves, as their user agents name them (`Googlebot`, `GPTBot`);
             for an address that is not verified, the bots it claimed to be. One address can serve several, and `[]` means
             none is named.
