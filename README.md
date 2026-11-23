@@ -113,6 +113,23 @@ How many chunks are in flight at once, how many times a failed chunk is retried 
 results = client.lookup_batch(many_ips, concurrency=4, retries=4, timeout=30)
 ```
 
+### Is that crawler who it says it is?
+
+Pass the `User-Agent` the visitor sent, and on a paid plan the answer's `user_agent` says which client it names and whether this address is it: `verified` when its operator vouches for the address, `spoofed` when it does not, `unverifiable` for a bot nothing published can confirm, and `not_bot` for a browser, an app or a script. A batch takes a map from address to agent, and an address with none sends none. Unlimited, without a key or past a free key's trial, never carries `user_agent`.
+
+```python
+result = client.lookup("66.249.66.1", user_agent=request_user_agent)
+if result.user_agent is not None and result.user_agent.verdict == "verified":
+    print(f"a real {result.user_agent.agent}")
+
+results = client.lookup_batch(
+    ["66.249.66.1", "45.83.91.1"],
+    user_agents={"66.249.66.1": "Googlebot/2.1 (+http://www.google.com/bot.html)"},
+)
+```
+
+An answer for an address and an agent is cached apart from the address's plain answer and from another agent's. An empty agent sends none, and a bogon carries none.
+
 ### Caching
 
 Answers are cached by default, so repeat lookups of the same address are free:
