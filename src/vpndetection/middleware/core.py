@@ -29,7 +29,9 @@ __all__ = [
     "Options",
     "RequestView",
     "Selectors",
+    "UserAgentSelector",
     "bind_selectors",
+    "verified",
 ]
 
 Req = TypeVar("Req")
@@ -112,16 +114,38 @@ class Options(Generic[Req]):
     skip: Callable[[Req], bool] | None = None
     #: Where warnings go. Defaults to the "vpndetection" logger.
     on_warn: Callable[[str], None] | None = None
+    #: Let a verified crawler through. On, the request's own ``User-Agent`` goes with its
+    #: lookup, and a request whose answer's ``user_agent.verdict`` is ``verified`` is never
+    #: refused, by ``block_condition`` or by a per-view guard; the answer is still
+    #: attached. Off by default, so the cache keeps one answer per address rather than one
+    #: per agent. Only a paid plan's answer carries the verdict: a keyless client, a spent
+    #: trial or a bogon peer never gets one, and lets nothing through.
+    allow_bots: bool = False
     _warned: set[str] = field(default_factory=set, repr=False)
 
 
+#: The request's own ``User-Agent`` header, None when it sent none.
+UserAgentSelector = Callable[[Req], "str | None"]
+
+
 class _Base(Generic[Req]):
-    def __init__(self, options: Options[Req], default_ip_selector: IpSelector[Req]) -> None:
+    def __init__(
+        self,
+        options: Options[Req],
+        default_ip_selector: IpSelector[Req],
+        user_agent: UserAgentSelector[Req] | None,
+    ) -> None:
         validate(options.block_condition)
         check_timeout(options.timeout)
+        if options.allow_bots and user_agent is None:
+            raise ValueError(
+                "vpndetection: allow_bots needs the request's User-Agent; pass the core a "
+                "user_agent selector that reads it"
+            )
         self._options = options
         self._condition = options.block_condition
         self._selector = options.ip_selector or default_ip_selector
+        self._user_agent = user_agent
         self._warned: set[str] = set()
 
     @property
@@ -154,11 +178,22 @@ class _Base(Generic[Req]):
             )
         return ip
 
-    def _decide(self, ip: str, result: Result) -> Lookup:
+    def _agent(self, request: Req) -> str | None:
+        """The agent this request's lookup sends: its own ``User-Agent`` with
+        ``allow_bots`` on, None otherwise or when it sent none."""
+        if not self._options.allow_bots or self._user_agent is None:
+            return None
+        return self._user_agent(request) or None
+
+    def _decide(self, ip: str, result: Result, agent: str | None) -> Lookup:
         if self._condition is not None:
             self._report_missing(result)
+        if agent is not None and result.user_agent is None:
+            _report_unverified(self._options.on_missing_field, self._warn)
         return Lookup(
-            blocked=self._condition is not None and matches(self._condition, result),
+            blocked=self._condition is not None
+            and not verified(result)
+            and matches(self._condition, result),
             ip=ip,
             result=result,
         )
@@ -178,10 +213,16 @@ class Core(_Base[Req]):
     """Resolve an address, classify it, and decide whether the condition matched.
 
     For a WSGI framework - Django, Flask - where the request path is synchronous.
+    ``user_agent`` reads the request's ``User-Agent``, which ``allow_bots`` needs.
     """
 
-    def __init__(self, options: Options[Req], default_ip_selector: IpSelector[Req]) -> None:
-        super().__init__(options, default_ip_selector)
+    def __init__(
+        self,
+        options: Options[Req],
+        default_ip_selector: IpSelector[Req],
+        user_agent: UserAgentSelector[Req] | None = None,
+    ) -> None:
+        super().__init__(options, default_ip_selector, user_agent)
         client = options.client
         if client is None:
             client = VPNDetection(
@@ -198,20 +239,29 @@ class Core(_Base[Req]):
         resolved = self._resolve(request)
         if isinstance(resolved, Lookup):
             return resolved
+        agent = self._agent(request)
         try:
             result = self._client.lookup(
-                resolved, retries=self._options.retries, timeout=self._options.timeout
+                resolved,
+                user_agent=agent,
+                retries=self._options.retries,
+                timeout=self._options.timeout,
             )
         except Exception as error:  # noqa: BLE001 - a failed lookup must never propagate
             return self._failed(resolved, error)
-        return self._decide(resolved, result)
+        return self._decide(resolved, result, agent)
 
 
 class AsyncCore(_Base[Req]):
     """The same, for an ASGI framework - FastAPI, Starlette, Litestar."""
 
-    def __init__(self, options: Options[Req], default_ip_selector: IpSelector[Req]) -> None:
-        super().__init__(options, default_ip_selector)
+    def __init__(
+        self,
+        options: Options[Req],
+        default_ip_selector: IpSelector[Req],
+        user_agent: UserAgentSelector[Req] | None = None,
+    ) -> None:
+        super().__init__(options, default_ip_selector, user_agent)
         client = options.client
         if client is None:
             client = AsyncVPNDetection(
@@ -228,13 +278,17 @@ class AsyncCore(_Base[Req]):
         resolved = self._resolve(request)
         if isinstance(resolved, Lookup):
             return resolved
+        agent = self._agent(request)
         try:
             result = await self._client.lookup(
-                resolved, retries=self._options.retries, timeout=self._options.timeout
+                resolved,
+                user_agent=agent,
+                retries=self._options.retries,
+                timeout=self._options.timeout,
             )
         except Exception as error:  # noqa: BLE001 - a failed lookup must never propagate
             return self._failed(resolved, error)
-        return self._decide(resolved, result)
+        return self._decide(resolved, result, agent)
 
 
 class Guard:
@@ -244,7 +298,9 @@ class Guard:
     A middleware is one instance for the whole application, so its ``block_condition``
     refuses on every view. An adapter's per-view check holds one of these instead: it
     reads the attached :class:`Lookup` and makes no request of its own, so a visitor is
-    still looked up once however many views judge them.
+    still looked up once however many views judge them. An answer whose
+    ``user_agent.verdict`` is ``verified``, which only a middleware with ``allow_bots`` on
+    asks for, is never refused here either.
     """
 
     def __init__(
@@ -271,7 +327,7 @@ class Guard:
 
         A failed lookup carries no answer to judge, so it blocks only with
         ``fail_closed``. A condition naming a member the plan does not serve is reported
-        once, as the middleware reports its own.
+        once, as the middleware reports its own. A verified crawler is never refused.
         """
         if lookup.result is None:
             return self._fail_closed
@@ -282,7 +338,28 @@ class Guard:
             self._on_missing_field,
             lambda message: _warn_once(self._warned, self._on_warn, message),
         )
-        return matches(self._condition, lookup.result)
+        return not verified(lookup.result) and matches(self._condition, lookup.result)
+
+
+def verified(result: Result) -> bool:
+    """Whether the answer vouches for the request's user agent: its operator confirms the
+    address as the crawler it says it is."""
+    return result.user_agent is not None and result.user_agent.verdict == "verified"
+
+
+def _report_unverified(action: MissingFieldAction, warn: Callable[[str], None]) -> None:
+    # A bogon is answered locally, with an empty verdict rather than none, so only a
+    # served answer that lacks one reaches here: the plan does not include it.
+    if action == "ignore":
+        return
+    message = (
+        "allow_bots sends the request's User-Agent, but an answer carries no user_agent "
+        "verdict, which your plan does not include, so no crawler is let through. A "
+        "keyless client, or a free key past its trial, never gets one."
+    )
+    if action == "raise":
+        raise ValueError(f"vpndetection: {message}")
+    warn(message)
 
 
 def _report_missing(

@@ -57,6 +57,7 @@ from .models import (
     SmtpDetail,
     SshDetail,
     TokenResponse,
+    UserAgent,
     VpnDetail,
     WebDetail,
 )
@@ -110,6 +111,7 @@ __all__ = [
     "SmtpDetail",
     "SshDetail",
     "TokenResponse",
+    "UserAgent",
     "VPNDetection",
     "VPNDetectionError",
     "VpnDetail",

@@ -21,6 +21,7 @@ from .models import (
     SatelliteDetail,
     SmtpDetail,
     SshDetail,
+    UserAgent,
     VpnDetail,
 )
 
@@ -135,6 +136,7 @@ def bogon_result(ip: str) -> Result:
         ),
         is_bot=False,
         bot=BotDetail(),
+        user_agent=UserAgent(),
     )
 
 

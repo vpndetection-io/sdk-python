@@ -51,7 +51,7 @@ find src/vpndetection/_generated -name '*.py' -exec sed -i 's/\xe2\x80\x94/ - /g
 # emitting stops this script rather than leaving one enum closed.
 for enum in entitlement_plan_tier standing database_format download_outcome \
     database_license_type_type_1 database_license_type_type_2_type_1 \
-    database_license_type_type_3_type_1 ; do
+    database_license_type_type_3_type_1 user_agent_verdict_verdict ; do
     file="src/vpndetection/_generated/models/${enum}.py"
     [ -f "$file" ] || { echo "no ${file}: the generated enums moved" >&2 ; exit 1 ; }
     class="$(sed -n 's/^class \([A-Za-z0-9]*\)(StrEnum):$/\1/p' "$file")"

@@ -42,6 +42,7 @@ __all__ = [
     "SmtpDetail",
     "SshDetail",
     "TokenResponse",
+    "UserAgent",
     "VpnDetail",
     "WebDetail",
 ]
@@ -278,6 +279,23 @@ class BotDetail:
 
 
 @dataclass(frozen=True, slots=True)
+class UserAgent:
+    """Whose bot the user agent a lookup sent names, and whether this address is it.
+
+    `agent` is the client the user agent names (`Googlebot`, `Chrome`, `Unknown` where it
+    names none) and `kind` what sort of client that is (`bot`, `ai-bot`, `browser`, ...).
+    `verdict` is `verified` when the agent's operator vouches for the address as it,
+    `spoofed` when it does not, `unverifiable` for a bot nothing published can confirm, and
+    `not_bot` for a browser, an app or a script; a value added after this release comes
+    back as served. Empty (every field `None`) on a bogon, which is answered locally.
+    """
+
+    agent: str | None = None
+    kind: str | None = None
+    verdict: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class Location:
     """Where the address is, on every answer, with or without a key.
 
@@ -432,6 +450,10 @@ class Result:
     is_bot: bool | None = None
     bot: BotDetail | None = None
 
+    #: On a paid plan's answer to a lookup that sent a user agent: whose bot it names, and
+    #: whether this address is it. `None` when no agent was sent or the plan lacks it.
+    user_agent: UserAgent | None = None
+
     def flagged(self, flag: Flag) -> bool:
         """Whether a flag is present AND true, with anything your plan does not include
         reading as false.
@@ -509,6 +531,7 @@ def to_result(body: dict[str, Any]) -> Result:
         abuse=_detail(AbuseContact, parsed.abuse),
         is_bot=_opt(parsed.is_bot),
         bot=_bot(parsed.bot),
+        user_agent=_user_agent(parsed.user_agent),
     )
 
 
@@ -816,6 +839,12 @@ def _bot(value: Any) -> BotDetail | None:
         first_seen=_opt(value.first_seen),
         last_seen=_opt(value.last_seen),
     )
+
+
+def _user_agent(value: Any) -> UserAgent | None:
+    if isinstance(value, Unset):
+        return None
+    return UserAgent(agent=value.agent, kind=value.kind, verdict=str(value.verdict))
 
 
 def _company(value: Any) -> Company | None:

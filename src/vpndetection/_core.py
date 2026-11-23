@@ -15,7 +15,7 @@ import re
 import secrets
 import threading
 import time
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from pathlib import Path
 from types import ModuleType
 from typing import IO, Any, TypeVar, cast
@@ -25,10 +25,14 @@ import httpx
 from cachetools import TLRUCache
 
 from ._generated.client import AuthenticatedClient, Client
+from ._generated.models.batch_lookup_request import BatchLookupRequest
+from ._generated.models.batch_lookup_request_user_agents import BatchLookupRequestUserAgents
 from ._generated.models.database import Database
 from ._generated.models.database_metadata import DatabaseMetadata
 from ._generated.models.download import Download
 from ._generated.models.entitlement import Entitlement
+from ._generated.types import UNSET, Unset
+from .bogon import unmapped
 from .errors import VPNDetectionError, error_from_response, oauth_error_from
 from .models import Pkce, Result, check_answer, rfc3339, to_result
 
@@ -639,6 +643,51 @@ def check_concurrency(concurrency: int | None) -> None:
         )
 
 
+#: What the cache and the registry of requests in flight key on: an address, and the user
+#: agent sent with it or None. An answer to one carries that agent's verdict, so it is
+#: never served for the address alone or for another agent.
+Key = tuple[str, str | None]
+
+
+def check_user_agent(user_agent: str | None) -> str | None:
+    """The user agent a lookup sends, None for none: the empty string is none, as the API
+    reads `user_agent=`, and a long one is sent whole for the API to cut. Anything but a
+    string is a `TypeError` here, before it can reach the query string as its repr."""
+    if user_agent is None or user_agent == "":
+        return None
+    if not isinstance(user_agent, str):
+        raise TypeError(f"user_agent must be a string or None, not {type(user_agent).__name__}")
+    return user_agent
+
+
+def check_user_agents(user_agents: Mapping[str, str] | None) -> dict[str, str]:
+    """A batch's user agents, keyed by each address as the batch sends it (an IPv4-mapped
+    one as the IPv4 it carries), with every empty agent dropped."""
+    if user_agents is None:
+        return {}
+    if not isinstance(user_agents, Mapping):
+        raise TypeError(
+            f"user_agents must map addresses to agents, not {type(user_agents).__name__}"
+        )
+    agents: dict[str, str] = {}
+    for ip, agent in user_agents.items():
+        checked = check_user_agent(agent)
+        if checked is not None:
+            agents[unmapped(ip)] = checked
+    return agents
+
+
+def batch_request(chunk: list[str], agents: dict[str, str]) -> BatchLookupRequest:
+    """One chunk's body. `user_agents` goes only when an address of THIS chunk carries an
+    agent, never as `{}`, and is keyed by each address exactly as `ips` sends it."""
+    sent = {ip: agents[ip] for ip in chunk if ip in agents}
+    user_agents: BatchLookupRequestUserAgents | Unset = UNSET
+    if sent:
+        user_agents = BatchLookupRequestUserAgents()
+        user_agents.additional_properties = sent
+    return BatchLookupRequest(ips=list(chunk), user_agents=user_agents)
+
+
 def chunked(ips: list[str], size: int) -> list[list[str]]:
     return [ips[i : i + size] for i in range(0, len(ips), size)]
 
@@ -765,23 +814,23 @@ class Cache:
         self, max_size: int, ttl: float, timer: Callable[[], float] = time.monotonic
     ) -> None:
         self._ttl = ttl
-        self._entries: TLRUCache[str, Result] = TLRUCache(
+        self._entries: TLRUCache[Key, Result] = TLRUCache(
             maxsize=max_size, ttu=self._expires, timer=timer
         )
         self._lock = threading.Lock()
 
-    def _expires(self, _ip: str, result: Result, now: float) -> float:
+    def _expires(self, _key: Key, result: Result, now: float) -> float:
         if result.trial_expired is True or result.cap_reached is True:
             return now + min(self._ttl, REDUCED_TTL)
         return now + self._ttl
 
-    def get(self, ip: str) -> Result | None:
+    def get(self, key: Key) -> Result | None:
         with self._lock:
-            return self._entries.get(ip)
+            return self._entries.get(key)
 
-    def put(self, ip: str, result: Result) -> None:
+    def put(self, key: Key, result: Result) -> None:
         with self._lock:
-            self._entries[ip] = result
+            self._entries[key] = result
 
 
 class Abandoned(Exception):
@@ -789,7 +838,9 @@ class Abandoned(Exception):
 
 
 class Flights:
-    """The addresses with a request in flight, so concurrent misses share one.
+    """The addresses with a request in flight, so concurrent misses share one. Each is
+    keyed with the user agent it is sent with, so only callers asking for the same pair
+    share a request.
 
     A lookup that misses joins the request in flight for its address or leads one; a batch
     joins those and boards the rest before it builds its chunks, so a lookup arriving
@@ -802,29 +853,29 @@ class Flights:
     def __init__(self, make: Callable[[], Any]) -> None:
         self._make = make
         self._lock = threading.Lock()
-        self._flights: dict[str, Any] = {}
+        self._flights: dict[Key, Any] = {}
 
-    def board(self, ips: list[str]) -> tuple[dict[str, Any], dict[str, Any]]:
-        led: dict[str, Any] = {}
-        joined: dict[str, Any] = {}
+    def board(self, keys: list[Key]) -> tuple[dict[Key, Any], dict[Key, Any]]:
+        led: dict[Key, Any] = {}
+        joined: dict[Key, Any] = {}
         with self._lock:
-            for ip in ips:
-                flight = self._flights.get(ip)
+            for key in keys:
+                flight = self._flights.get(key)
                 if flight is not None:
-                    joined[ip] = flight
+                    joined[key] = flight
                     continue
                 flight = self._make()
-                self._flights[ip] = flight
-                led[ip] = flight
+                self._flights[key] = flight
+                led[key] = flight
         return led, joined
 
-    def land(self, ip: str, flight: Any, answer: Result | BaseException) -> None:
+    def land(self, key: Key, flight: Any, answer: Result | BaseException) -> None:
         """Hands every waiter the answer and takes the address off the board. Cache a
         served answer FIRST: a caller that missed just before it landed finds no flight
         after this, and reads the cache again before it sends."""
         with self._lock:
-            if self._flights.get(ip) is flight:
-                del self._flights[ip]
+            if self._flights.get(key) is flight:
+                del self._flights[key]
         if flight.done():
             return
         if isinstance(answer, BaseException):

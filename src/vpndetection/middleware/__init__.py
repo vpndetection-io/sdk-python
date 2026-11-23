@@ -25,7 +25,9 @@ from .core import (
     Options,
     RequestView,
     Selectors,
+    UserAgentSelector,
     bind_selectors,
+    verified,
 )
 
 __all__ = [
@@ -42,9 +44,11 @@ __all__ = [
     "Options",
     "RequestView",
     "Selectors",
+    "UserAgentSelector",
     "bind_selectors",
     "constraint_count",
     "matches",
     "missing_members",
     "validate",
+    "verified",
 ]

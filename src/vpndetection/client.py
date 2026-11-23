@@ -5,7 +5,7 @@ from __future__ import annotations
 import builtins
 import os
 import time
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from concurrent.futures import Future, ThreadPoolExecutor
 from types import TracebackType
 from typing import Any, Self, TypeVar
@@ -33,11 +33,13 @@ from ._core import (
     Cache,
     Clock,
     Flights,
+    Key,
     as_error,
     assert_whole_transfer,
     authorization_url,
     batch_answers,
     batch_body,
+    batch_request,
     build_client,
     build_transfer_client,
     call_retries,
@@ -45,6 +47,8 @@ from ._core import (
     check_concurrency,
     check_retries,
     check_timeout,
+    check_user_agent,
+    check_user_agents,
     checksums_of,
     chunked,
     create_pkce,
@@ -74,11 +78,11 @@ from ._generated.api.database import (
 from ._generated.api.entitlement import my_entitlement
 from ._generated.api.lookup import lookup_batch, lookup_ip, lookup_my_ip
 from ._generated.client import AuthenticatedClient
-from ._generated.models.batch_lookup_request import BatchLookupRequest
 from ._generated.models.database import Database
 from ._generated.models.database_metadata import DatabaseMetadata
 from ._generated.models.download import Download
 from ._generated.models.entitlement import Entitlement
+from ._generated.types import UNSET
 from .bogon import bogon_result, is_bogon, unmapped
 from .errors import OauthError, OauthExpiredTokenError, VPNDetectionError
 from .models import (
@@ -178,7 +182,12 @@ class VPNDetection:
         return is_bogon(ip)
 
     def lookup(
-        self, ip: str, *, retries: float | None = None, timeout: float | None = None
+        self,
+        ip: str,
+        *,
+        user_agent: str | None = None,
+        retries: float | None = None,
+        timeout: float | None = None,
     ) -> Result:
         """Classify one address.
 
@@ -187,56 +196,73 @@ class VPNDetection:
         for their address is in flight, a batch's included, await that request rather than
         sending their own, and take its answer, sent under the options of the call that led
         it.
+
+        `user_agent` is the `User-Agent` of the client that came from this address: on a
+        paid plan the answer's `user_agent` then says whose bot it names and whether this
+        address is it. The empty string sends none. An answer to one is cached apart from
+        the address's plain answer and from another agent's, and a bogon carries none.
         """
         # Here as well as in _bound: a bogon or a cached answer returns before any request.
         check_timeout(timeout)
         call_retries(retries)
+        agent = check_user_agent(user_agent)
         ip = unmapped(ip)
         if is_bogon(ip):
             return bogon_result(ip)
+        key: Key = (ip, agent)
         if self._cache is None:
-            return self._serve(ip, retries, timeout)
+            return self._serve(key, retries, timeout)
         while True:
-            hit = self._cache.get(ip)
+            hit = self._cache.get(key)
             if hit is not None:
                 return hit
-            led, joined = self._flights.board([ip])
-            if ip in led:
-                return self._lead(ip, led[ip], retries, timeout)
+            led, joined = self._flights.board([key])
+            if key in led:
+                return self._lead(key, led[key], retries, timeout)
             try:
-                result: Result = joined[ip].result()
+                result: Result = joined[key].result()
                 return result
             except VPNDetectionError as err:
                 raise landed_error(err) from None
             except Abandoned:
                 continue
 
-    def _lead(self, ip: str, flight: Any, retries: float | None, timeout: float | None) -> Result:
+    def _lead(self, key: Key, flight: Any, retries: float | None, timeout: float | None) -> Result:
         assert self._cache is not None
         try:
             # A request that landed between the miss and boarding cached its answer before
             # it left the board, so it is found here.
-            result = self._cache.get(ip)
+            result = self._cache.get(key)
             if result is None:
-                result = self._serve(ip, retries, timeout)
+                result = self._serve(key, retries, timeout)
         except VPNDetectionError as err:
-            self._flights.land(ip, flight, err)
+            self._flights.land(key, flight, err)
             raise
         except BaseException:
-            self._flights.land(ip, flight, Abandoned())
+            self._flights.land(key, flight, Abandoned())
             raise
-        self._cache.put(ip, result)
-        self._flights.land(ip, flight, result)
+        self._cache.put(key, result)
+        self._flights.land(key, flight, result)
         return result
 
-    def _serve(self, ip: str, retries: float | None, timeout: float | None) -> Result:
+    def _serve(self, key: Key, retries: float | None, timeout: float | None) -> Result:
+        ip, agent = key
+
         def call() -> Result:
-            res = request(lookup_ip, self._client, self._bound(timeout), ip=ip)
+            res = request(
+                lookup_ip, self._client, self._bound(timeout), ip=ip, user_agent=agent or UNSET
+            )
             return parse_body(res, to_result)
 
         return self._retrying(call, self._retries if retries is None else retries)
 
-    def my_ip(self, *, retries: float | None = None, timeout: float | None = None) -> Result:
+    def my_ip(
+        self,
+        *,
+        user_agent: str | None = None,
+        retries: float | None = None,
+        timeout: float | None = None,
+    ) -> Result:
         """Classify the address this client is calling from.
 
         The same answer `lookup` would give for that address, at the same cost against
@@ -246,12 +272,17 @@ class VPNDetection:
         Deliberately NOT cached. The cache is keyed by address, and which address this
         is IS the question: a machine that moves between networks would otherwise be
         told where it used to be.
+
+        `user_agent` is sent as `lookup` sends it, the empty string sending none.
         """
 
         call_retries(retries)
+        agent = check_user_agent(user_agent)
 
         def call() -> Result:
-            res = request(lookup_my_ip, self._client, self._bound(timeout))
+            res = request(
+                lookup_my_ip, self._client, self._bound(timeout), user_agent=agent or UNSET
+            )
             return parse_body(res, to_result)
 
         return self._retrying(call, self._retries if retries is None else retries)
@@ -290,6 +321,7 @@ class VPNDetection:
         self,
         ips: Iterable[str],
         *,
+        user_agents: Mapping[str, str] | None = None,
         concurrency: int | None = None,
         retries: float | None = None,
         timeout: float | None = None,
@@ -315,10 +347,15 @@ class VPNDetection:
         concurrency really is the ceiling rather than being silently capped by the
         client's. A per-call `concurrency` below 1 is refused as `bad_request` before
         anything is sent.
+
+        `user_agents` maps an address to the `User-Agent` its client sent, as `lookup`'s
+        `user_agent`, an address left out or given the empty string sending none. A chunk
+        sends them only when one of its addresses has one.
         """
         check_concurrency(concurrency)
         check_timeout(timeout)
         call_retries(retries)
+        agents = check_user_agents(user_agents)
         asked = list(dict.fromkeys(ips))
         unique = list(dict.fromkeys(unmapped(ip) for ip in asked))
         answers: dict[str, Result | VPNDetectionError] = {}
@@ -327,22 +364,30 @@ class VPNDetection:
             if is_bogon(ip):
                 answers[ip] = bogon_result(ip)
                 continue
-            hit = self._cache.get(ip) if self._cache is not None else None
+            hit = self._cache.get((ip, agents.get(ip))) if self._cache is not None else None
             if hit is not None:
                 answers[ip] = hit
                 continue
             pending.append(ip)
-        # Each address with a request in flight awaits it, and the rest are boarded before
-        # any chunk is built. A request that landed since the cache was read cached its
-        # answer first, so a led address is looked up there once more before it is sent.
-        led, joined = self._flights.board(pending) if self._cache is not None else ({}, {})
+        # Each address with a request in flight for its agent awaits it, and the rest are
+        # boarded before any chunk is built. A request that landed since the cache was read
+        # cached its answer first, so a led address is looked up there once more before it
+        # is sent. Each address carries one agent here, so the address alone keys the rest.
+        boarded = (
+            self._flights.board([(ip, agents.get(ip)) for ip in pending])
+            if self._cache is not None
+            else ({}, {})
+        )
+        led = {key[0]: flight for key, flight in boarded[0].items()}
+        joined = {key[0]: flight for key, flight in boarded[1].items()}
         send: list[str] = []
         for ip in pending:
             if ip in joined:
                 continue
-            hit = self._cache.get(ip) if ip in led and self._cache is not None else None
+            key: Key = (ip, agents.get(ip))
+            hit = self._cache.get(key) if ip in led and self._cache is not None else None
             if hit is not None:
-                self._flights.land(ip, led[ip], hit)
+                self._flights.land(key, led[ip], hit)
                 answers[ip] = hit
                 continue
             send.append(ip)
@@ -351,14 +396,14 @@ class VPNDetection:
                 workers = self._concurrency if concurrency is None else concurrency
                 with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
                     futures = [
-                        pool.submit(self._lookup_chunk, chunk, retries, timeout, led)
+                        pool.submit(self._lookup_chunk, chunk, agents, retries, timeout, led)
                         for chunk in chunked(send, BATCH_MAX)
                     ]
                 for future in futures:
                     answers.update(future.result())
         finally:
             for ip, flight in led.items():
-                self._flights.land(ip, flight, Abandoned())
+                self._flights.land((ip, agents.get(ip)), flight, Abandoned())
         for ip, flight in joined.items():
             try:
                 answers[ip] = flight.result()
@@ -367,7 +412,9 @@ class VPNDetection:
             except Abandoned:
                 # Its leader stopped before the answer landed, so this one goes alone.
                 try:
-                    answers[ip] = self.lookup(ip, retries=retries, timeout=timeout)
+                    answers[ip] = self.lookup(
+                        ip, user_agent=agents.get(ip), retries=retries, timeout=timeout
+                    )
                 except VPNDetectionError as err:
                     answers[ip] = err
         return {ip: answers[unmapped(ip)] for ip in asked}
@@ -393,6 +440,7 @@ class VPNDetection:
     def _lookup_chunk(
         self,
         chunk: list[str],
+        agents: dict[str, str],
         retries: float | None,
         timeout: float | None,
         led: dict[str, Any],
@@ -403,7 +451,7 @@ class VPNDetection:
                 self._client,
                 self._bound(timeout),
                 decode=False,
-                body=BatchLookupRequest(ips=list(chunk)),
+                body=batch_request(chunk, agents),
             )
             return batch_body(res)
 
@@ -414,10 +462,11 @@ class VPNDetection:
         else:
             answers = batch_answers(chunk, body)
         for ip, answer in answers.items():
+            key: Key = (ip, agents.get(ip))
             if self._cache is not None and isinstance(answer, Result):
-                self._cache.put(ip, answer)
+                self._cache.put(key, answer)
             if ip in led:
-                self._flights.land(ip, led[ip], answer)
+                self._flights.land(key, led[ip], answer)
         return answers
 
     # A per-call timeout, checked, or the client's own when the call gave none.

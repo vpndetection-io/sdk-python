@@ -485,13 +485,12 @@ def test_every_field_the_pinned_spec_serves_is_on_the_model(wire: Any, ours: Any
     come from the same pinned spec, which makes them the list to check against. The
     generator suffixes a name that shadows a builtin with `_`, and spells `mslm:apikey` and
     `mslm:apikey_id` as `mslmapikey` and `mslmapikey_id`, which the model names `apikey` and
-    `apikey_id`. `user_agent` answers only a request that sends one, which this release
-    never does, so it is not modeled yet.
+    `apikey_id`.
     """
     renamed = {"mslmapikey": "apikey", "mslmapikey_id": "apikey_id"}
     served = {renamed.get(f.name, f.name).rstrip("_") for f in attrs.fields(wire)}
     modeled = {f.name for f in dataclasses.fields(ours)}
-    missing = served - {"additional_properties", "user_agent"} - modeled
+    missing = served - {"additional_properties"} - modeled
     assert missing == set(), f"{ours.__name__} lacks what the spec serves: {sorted(missing)}"
 
 

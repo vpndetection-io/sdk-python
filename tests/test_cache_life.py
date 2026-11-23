@@ -56,9 +56,9 @@ def test_each_answer_is_cached_as_long_as_its_flags_allow(
         client.lookup_batch([ip, "45.83.91.1"])
 
     timer.now += want - 0.01
-    assert cache.get(ip) is not None, f"{ip} under a {ttl} s TTL went stale early"
+    assert cache.get((ip, None)) is not None, f"{ip} under a {ttl} s TTL went stale early"
     timer.now += 0.02
-    assert cache.get(ip) is None, f"{ip} under a {ttl} s TTL outlived {want} s"
+    assert cache.get((ip, None)) is None, f"{ip} under a {ttl} s TTL outlived {want} s"
 
 
 def test_a_reduced_answer_is_still_cached_so_a_repeat_sends_nothing(
