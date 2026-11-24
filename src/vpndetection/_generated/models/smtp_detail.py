@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 from collections.abc import Mapping
 from typing import Any, Self, TypeVar
 
@@ -21,15 +22,15 @@ class SmtpDetail:
             port (int | Unset): The port the server answered on. Example: 25.
             banner (str | Unset): Its banner. Example: 220 mail.example.com ESMTP Postfix.
             session_ok (bool | Unset): A session was set up. Example: True.
-            first_seen (str | Unset): The first day it answered. Example: 2026-08-04.
-            last_seen (str | Unset): The last day it did. Example: 2026-11-15.
+            first_seen (datetime.date | Unset): The first day it answered. Example: 2026-08-04.
+            last_seen (datetime.date | Unset): The last day it did. Example: 2026-11-15.
     """
 
     port: int | Unset = UNSET
     banner: str | Unset = UNSET
     session_ok: bool | Unset = UNSET
-    first_seen: str | Unset = UNSET
-    last_seen: str | Unset = UNSET
+    first_seen: datetime.date | Unset = UNSET
+    last_seen: datetime.date | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -39,9 +40,13 @@ class SmtpDetail:
 
         session_ok = self.session_ok
 
-        first_seen = self.first_seen
+        first_seen: str | Unset = UNSET
+        if not isinstance(self.first_seen, Unset):
+            first_seen = self.first_seen.isoformat()
 
-        last_seen = self.last_seen
+        last_seen: str | Unset = UNSET
+        if not isinstance(self.last_seen, Unset):
+            last_seen = self.last_seen.isoformat()
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -68,9 +73,19 @@ class SmtpDetail:
 
         session_ok = d.pop("session_ok", UNSET)
 
-        first_seen = d.pop("first_seen", UNSET)
+        _first_seen = d.pop("first_seen", UNSET)
+        first_seen: datetime.date | Unset
+        if isinstance(_first_seen, Unset):
+            first_seen = UNSET
+        else:
+            first_seen = datetime.date.fromisoformat(_first_seen)
 
-        last_seen = d.pop("last_seen", UNSET)
+        _last_seen = d.pop("last_seen", UNSET)
+        last_seen: datetime.date | Unset
+        if isinstance(_last_seen, Unset):
+            last_seen = UNSET
+        else:
+            last_seen = datetime.date.fromisoformat(_last_seen)
 
         smtp_detail = cls(
             port=port,

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 from collections.abc import Mapping
 from typing import Any, Self, TypeVar
 
@@ -26,8 +27,8 @@ class WebDetail:
         cert_issuer_dn (str): Its issuer. Example: CN=R11,O=Let's Encrypt,C=US.
         cert_browser_trusted (bool): Browsers trust it. Example: True.
         tls_version (str): The TLS version negotiated, empty without TLS. Example: TLS 1.3.
-        first_seen (str): The first day the port was open. Example: 2026-08-04.
-        last_seen (str): The last day it was. Example: 2026-11-15.
+        first_seen (datetime.date): The first day the port was open. Example: 2026-08-04.
+        last_seen (datetime.date): The last day it was. Example: 2026-11-15.
     """
 
     port: int
@@ -42,8 +43,8 @@ class WebDetail:
     cert_issuer_dn: str
     cert_browser_trusted: bool
     tls_version: str
-    first_seen: str
-    last_seen: str
+    first_seen: datetime.date
+    last_seen: datetime.date
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -71,9 +72,9 @@ class WebDetail:
 
         tls_version = self.tls_version
 
-        first_seen = self.first_seen
+        first_seen = self.first_seen.isoformat()
 
-        last_seen = self.last_seen
+        last_seen = self.last_seen.isoformat()
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -125,9 +126,9 @@ class WebDetail:
 
         tls_version = d.pop("tls_version")
 
-        first_seen = d.pop("first_seen")
+        first_seen = datetime.date.fromisoformat(d.pop("first_seen"))
 
-        last_seen = d.pop("last_seen")
+        last_seen = datetime.date.fromisoformat(d.pop("last_seen"))
 
         web_detail = cls(
             port=port,

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 from collections.abc import Mapping
 from typing import Any, Self, TypeVar, cast
 
@@ -20,8 +21,8 @@ class BitTorrentDetail:
         Attributes:
             verified (bool | Unset): A client here answered, or two or more reported it at once. Example: True.
             id_matches_ip (bool | Unset): A client here derived its node ID from the address (BEP 42). Example: False.
-            first_seen (str | Unset): The first day a client was seen here. Example: 2026-08-21.
-            last_seen (str | Unset): The last day. Example: 2026-11-15.
+            first_seen (datetime.date | Unset): The first day a client was seen here. Example: 2026-08-21.
+            last_seen (datetime.date | Unset): The last day. Example: 2026-11-15.
             last_reachable (str | Unset): The last day one answered, empty when none did. Example: 2026-11-14.
             days_seen (int | Unset): On how many days. Example: 37.
             num_ports (int | Unset): Distinct ports over the window. Example: 4.
@@ -32,8 +33,8 @@ class BitTorrentDetail:
 
     verified: bool | Unset = UNSET
     id_matches_ip: bool | Unset = UNSET
-    first_seen: str | Unset = UNSET
-    last_seen: str | Unset = UNSET
+    first_seen: datetime.date | Unset = UNSET
+    last_seen: datetime.date | Unset = UNSET
     last_reachable: str | Unset = UNSET
     days_seen: int | Unset = UNSET
     num_ports: int | Unset = UNSET
@@ -47,9 +48,13 @@ class BitTorrentDetail:
 
         id_matches_ip = self.id_matches_ip
 
-        first_seen = self.first_seen
+        first_seen: str | Unset = UNSET
+        if not isinstance(self.first_seen, Unset):
+            first_seen = self.first_seen.isoformat()
 
-        last_seen = self.last_seen
+        last_seen: str | Unset = UNSET
+        if not isinstance(self.last_seen, Unset):
+            last_seen = self.last_seen.isoformat()
 
         last_reachable = self.last_reachable
 
@@ -98,9 +103,19 @@ class BitTorrentDetail:
 
         id_matches_ip = d.pop("id_matches_ip", UNSET)
 
-        first_seen = d.pop("first_seen", UNSET)
+        _first_seen = d.pop("first_seen", UNSET)
+        first_seen: datetime.date | Unset
+        if isinstance(_first_seen, Unset):
+            first_seen = UNSET
+        else:
+            first_seen = datetime.date.fromisoformat(_first_seen)
 
-        last_seen = d.pop("last_seen", UNSET)
+        _last_seen = d.pop("last_seen", UNSET)
+        last_seen: datetime.date | Unset
+        if isinstance(_last_seen, Unset):
+            last_seen = UNSET
+        else:
+            last_seen = datetime.date.fromisoformat(_last_seen)
 
         last_reachable = d.pop("last_reachable", UNSET)
 

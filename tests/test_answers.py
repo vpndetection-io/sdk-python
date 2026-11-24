@@ -547,6 +547,109 @@ def test_a_full_date_is_read(make_client: ClientFactory, member: str) -> None:
     assert read(call(client)) == datetime.date(2026, 10, 5)
 
 
+# The days the ssh, smtp, web, dns_resolver, bittorrent and bot details carry took
+# `format: date` in spec 2026.11.23. They stay the wire's text, and 5.21.0 handed any text
+# on: `x` or `2026-02-30` came back as a bot's first_seen.
+WEB_ROW: dict[str, Any] = {
+    "port": 443,
+    "tls_ok": True,
+    "session_ok": True,
+    "status_code": 200,
+    "server": "cloudflare",
+    "location": "",
+    "title": "",
+    "cert_subject_cn": "cloudflare-dns.com",
+    "cert_subject_o": "Cloudflare, Inc.",
+    "cert_issuer_dn": "CN=WE2,O=Google Trust Services,C=US",
+    "cert_browser_trusted": True,
+    "tls_version": "TLS 1.3",
+    "first_seen": "2026-08-04",
+    "last_seen": "2026-11-21",
+}
+SEEN_DETAILS: dict[str, dict[str, Any]] = {
+    "ssh": {"port": 22, "first_seen": "2026-08-04", "last_seen": "2026-11-21"},
+    "smtp": {"port": 25, "first_seen": "2026-08-04", "last_seen": "2026-11-21"},
+    "dns_resolver": {"port": 53, "first_seen": "2026-08-04", "last_seen": "2026-11-21"},
+    "bittorrent": {
+        "verified": True,
+        "first_seen": "2026-08-04",
+        "last_seen": "2026-11-21",
+        "last_reachable": "",
+    },
+    "bot": {**DETAILS["bot"], "first_seen": "2026-08-04", "last_seen": "2026-11-21"},
+}
+
+
+def _seen(detail: str, member: str, value: str) -> dict[str, Any]:
+    if detail == "web":
+        return {**LOOKUP, "is_web": True, "web": [{**WEB_ROW, member: value}]}
+    return {**LOOKUP, f"is_{detail}": True, detail: {**SEEN_DETAILS[detail], member: value}}
+
+
+def _read_seen(answer: Result, detail: str, member: str) -> Any:
+    held = answer.web[0] if detail == "web" and answer.web else getattr(answer, detail)
+    return getattr(held, member)
+
+
+DAYS = [
+    (detail, member)
+    for detail in ("ssh", "smtp", "web", "dns_resolver", "bittorrent", "bot")
+    for member in ("first_seen", "last_seen")
+]
+
+NOT_DAYS = [
+    "x",
+    "tomorrow",
+    "monday",
+    "2026-02-30",
+    "2026-11-21T24:00",
+    "2026-11-21T10:00:00Z",
+    "2026-11-21+05",
+    "2026-11-21\n",
+    "2026-11-2\u0661",
+    "20261121",
+    "2026-W47-6",
+]
+
+
+@pytest.mark.parametrize("value", NOT_DAYS)
+def test_a_bot_detail_first_seen_that_is_no_day_is_a_retried_server_error(
+    make_client: ClientFactory, value: str
+) -> None:
+    served = Raw(200, json.dumps(_seen("bot", "first_seen", "2026-11-21")))
+    read = make_client(transport=served.transport, cache=False, retries=2).lookup("8.8.8.8")
+    assert read.bot is not None
+    assert read.bot.first_seen == "2026-11-21"
+
+    origin = Raw(200, json.dumps(_seen("bot", "first_seen", value)))
+    client = make_client(transport=origin.transport, cache=False, retries=2)
+
+    outcome = outcome_of(lambda: client.lookup("8.8.8.8"))
+
+    assert isinstance(outcome, VPNDetectionError), f"{value!r} answered {outcome!r}"
+    assert (outcome.kind, outcome.status) == ("server_error", 200), repr(outcome)
+    assert origin.paths == ["/8.8.8.8"] * 3
+
+
+@pytest.mark.parametrize(("detail", "member"), DAYS)
+def test_each_detail_day_is_read_as_its_text_and_refused_when_it_is_no_day(
+    make_client: ClientFactory, detail: str, member: str
+) -> None:
+    served = Raw(200, json.dumps(_seen(detail, member, "2026-10-05")))
+    answer = make_client(transport=served.transport, cache=False, retries=2).lookup("8.8.8.8")
+    assert _read_seen(answer, detail, member) == "2026-10-05"
+    assert answer.raw[detail] == _seen(detail, member, "2026-10-05")[detail]
+
+    origin = Raw(200, json.dumps(_seen(detail, member, "x")))
+    client = make_client(transport=origin.transport, cache=False, retries=2)
+
+    outcome = outcome_of(lambda: client.lookup("8.8.8.8"))
+
+    assert isinstance(outcome, VPNDetectionError), f"{detail}.{member} answered {outcome!r}"
+    assert (outcome.kind, outcome.status) == ("server_error", 200), repr(outcome)
+    assert origin.paths == ["/8.8.8.8"] * 3
+
+
 ENTRIES: dict[str, Any] = {
     "null": None,
     "a list": [],

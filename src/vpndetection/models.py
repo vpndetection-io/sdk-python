@@ -521,10 +521,10 @@ def to_result(body: dict[str, Any]) -> Result:
         is_bittorrent=_opt(parsed.is_bittorrent),
         carrier=_detail(CarrierDetail, parsed.carrier),
         satellite=_detail(SatelliteDetail, parsed.satellite),
-        ssh=_detail(SshDetail, parsed.ssh),
-        smtp=_detail(SmtpDetail, parsed.smtp),
+        ssh=_detail(SshDetail, parsed.ssh, days=_SEEN),
+        smtp=_detail(SmtpDetail, parsed.smtp, days=_SEEN),
         web=_web(parsed.web),
-        dns_resolver=_detail(DnsResolverDetail, parsed.dns_resolver),
+        dns_resolver=_detail(DnsResolverDetail, parsed.dns_resolver, days=_SEEN),
         bittorrent=_bittorrent(parsed.bittorrent),
         company=_company(parsed.company),
         hostname=_opt(parsed.hostname),
@@ -730,6 +730,16 @@ def _opt(value: T | Unset) -> T | None:
     return None if isinstance(value, Unset) else value
 
 
+# The days the ssh, smtp, web, dns_resolver, bittorrent and bot details carry. The spec gave
+# them `format: date` in 2026.11.23, after their public fields were typed as text, so each is
+# checked as a day that exists (`rfc3339`) and handed out as the wire's `YYYY-MM-DD` string.
+_SEEN = ("first_seen", "last_seen")
+
+
+def _day(value: datetime.date | Unset) -> str | None:
+    return None if isinstance(value, Unset) else value.isoformat()
+
+
 def _vpn(value: Any) -> VpnDetail | None:
     if isinstance(value, Unset):
         return None
@@ -786,22 +796,28 @@ def _asn(value: Any) -> Asn | None:
 D = TypeVar("D")
 
 
-def _detail(cls: type[D], value: Any) -> D | None:
+def _detail(cls: type[D], value: Any, days: tuple[str, ...] = ()) -> D | None:
     """A detail whose wire members carry the same names as its fields, each `UNSET` read
-    as `None`."""
+    as `None` and each member named in `days` handed out as its text."""
     if isinstance(value, Unset):
         return None
     fields = dataclasses.fields(cls)  # type: ignore[arg-type]
-    return cls(**{f.name: _opt(getattr(value, f.name)) for f in fields})
+    return cls(
+        **{f.name: (_day if f.name in days else _opt)(getattr(value, f.name)) for f in fields}
+    )
 
 
 def _web(value: Any) -> tuple[WebDetail, ...] | None:
     if isinstance(value, Unset):
         return None
-    return tuple(
-        WebDetail(**{f.name: getattr(row, f.name) for f in dataclasses.fields(WebDetail)})
-        for row in value
-    )
+    return tuple(_web_row(row) for row in value)
+
+
+def _web_row(row: Any) -> WebDetail:
+    members: dict[str, Any] = {f.name: getattr(row, f.name) for f in dataclasses.fields(WebDetail)}
+    for name in _SEEN:
+        members[name] = _day(members[name])
+    return WebDetail(**members)
 
 
 def _bittorrent(value: Any) -> BitTorrentDetail | None:
@@ -811,8 +827,8 @@ def _bittorrent(value: Any) -> BitTorrentDetail | None:
     return BitTorrentDetail(
         verified=_opt(value.verified),
         id_matches_ip=_opt(value.id_matches_ip),
-        first_seen=_opt(value.first_seen),
-        last_seen=_opt(value.last_seen),
+        first_seen=_day(value.first_seen),
+        last_seen=_day(value.last_seen),
         last_reachable=_opt(value.last_reachable),
         days_seen=_opt(value.days_seen),
         num_ports=_opt(value.num_ports),
@@ -836,8 +852,8 @@ def _bot(value: Any) -> BotDetail | None:
         identity=_opt(value.identity),
         verified_by=_opt(value.verified_by),
         confidence=_opt(value.confidence),
-        first_seen=_opt(value.first_seen),
-        last_seen=_opt(value.last_seen),
+        first_seen=_day(value.first_seen),
+        last_seen=_day(value.last_seen),
     )
 
 

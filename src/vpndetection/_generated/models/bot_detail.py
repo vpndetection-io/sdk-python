@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 from collections.abc import Mapping
 from typing import Any, Self, TypeVar, cast
 
@@ -33,8 +34,8 @@ class BotDetail:
             reverse DNS name ends in a suffix the operator documents and resolves back) or `owner` (the operator's own
             space, seen claiming its bot); empty when not verified.
         confidence (str | Unset): `high`, `medium` or `low`: how sure we are the address is what the row says.
-        first_seen (str | Unset): The first day the address was seen as such.
-        last_seen (str | Unset): The last day it was.
+        first_seen (datetime.date | Unset): The first day the address was seen as such.
+        last_seen (datetime.date | Unset): The last day it was.
     """
 
     provider: str | Unset = UNSET
@@ -45,8 +46,8 @@ class BotDetail:
     identity: str | Unset = UNSET
     verified_by: str | Unset = UNSET
     confidence: str | Unset = UNSET
-    first_seen: str | Unset = UNSET
-    last_seen: str | Unset = UNSET
+    first_seen: datetime.date | Unset = UNSET
+    last_seen: datetime.date | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -70,9 +71,13 @@ class BotDetail:
 
         confidence = self.confidence
 
-        first_seen = self.first_seen
+        first_seen: str | Unset = UNSET
+        if not isinstance(self.first_seen, Unset):
+            first_seen = self.first_seen.isoformat()
 
-        last_seen = self.last_seen
+        last_seen: str | Unset = UNSET
+        if not isinstance(self.last_seen, Unset):
+            last_seen = self.last_seen.isoformat()
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -119,9 +124,19 @@ class BotDetail:
 
         confidence = d.pop("confidence", UNSET)
 
-        first_seen = d.pop("first_seen", UNSET)
+        _first_seen = d.pop("first_seen", UNSET)
+        first_seen: datetime.date | Unset
+        if isinstance(_first_seen, Unset):
+            first_seen = UNSET
+        else:
+            first_seen = datetime.date.fromisoformat(_first_seen)
 
-        last_seen = d.pop("last_seen", UNSET)
+        _last_seen = d.pop("last_seen", UNSET)
+        last_seen: datetime.date | Unset
+        if isinstance(_last_seen, Unset):
+            last_seen = UNSET
+        else:
+            last_seen = datetime.date.fromisoformat(_last_seen)
 
         bot_detail = cls(
             provider=provider,
