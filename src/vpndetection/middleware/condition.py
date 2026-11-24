@@ -121,7 +121,13 @@ def _matches_value(want: Any, got: Any) -> bool:
     looks like. Every branch below must therefore reject it, which is what makes an
     unserved member fail a match rather than pass it. A new branch that does not would
     silently let a member nobody was served block a request.
+
+    A member the answer holds as a list (``pubproxy.protocols``, the ``web`` rows)
+    matches when any one element does, so an object term is a partial match on a
+    single element, never spread across several.
     """
+    if isinstance(got, (list, tuple)):
+        return any(_matches_value(want, element) for element in got)
     if isinstance(want, (list, tuple, set, frozenset)):
         return any(_matches_value(entry, got) for entry in want)
     if isinstance(want, dict):

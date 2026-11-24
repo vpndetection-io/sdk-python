@@ -122,12 +122,18 @@ def test_a_condition_on_a_bot_blocks_a_served_bot_and_passes_the_rest(
         assert lookup.blocked is is_bot, f"{condition} against is_bot {is_bot}"
 
 
-def test_a_condition_inside_a_member_held_as_a_list_never_matches() -> None:
+def test_a_condition_inside_a_member_held_as_a_list_matches_any_element() -> None:
     body = {"ip": PUBLIC_IP, "is_vpn": False, "is_bot": True, "bot": BOT}
-    for condition in ({"bot": {"agents": "Googlebot"}}, {"bot": {"agents": ["Googlebot"]}}):
+    for condition, blocked in (
+        ({"bot": {"agents": "googlebot"}}, True),
+        ({"bot": {"agents": ["Bingbot", "Googlebot"]}}, True),
+        ({"bot": {"categories": "search_engine"}}, True),
+        ({"bot": {"agents": "Bingbot"}}, False),
+        ({"bot": {"agents": ["Bingbot", "DuckDuckBot"]}}, False),
+    ):
         lookup = _core(client=_serving(body), block_condition=condition).evaluate(Req())
         assert lookup is not None and lookup.result is not None
-        assert lookup.blocked is False, condition
+        assert lookup.blocked is blocked, condition
 
 
 def test_skip_claims_the_request() -> None:
