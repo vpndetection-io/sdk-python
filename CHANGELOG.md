@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.22.0 - 2026-11-24
+
+### Fixes
+
+- A condition on a list member, such as pubproxy.protocols or a web row's port, matches any element; before, it never matched ([`9c46ed2`](https://github.com/vpndetection-io/sdk-python/commit/9c46ed207e34c5133597bc9a9934fa53038b3edc))
+
 ## 5.21.1 - 2026-11-24
 
 ### Fixes
