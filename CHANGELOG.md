@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.21.1 - 2026-11-24
+
+### Fixes
+
+- Re-pin the spec to 2026.11.23, and refuse a detail's first_seen or last_seen that is not a day ([`e1d0a7f`](https://github.com/vpndetection-io/sdk-python/commit/e1d0a7f751872cacc1e158a8b44cfd5ef047063f))
+
 ## 5.21.0 - 2026-11-23
 
 ### Features
