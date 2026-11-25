@@ -2,6 +2,13 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.22.1 - 2026-11-25
+
+### Fixes
+
+- README: one paid plan, Data; the entitlement example names it ([`91e04c6`](https://github.com/vpndetection-io/sdk-python/commit/91e04c6fda69294cfc2d92e40726d8d8eccf09f2))
+- Spec 2026.11.25: doc comments name a paid plan, the entitlement example the Data plan ([`09c3205`](https://github.com/vpndetection-io/sdk-python/commit/09c32051473ef17a195d592bce652edc112d1ef7))
+
 ## 5.22.0 - 2026-11-24
 
 ### Fixes
