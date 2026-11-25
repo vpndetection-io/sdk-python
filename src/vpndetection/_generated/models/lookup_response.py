@@ -48,31 +48,31 @@ class LookupResponse:
             is_bogon (bool | Unset): Whether the address is reserved space (RFC 1918, loopback, link-local,
                 documentation ranges and their IPv6 equivalents), answered from the
                 address alone. Every answer, with or without a key.
-            is_hosting (bool | Unset): Whether the address belongs to a hosting or cloud provider. Paid plans.
+            is_hosting (bool | Unset): Whether the address belongs to a hosting or cloud provider. On a paid plan.
             is_relay (bool | Unset): Whether the address is privacy relay or enterprise web gateway egress, such as iCloud
                 Private Relay or Zscaler. Every answer, with or without a key.
             is_tor (bool | Unset): Whether the address is a Tor node. Every answer, with or without a key.
-            is_cdn (bool | Unset): Whether the address belongs to a CDN. Paid plans.
+            is_cdn (bool | Unset): Whether the address belongs to a CDN. On a paid plan.
             is_bot (bool | Unset): Whether an automated client uses the address, such as a search engine's or an AI
                 company's crawler, an uptime monitor, an internet scanner or a webhook sender. `bot` says whose, what it does
                 and whether its operator vouches for the address. Every answer, with or without a key.
-            is_resproxy (bool | Unset): Whether the address was seen in a residential proxy pool. Paid plans.
+            is_resproxy (bool | Unset): Whether the address was seen in a residential proxy pool. On a paid plan.
             is_dcproxy (bool | Unset): Whether the address is one a datacenter proxy service sells or runs on, a proxy
-                company's own ranges included. Paid plans.
-            is_mobproxy (bool | Unset): Whether the address was seen in a mobile proxy pool. Paid plans.
+                company's own ranges included. On a paid plan.
+            is_mobproxy (bool | Unset): Whether the address was seen in a mobile proxy pool. On a paid plan.
             is_pubproxy (bool | Unset): Whether a public proxy, one anyone can connect through, listens on the address or
-                sends its traffic out from it. Paid plans.
+                sends its traffic out from it. On a paid plan.
             is_anycast (bool | Unset): Whether the address is announced from many places at once, as a public DNS resolver's
                 or a CDN's edge is. Every answer, with or without a key.
             is_carrier (bool | Unset): Whether the address is a mobile carrier's, where many phones can share one address.
-                Paid plans.
-            is_satellite (bool | Unset): Whether the address is a satellite operator's. Paid plans.
-            is_ssh (bool | Unset): Whether an SSH server answered on the address. Paid plans.
-            is_smtp (bool | Unset): Whether a mail server answered on the address. Paid plans.
-            is_web (bool | Unset): Whether a web server answered on the address, on port 80 or 443. Paid plans.
-            is_dns_resolver (bool | Unset): Whether an open DNS resolver answered on the address. Paid plans.
-            is_bittorrent (bool | Unset): Whether a BitTorrent client was seen on the address in the last 90 days. Paid
-                plans.
+                On a paid plan.
+            is_satellite (bool | Unset): Whether the address is a satellite operator's. On a paid plan.
+            is_ssh (bool | Unset): Whether an SSH server answered on the address. On a paid plan.
+            is_smtp (bool | Unset): Whether a mail server answered on the address. On a paid plan.
+            is_web (bool | Unset): Whether a web server answered on the address, on port 80 or 443. On a paid plan.
+            is_dns_resolver (bool | Unset): Whether an open DNS resolver answered on the address. On a paid plan.
+            is_bittorrent (bool | Unset): Whether a BitTorrent client was seen on the address in the last 90 days. On a paid
+                plan.
             vpn (VpnDetail | Unset): What is known about the VPN attribution. Every key is present when the
                 object is populated, empty values included; the object is `{}` when
                 `is_vpn` is false.
@@ -125,7 +125,7 @@ class LookupResponse:
                 Every key is present when the object is populated; the object is `{}`
                 when `is_smtp` is false.
             web (list[WebDetail] | Unset): Detail for `is_web`: a row per port that answered, lowest first, and `[]` when
-                false. Paid plans.
+                false. On a paid plan.
             dns_resolver (DnsResolverDetail | Unset): The open DNS resolver that answered on the address, from our DNS
                 Resolver IP database. Every key is present when the object is populated;
                 the object is `{}` when `is_dns_resolver` is false.
@@ -141,13 +141,13 @@ class LookupResponse:
                 without a key.
                 Each field is present whenever the object is: `asn` is 0 and the rest
                 empty where no announcement covers the address.
-            company (Company | Unset): Who uses the address, from our IP Company database. Paid plans. Every
+            company (Company | Unset): Who uses the address, from our IP Company database. On a paid plan. Every
                 key is present whenever the object is: empty strings where no record
                 covers the address.
             hostname (str | Unset): The name the address's reverse DNS (PTR) record points to, from our IP RDNS database; an
                 empty string when it has none. Every answer, with or without a key.
             abuse (AbuseContact | Unset): Where to report abuse from the address, from our IP Abuse Contact
-                database. Paid plans. Every key is present whenever the object is: empty
+                database. On a paid plan. Every key is present whenever the object is: empty
                 strings where no record covers the address.
             user_agent (UserAgentVerdict | Unset):
             trial_expired (bool | Unset): On every answer to a key on the free plan, and on no other: `false`

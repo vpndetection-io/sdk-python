@@ -18,12 +18,13 @@ class EntitlementPlan:
         key (str): The plan the organization is on, as an identifier that is never
             renamed or reused: `free` for the free plan, or a paid plan's key.
             Compare against it and show `name`. On `free`, usage counts its
-            trial, the lookups answered with every field.
-             Example: max.
+            trial, the lookups answered with every field. The Data plan is a key
+            per quota, `data_1` to `data_7`, each named Data.
+             Example: data_4.
         name (str): The plan's name, as the site and console show it: `Unlimited` for
             the free plan. Show this rather than a name built from `key`: a
             plan's name can change, and its key never does.
-             Example: Max.
+             Example: Data.
         tier (EntitlementPlanTier): The field tier, which decides how much of a lookup answer comes
             back; `free` is the free plan's. This list never gains a value: a
             new plan reports one of these. What each tier includes is documented

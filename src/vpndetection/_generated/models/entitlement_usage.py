@@ -23,8 +23,10 @@ class EntitlementUsage:
             normal state of an uncapped paid plan and is not the same as zero.
             Above the quota and below this, requests are served and billed as
             overage.
-        window_start (datetime.datetime): When the current allowance period began.
-        window_end (datetime.datetime): When the allowance next resets.
+        window_start (datetime.datetime): When the current allowance period began. On the free plan, when
+            its trial began, or now before a first lookup starts it.
+        window_end (datetime.datetime): When the allowance next resets. On the free plan, when its trial
+            ends, which it does once.
     """
 
     requests: int

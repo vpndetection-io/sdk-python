@@ -13,7 +13,7 @@ T = TypeVar("T", bound="Company")
 
 @_attrs_define
 class Company:
-    """Who uses the address, from our IP Company database. Paid plans. Every
+    """Who uses the address, from our IP Company database. On a paid plan. Every
     key is present whenever the object is: empty strings where no record
     covers the address.
 

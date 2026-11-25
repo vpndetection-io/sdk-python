@@ -14,7 +14,7 @@ T = TypeVar("T", bound="AbuseContact")
 @_attrs_define
 class AbuseContact:
     """Where to report abuse from the address, from our IP Abuse Contact
-    database. Paid plans. Every key is present whenever the object is: empty
+    database. On a paid plan. Every key is present whenever the object is: empty
     strings where no record covers the address.
 
         Attributes:

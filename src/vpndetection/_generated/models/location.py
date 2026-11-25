@@ -30,17 +30,17 @@ class Location:
             currency_symbol (str): Symbol of the country's currency, where known. Example: €.
             flag_emoji (str): The country's flag, as an emoji. Example: 🇦🇹.
             flag_unicode (str): The Unicode code points of the flag emoji. Example: U+1F1E6 U+1F1F9.
-            region (str | Unset): Region (state or province). Paid plans. Example: Vienna.
-            region_code (str | Unset): ISO 3166-2 region code. Paid plans. Example: AT-9.
-            city (str | Unset): City. Paid plans. Example: Vienna.
-            postal_code (str | Unset): Postal code. Paid plans. Example: 1230.
-            latitude (float | Unset): Latitude of the city. Paid plans. Example: 48.20849.
-            longitude (float | Unset): Longitude of the city. Paid plans. Example: 16.37208.
+            region (str | Unset): Region (state or province). On a paid plan. Example: Vienna.
+            region_code (str | Unset): ISO 3166-2 region code. On a paid plan. Example: AT-9.
+            city (str | Unset): City. On a paid plan. Example: Vienna.
+            postal_code (str | Unset): Postal code. On a paid plan. Example: 1230.
+            latitude (float | Unset): Latitude of the city. On a paid plan. Example: 48.20849.
+            longitude (float | Unset): Longitude of the city. On a paid plan. Example: 16.37208.
             accuracy_radius (int | Unset): Radius in km holding the true location with 67% confidence; 20000 for an address
-                announced everywhere, as an anycast one is. Paid plans. Example: 10.
-            geoname_id (str | Unset): GeoNames ID of the city. Paid plans. Example: 2761369.
-            dma_code (str | Unset): US TV market (DMA) code, empty outside the US. Paid plans.
-            last_changed (str | Unset): The day the range's location last changed. Paid plans. Example: 2026-10-06.
+                announced everywhere, as an anycast one is. On a paid plan. Example: 10.
+            geoname_id (str | Unset): GeoNames ID of the city. On a paid plan. Example: 2761369.
+            dma_code (str | Unset): US TV market (DMA) code, empty outside the US. On a paid plan.
+            last_changed (str | Unset): The day the range's location last changed. On a paid plan. Example: 2026-10-06.
     """
 
     continent: str
