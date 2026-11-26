@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.23.0 - 2026-11-26
+
+### Features
+
+- Middleware: allowBots sends only a crawler's User-Agent, at most four an address ([`c1538b5`](https://github.com/vpndetection-io/sdk-python/commit/c1538b5a2ffcbfeda39b825353418259740af0b9))
+
 ## 5.22.1 - 2026-11-25
 
 ### Fixes
