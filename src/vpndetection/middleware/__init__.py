@@ -16,6 +16,7 @@ from .condition import (
 from .core import (
     DEFAULT_RETRIES,
     DEFAULT_TIMEOUT,
+    MAX_AGENTS_PER_ADDRESS,
     AsyncCore,
     Core,
     Guard,
@@ -27,12 +28,14 @@ from .core import (
     Selectors,
     UserAgentSelector,
     bind_selectors,
+    names_crawler,
     verified,
 )
 
 __all__ = [
     "DEFAULT_RETRIES",
     "DEFAULT_TIMEOUT",
+    "MAX_AGENTS_PER_ADDRESS",
     "AsyncCore",
     "BlockCondition",
     "Conditions",
@@ -49,6 +52,7 @@ __all__ = [
     "constraint_count",
     "matches",
     "missing_members",
+    "names_crawler",
     "validate",
     "verified",
 ]

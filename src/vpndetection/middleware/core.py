@@ -7,10 +7,16 @@ shared conformance corpus is asserted once for Python rather than once per frame
 
 from __future__ import annotations
 
+import hashlib
 import logging
+import string
+import threading
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Generic, Literal, TypeVar
+from typing import Generic, Literal, NamedTuple, TypeVar
+
+from cachetools import TLRUCache
 
 from .._core import DEFAULT_BASE_URL, check_timeout
 from ..aio import AsyncVPNDetection
@@ -18,9 +24,11 @@ from ..bogon import is_bogon
 from ..client import VPNDetection
 from ..errors import VPNDetectionError
 from ..models import Result
+from ._crawlers import CRAWLER_TERMS
 from .condition import Conditions, matches, missing_members, validate
 
 __all__ = [
+    "MAX_AGENTS_PER_ADDRESS",
     "AsyncCore",
     "Core",
     "Guard",
@@ -31,6 +39,7 @@ __all__ = [
     "Selectors",
     "UserAgentSelector",
     "bind_selectors",
+    "names_crawler",
     "verified",
 ]
 
@@ -53,6 +62,25 @@ _log = logging.getLogger("vpndetection")
 # holding a visitor while we try again.
 DEFAULT_TIMEOUT = 2.5
 DEFAULT_RETRIES = 0
+
+#: The most crawler agents one address is looked up with while it is remembered.
+MAX_AGENTS_PER_ADDRESS = 4
+
+# How long an address's crawler agents are remembered, from the first: the client's default
+# cache TTL. Addresses remembered at once are bounded too, so a flood of them cannot grow it.
+_AGENTS_TTL = 60 * 60.0
+_AGENTS_MAX_ADDRESSES = 10_000
+
+# ``str.lower`` is Unicode-aware (the Kelvin sign lowercases to ``k``), and the terms are
+# plain ASCII, so only A-Z is folded.
+_ASCII_LOWER = str.maketrans(string.ascii_uppercase, string.ascii_lowercase)
+
+
+def names_crawler(agent: str) -> bool:
+    """Whether a ``User-Agent`` names a crawler, the only kind of agent whose verdict can
+    be ``verified`` or ``spoofed``. It errs toward a match, which costs a lookup."""
+    lower = agent.translate(_ASCII_LOWER)
+    return any(term in lower for term in CRAWLER_TERMS)
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,6 +106,9 @@ class Lookup:
     result: Result | None = None
     #: Why the lookup failed. None when it succeeded.
     error: Exception | None = None
+    #: Whether the request passed as a crawler: its answer's ``user_agent.verdict`` is
+    #: ``verified``, or, where its agent was not sent, ``bot.verified`` is true.
+    crawler: bool = False
 
 
 @dataclass(slots=True)
@@ -115,11 +146,15 @@ class Options(Generic[Req]):
     #: Where warnings go. Defaults to the "vpndetection" logger.
     on_warn: Callable[[str], None] | None = None
     #: Let a verified crawler through. On, the request's own ``User-Agent`` goes with its
-    #: lookup, and a request whose answer's ``user_agent.verdict`` is ``verified`` is never
-    #: refused, by ``block_condition`` or by a per-view guard; the answer is still
-    #: attached. Off by default, so the cache keeps one answer per address rather than one
-    #: per agent. Only a paid plan's answer carries the verdict: a keyless client, a spent
-    #: trial or a bogon peer never gets one, and lets nothing through.
+    #: lookup when it names a crawler, and a request whose answer's ``user_agent.verdict`` is
+    #: ``verified`` is never refused, by ``block_condition`` or by a per-view guard; the
+    #: answer is still attached. Any other agent, an absent or an empty header sends none,
+    #: since the verdict could only be ``not_bot``. One address is looked up with at most
+    #: ``MAX_AGENTS_PER_ADDRESS`` crawler agents an hour: past those, the lookup sends none,
+    #: and the request passes as a crawler only where the answer's ``bot.verified`` is true.
+    #: Off by default, so the cache keeps one answer per address rather than one per agent.
+    #: Only a paid plan's answer carries the verdict: a keyless client, a spent trial or a
+    #: bogon peer never gets one, and lets nothing through.
     allow_bots: bool = False
     _warned: set[str] = field(default_factory=set, repr=False)
 
@@ -146,6 +181,7 @@ class _Base(Generic[Req]):
         self._condition = options.block_condition
         self._selector = options.ip_selector or default_ip_selector
         self._user_agent = user_agent
+        self._agents = _CrawlerAgents() if options.allow_bots else None
         self._warned: set[str] = set()
 
     @property
@@ -178,24 +214,31 @@ class _Base(Generic[Req]):
             )
         return ip
 
-    def _agent(self, request: Req) -> str | None:
-        """The agent this request's lookup sends: its own ``User-Agent`` with
-        ``allow_bots`` on, None otherwise or when it sent none."""
-        if not self._options.allow_bots or self._user_agent is None:
+    def _claim(self, ip: str, request: Req) -> _Claim | None:
+        """What this request's lookup sends, None where ``allow_bots`` is off or the
+        request's ``User-Agent`` names no crawler, an absent or an empty one included."""
+        if self._agents is None or self._user_agent is None:
             return None
-        return self._user_agent(request) or None
+        header = self._user_agent(request)
+        if not header or not names_crawler(header):
+            return None
+        return _Claim(self._agents.agent_for(ip, header))
 
-    def _decide(self, ip: str, result: Result, agent: str | None) -> Lookup:
+    def _decide(self, ip: str, result: Result, claim: _Claim | None) -> Lookup:
         if self._condition is not None:
             self._report_missing(result)
-        if agent is not None and result.user_agent is None:
+        if claim is not None and claim.agent is not None and result.user_agent is None:
             _report_unverified(self._options.on_missing_field, self._warn)
+        crawler = claim is not None and (
+            _vouches_for_address(result) if claim.agent is None else verified(result)
+        )
         return Lookup(
             blocked=self._condition is not None
-            and not verified(result)
+            and not crawler
             and matches(self._condition, result),
             ip=ip,
             result=result,
+            crawler=crawler,
         )
 
     def _failed(self, ip: str, error: Exception) -> Lookup:
@@ -239,17 +282,17 @@ class Core(_Base[Req]):
         resolved = self._resolve(request)
         if isinstance(resolved, Lookup):
             return resolved
-        agent = self._agent(request)
+        claim = self._claim(resolved, request)
         try:
             result = self._client.lookup(
                 resolved,
-                user_agent=agent,
+                user_agent=claim.agent if claim else None,
                 retries=self._options.retries,
                 timeout=self._options.timeout,
             )
         except Exception as error:  # noqa: BLE001 - a failed lookup must never propagate
             return self._failed(resolved, error)
-        return self._decide(resolved, result, agent)
+        return self._decide(resolved, result, claim)
 
 
 class AsyncCore(_Base[Req]):
@@ -278,17 +321,17 @@ class AsyncCore(_Base[Req]):
         resolved = self._resolve(request)
         if isinstance(resolved, Lookup):
             return resolved
-        agent = self._agent(request)
+        claim = self._claim(resolved, request)
         try:
             result = await self._client.lookup(
                 resolved,
-                user_agent=agent,
+                user_agent=claim.agent if claim else None,
                 retries=self._options.retries,
                 timeout=self._options.timeout,
             )
         except Exception as error:  # noqa: BLE001 - a failed lookup must never propagate
             return self._failed(resolved, error)
-        return self._decide(resolved, result, agent)
+        return self._decide(resolved, result, claim)
 
 
 class Guard:
@@ -338,13 +381,67 @@ class Guard:
             self._on_missing_field,
             lambda message: _warn_once(self._warned, self._on_warn, message),
         )
-        return not verified(lookup.result) and matches(self._condition, lookup.result)
+        return not (lookup.crawler or verified(lookup.result)) and matches(
+            self._condition, lookup.result
+        )
 
 
 def verified(result: Result) -> bool:
     """Whether the answer vouches for the request's user agent: its operator confirms the
     address as the crawler it says it is."""
     return result.user_agent is not None and result.user_agent.verdict == "verified"
+
+
+def _vouches_for_address(result: Result) -> bool:
+    return result.bot is not None and result.bot.verified is True
+
+
+class _Claim(NamedTuple):
+    """A request whose ``User-Agent`` names a crawler."""
+
+    #: The agent the lookup sends, None past the address's bound.
+    agent: str | None
+
+
+class _Remembered(NamedTuple):
+    expires: float
+    digests: tuple[bytes, ...]
+
+
+class _CrawlerAgents:
+    """The crawler agents each address was looked up with.
+
+    Only a crawler's agent is sent, and an address claiming more than
+    ``MAX_AGENTS_PER_ADDRESS`` of them in an hour sends none past those, so a visitor
+    inventing an agent per request spends at most that many lookups. An address is held
+    for an hour from its first agent, which adding another does not extend, as a digest
+    of each so an entry's size does not depend on what a visitor sends.
+
+    ``TLRUCache`` is not thread-safe and the sync core serves a threaded server.
+    """
+
+    def __init__(self, timer: Callable[[], float] = time.monotonic) -> None:
+        self._entries: TLRUCache[str, _Remembered] = TLRUCache(
+            maxsize=_AGENTS_MAX_ADDRESSES,
+            ttu=lambda _ip, held, _now: held.expires,
+            timer=timer,
+        )
+        self._timer = timer
+        self._lock = threading.Lock()
+
+    def agent_for(self, ip: str, agent: str) -> str | None:
+        """The agent to send for this one, None once the address has used its bound."""
+        digest = hashlib.blake2b(agent.encode("utf-8", "surrogatepass"), digest_size=16).digest()
+        with self._lock:
+            held = self._entries.get(ip)
+            known = held.digests if held else ()
+            if digest in known:
+                return agent
+            if len(known) >= MAX_AGENTS_PER_ADDRESS:
+                return None
+            expires = held.expires if held else self._timer() + _AGENTS_TTL
+            self._entries[ip] = _Remembered(expires, (*known, digest))
+            return agent
 
 
 def _report_unverified(action: MissingFieldAction, warn: Callable[[str], None]) -> None:

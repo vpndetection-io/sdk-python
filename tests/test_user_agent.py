@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import pathlib
 import threading
 import time
 from typing import Any
@@ -20,10 +21,34 @@ from helpers import ClientFactory
 from vpndetection import AsyncVPNDetection, UserAgent, VPNDetection
 from vpndetection._core import batch_request
 from vpndetection._generated.models.batch_lookup_request import BatchLookupRequest
-from vpndetection.middleware import AsyncCore, Core, Guard, Lookup, Options
+from vpndetection.middleware import (
+    MAX_AGENTS_PER_ADDRESS,
+    AsyncCore,
+    Core,
+    Guard,
+    Lookup,
+    Options,
+    names_crawler,
+)
+from vpndetection.middleware.core import _CrawlerAgents
 
+CORPUS = json.loads((pathlib.Path(__file__).parent.parent / "testdata/testdata.json").read_text())[
+    "crawlerAgents"
+]
 PUBLIC_IP = "45.83.91.1"
+PEER = "66.249.66.1"
 GOOGLEBOT = "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
+CHROME = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/151.0.0.0 Safari/537.36"
+)
+
+
+WATCHED = {"ip": [PEER, "66.249.66.2"]}
+
+
+def crawler(n: int) -> str:
+    return f"Mozilla/5.0 (compatible; Examplebot/{n}.0)"
 
 
 class Origin:
@@ -31,9 +56,18 @@ class Origin:
     for the agent it was sent, and records what each request carried. `delay` holds each
     answer back, so concurrent callers overlap."""
 
-    def __init__(self, delay: float = 0.0, verdicts: dict[str, str] | None = None) -> None:
+    def __init__(
+        self,
+        delay: float = 0.0,
+        verdicts: dict[str, str] | None = None,
+        *,
+        verdict: str = "not_bot",
+        bot: dict[str, Any] | None = None,
+    ) -> None:
         self.requests: list[httpx.Request] = []
         self.verdicts = verdicts or {}
+        self._verdict = verdict
+        self._bot = bot
         self._delay = delay
         self._lock = threading.Lock()
         self.sync = httpx.MockTransport(self._handle_sync)
@@ -67,8 +101,10 @@ class Origin:
 
     def _body(self, ip: str, agent: str | None) -> dict[str, Any]:
         body: dict[str, Any] = {"ip": ip, "is_vpn": False}
+        if self._bot is not None:
+            body["bot"] = self._bot
         if agent:
-            verdict = self.verdicts.get(agent, "not_bot")
+            verdict = self.verdicts.get(agent, self._verdict)
             body["user_agent"] = {"agent": agent[:16], "kind": "bot", "verdict": verdict}
         return body
 
@@ -344,8 +380,8 @@ class Req:
         self.ip = ip
 
 
-def _core(origin: Origin, **options: Any) -> Core[Req]:
-    client = VPNDetection(transport=origin.sync)
+def _core(origin: Origin, *, cache: bool = True, **options: Any) -> Core[Req]:
+    client = VPNDetection(transport=origin.sync, cache=cache)
     return Core(Options(client=client, **options), lambda r: r.ip, lambda r: r.user_agent)
 
 
@@ -411,12 +447,12 @@ def test_a_verified_crawler_passes_a_condition_it_meets_and_a_forged_one_does_no
 
 
 def test_a_condition_naming_user_agent_refuses_a_forged_crawler() -> None:
-    origin = Origin(verdicts={GOOGLEBOT: "spoofed", "curl/8": "not_bot"})
+    origin = Origin(verdicts={GOOGLEBOT: "spoofed", crawler(1): "not_bot"})
     condition = {"user_agent": {"verdict": ["spoofed", "not_bot"]}}
     core = _core(origin, allow_bots=True, block_condition=condition)
 
     forged = core.evaluate(Req())
-    script = core.evaluate(Req(user_agent="curl/8", ip="45.83.91.2"))
+    script = core.evaluate(Req(user_agent=crawler(1), ip="45.83.91.2"))
 
     assert forged is not None
     assert forged.blocked is True
@@ -461,6 +497,143 @@ def test_a_served_answer_without_a_verdict_warns_once() -> None:
     assert origin.agents == [GOOGLEBOT, GOOGLEBOT]
     unverified = [w for w in warnings if "user_agent verdict" in w]
     assert len(unverified) == 1, warnings
+
+
+def test_only_an_agent_naming_a_crawler_is_sent_as_the_corpus_says() -> None:
+    assert CORPUS["crawlers"] and CORPUS["others"]
+    for agent in CORPUS["crawlers"]:
+        assert names_crawler(agent) is True, agent
+    for agent in CORPUS["others"]:
+        assert names_crawler(agent) is False, agent
+    for term in CORPUS["terms"]:
+        assert names_crawler(f"x {term.upper()} y") is True, term
+    assert names_crawler("BAR\u212aROWLER") is False, "only A-Z is folded to lower case"
+    assert names_crawler("") is False
+
+    origin = Origin(verdict="not_bot")
+    found = _core(origin, allow_bots=True, block_condition=WATCHED).evaluate(
+        Req(user_agent=CHROME, ip=PEER)
+    )
+
+    assert origin.agents == [None], "a browser's agent stayed off the lookup"
+    assert found is not None
+    assert found.blocked is True
+
+
+def test_a_core_without_a_condition_sends_no_agent_for_a_browser_and_blocks_nothing() -> None:
+    origin = Origin(verdict="verified")
+    found = _core(origin, allow_bots=True, on_missing_field="ignore").evaluate(
+        Req(user_agent=CHROME, ip=PEER)
+    )
+
+    assert origin.agents == [None]
+    assert found is not None
+    assert found.crawler is False
+
+
+def test_one_address_is_looked_up_with_at_most_four_crawler_agents() -> None:
+    assert MAX_AGENTS_PER_ADDRESS == 4
+    origin = Origin(verdict="verified")
+    core = _core(origin, cache=False, allow_bots=True, block_condition=WATCHED)
+
+    def passes(agent: str, ip: str = PEER) -> bool:
+        found = core.evaluate(Req(user_agent=agent, ip=ip))
+        assert found is not None
+        return not found.blocked
+
+    for n in range(1, 5):
+        assert passes(crawler(n)), f"agent {n}"
+    assert not passes(crawler(5)), "an agent past the bound is never let through as verified"
+    assert passes(crawler(1)), "a known agent is still sent"
+    assert origin.agents == [crawler(1), crawler(2), crawler(3), crawler(4), None, crawler(1)]
+
+    assert passes(crawler(5), "66.249.66.2"), "each address has its own bound"
+    assert origin.agents[-1] == crawler(5)
+
+
+def test_the_bound_holds_for_the_async_core_too() -> None:
+    origin = Origin(verdict="verified")
+
+    async def run() -> list[bool]:
+        async with AsyncVPNDetection(transport=origin.aio, cache=False) as client:
+            core: AsyncCore[Req] = AsyncCore(
+                Options(client=client, allow_bots=True, block_condition=WATCHED),
+                lambda r: r.ip,
+                lambda r: r.user_agent,
+            )
+            outcomes = []
+            for n in [1, 2, 3, 4, 5, 1]:
+                found = await core.evaluate(Req(user_agent=crawler(n), ip=PEER))
+                assert found is not None
+                outcomes.append(found.blocked)
+            return outcomes
+
+    assert asyncio.run(run()) == [False, False, False, False, True, False]
+    assert origin.agents == [crawler(1), crawler(2), crawler(3), crawler(4), None, crawler(1)]
+
+
+def test_past_the_bound_an_address_its_operator_vouches_for_still_passes() -> None:
+    origin = Origin(verdict="verified", bot={"verified": True})
+    core = _core(origin, allow_bots=True, block_condition=WATCHED)
+
+    for n in range(1, 6):
+        found = core.evaluate(Req(user_agent=crawler(n), ip=PEER))
+        assert found is not None
+        assert found.blocked is False, f"agent {n}"
+    assert origin.agents[-1] is None
+
+    browser = core.evaluate(Req(user_agent=CHROME, ip=PEER))
+    assert browser is not None
+    assert browser.blocked is True, "a browser on that address is judged as the condition says"
+
+
+def test_a_guard_passes_a_request_the_middleware_passed_past_the_bound() -> None:
+    origin = Origin(verdict="verified", bot={"verified": True})
+    core = _core(origin, allow_bots=True)
+    guard = Guard(WATCHED)
+
+    for n in range(1, 6):
+        found = core.evaluate(Req(user_agent=crawler(n), ip=PEER))
+        assert found is not None
+        assert guard.blocks(found) is False, f"agent {n}"
+    browser = core.evaluate(Req(user_agent=CHROME, ip=PEER))
+    assert browser is not None
+    assert guard.blocks(browser) is True
+
+
+def test_no_unsent_agent_reports_a_missing_verdict() -> None:
+    warnings: list[str] = []
+    origin = Origin(bot={"verified": False})
+    core = _core(origin, allow_bots=True, on_warn=warnings.append)
+
+    for n in range(1, 6):
+        core.evaluate(Req(user_agent=crawler(n), ip=PEER))
+    core.evaluate(Req(user_agent=CHROME, ip=PEER))
+
+    assert origin.agents[4:] == [None], "the address-only answer is cached, whoever asked"
+    assert warnings == [], "a lookup that sent no agent has no verdict to lack"
+
+
+def test_an_address_is_remembered_an_hour_from_its_first_agent() -> None:
+    now = [1000.0]
+    agents = _CrawlerAgents(timer=lambda: now[0])
+
+    for n in range(1, 5):
+        assert agents.agent_for(PEER, crawler(n)) == crawler(n)
+        now[0] += 500.0
+    now[0] = 1000.0 + 3599.0
+    assert agents.agent_for(PEER, crawler(5)) is None, "still held just under the hour"
+    assert agents.agent_for(PEER, crawler(1)) == crawler(1)
+    now[0] = 1000.0 + 3601.0
+    assert agents.agent_for(PEER, crawler(5)) == crawler(5), "adding agents did not extend it"
+    assert agents.agent_for(PEER, crawler(6)) == crawler(6)
+
+
+def test_the_remembered_addresses_are_bounded() -> None:
+    agents = _CrawlerAgents()
+    for n in range(10_050):
+        agents.agent_for(f"2001:db8::{n:x}", crawler(1))
+    assert len(agents._entries) == 10_000
 
 
 def test_a_core_without_a_user_agent_selector_refuses_allow_bots() -> None:
