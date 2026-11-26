@@ -71,6 +71,10 @@ MAX_AGENTS_PER_ADDRESS = 4
 _AGENTS_TTL = 60 * 60.0
 _AGENTS_MAX_ADDRESSES = 10_000
 
+# The one member of an answer that a request sending no agent never gets, so a condition
+# naming it is no plan gap for that request.
+_UNSENT = ("user_agent",)
+
 # ``str.lower`` is Unicode-aware (the Kelvin sign lowercases to ``k``), and the terms are
 # plain ASCII, so only A-Z is folded.
 _ASCII_LOWER = str.maketrans(string.ascii_uppercase, string.ascii_lowercase)
@@ -109,6 +113,11 @@ class Lookup:
     #: Whether the request passed as a crawler: its answer's ``user_agent.verdict`` is
     #: ``verified``, or, where its agent was not sent, ``bot.verified`` is true.
     crawler: bool = False
+    #: Whether ``allow_bots`` is on and this request's lookup sent no agent: its agent
+    #: names no crawler, it carried none, or its address is past its bound. The answer
+    #: has no ``user_agent`` then, whatever the plan serves, so a condition naming it is no
+    #: plan gap.
+    agent_unsent: bool = False
 
 
 @dataclass(slots=True)
@@ -225,8 +234,10 @@ class _Base(Generic[Req]):
         return _Claim(self._agents.agent_for(ip, header))
 
     def _decide(self, ip: str, result: Result, claim: _Claim | None) -> Lookup:
+        # With allow_bots on, a request that sent no agent has no verdict to lack.
+        unsent = self._agents is not None and (claim is None or claim.agent is None)
         if self._condition is not None:
-            self._report_missing(result)
+            self._report_missing(result, unsent)
         if claim is not None and claim.agent is not None and result.user_agent is None:
             _report_unverified(self._options.on_missing_field, self._warn)
         crawler = claim is not None and (
@@ -239,16 +250,22 @@ class _Base(Generic[Req]):
             ip=ip,
             result=result,
             crawler=crawler,
+            agent_unsent=unsent,
         )
 
     def _failed(self, ip: str, error: Exception) -> Lookup:
         return Lookup(blocked=self._options.fail_closed, ip=ip, error=error)
 
-    def _report_missing(self, result: Result) -> None:
+    def _report_missing(self, result: Result, unsent: bool) -> None:
         if self._condition is None:
             return
         _report_missing(
-            "block_condition", self._condition, result, self._options.on_missing_field, self._warn
+            "block_condition",
+            self._condition,
+            result,
+            self._options.on_missing_field,
+            self._warn,
+            unserved=_UNSENT if unsent else (),
         )
 
 
@@ -380,6 +397,7 @@ class Guard:
             lookup.result,
             self._on_missing_field,
             lambda message: _warn_once(self._warned, self._on_warn, message),
+            unserved=_UNSENT if lookup.agent_unsent else (),
         )
         return not (lookup.crawler or verified(lookup.result)) and matches(
             self._condition, lookup.result
@@ -465,10 +483,11 @@ def _report_missing(
     result: Result,
     action: MissingFieldAction,
     warn: Callable[[str], None],
+    unserved: tuple[str, ...] = (),
 ) -> None:
     if action == "ignore":
         return
-    missing = missing_members(condition, result)
+    missing = [m for m in missing_members(condition, result) if m not in unserved]
     if not missing:
         return
     message = (

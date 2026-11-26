@@ -614,6 +614,128 @@ def test_no_unsent_agent_reports_a_missing_verdict() -> None:
     assert warnings == [], "a lookup that sent no agent has no verdict to lack"
 
 
+FORGED = {"user_agent": {"verdict": "spoofed"}}
+
+
+def _judge(flavor: str, origin: Origin, requests: list[Req], **options: Any) -> list[Lookup]:
+    """Each request through a core of `flavor` on one client, the lookups in order."""
+    if flavor == "sync":
+        core = _core(origin, **options)
+        found = [core.evaluate(request) for request in requests]
+    else:
+
+        async def run() -> list[Lookup | None]:
+            async with AsyncVPNDetection(transport=origin.aio) as client:
+                acore: AsyncCore[Req] = AsyncCore(
+                    Options(client=client, **options), lambda r: r.ip, lambda r: r.user_agent
+                )
+                return [await acore.evaluate(request) for request in requests]
+
+        found = asyncio.run(run())
+    assert None not in found
+    return [one for one in found if one is not None]
+
+
+@pytest.mark.parametrize("flavor", ["sync", "async"])
+@pytest.mark.parametrize("header", [CHROME, None, ""])
+def test_a_condition_on_the_verdict_is_no_plan_gap_for_a_request_that_sent_no_agent(
+    flavor: str, header: str | None
+) -> None:
+    warnings: list[str] = []
+    origin = Origin(verdict="spoofed")
+    found = _judge(
+        flavor,
+        origin,
+        [Req(user_agent=header, ip=PEER)],
+        allow_bots=True,
+        block_condition=FORGED,
+        on_missing_field="raise",
+        on_warn=warnings.append,
+    )
+
+    assert found[0].blocked is False, repr(header)
+    assert origin.agents == [None]
+    assert warnings == []
+
+
+@pytest.mark.parametrize("flavor", ["sync", "async"])
+def test_past_the_bound_a_condition_on_the_verdict_is_no_plan_gap_either(flavor: str) -> None:
+    origin = Origin(verdict="spoofed")
+    found = _judge(
+        flavor,
+        origin,
+        [Req(user_agent=crawler(n), ip=PEER) for n in range(1, 6)],
+        allow_bots=True,
+        block_condition=FORGED,
+        on_missing_field="raise",
+    )
+
+    assert [one.blocked for one in found] == [True, True, True, True, False]
+    assert origin.agents == [crawler(1), crawler(2), crawler(3), crawler(4), None]
+
+
+def test_a_member_the_plan_lacks_is_still_reported_beside_one_on_the_verdict() -> None:
+    both: list[dict[str, Any]] = [FORGED, {"is_hosting": True}]
+    warnings: list[str] = []
+    origin = Origin(verdict="spoofed")
+    core = _core(origin, allow_bots=True, block_condition=both, on_warn=warnings.append)
+
+    found = core.evaluate(Req(user_agent=CHROME, ip=PEER))
+
+    assert origin.agents == [None]
+    assert len(warnings) == 1
+    assert "is_hosting" in warnings[0]
+    assert "user_agent" not in warnings[0]
+    guarded: list[str] = []
+    assert found is not None
+    assert Guard(both, on_warn=guarded.append).blocks(found) is False
+    assert len(guarded) == 1
+    assert "is_hosting" in guarded[0]
+    assert "user_agent" not in guarded[0]
+
+
+def test_a_condition_on_the_verdict_is_reported_once_where_allow_bots_is_off() -> None:
+    warnings: list[str] = []
+    origin = Origin(verdict="spoofed")
+    core = _core(origin, block_condition=FORGED, on_warn=warnings.append)
+
+    for ip in ("45.83.91.1", "45.83.91.2"):
+        core.evaluate(Req(user_agent=CHROME, ip=ip))
+
+    assert origin.agents == [None, None]
+    assert len(warnings) == 1, "a condition that can never match is said so, once"
+    assert "user_agent" in warnings[0]
+    with pytest.raises(ValueError, match="user_agent"):
+        _core(origin, block_condition=FORGED, on_missing_field="raise").evaluate(
+            Req(user_agent=CHROME, ip=PEER)
+        )
+
+
+def test_a_guard_on_the_verdict_is_no_plan_gap_for_a_request_that_sent_no_agent() -> None:
+    origin = Origin(verdict="spoofed")
+    core = _core(origin, allow_bots=True)
+    guard = Guard(FORGED, on_missing_field="raise")
+
+    browser = core.evaluate(Req(user_agent=CHROME, ip=PEER))
+    bare = core.evaluate(Req(user_agent=None, ip=PEER))
+    past = [core.evaluate(Req(user_agent=crawler(n), ip="66.249.66.2")) for n in range(1, 6)]
+
+    assert browser is not None
+    assert bare is not None
+    assert past[4] is not None
+    assert guard.blocks(browser) is False
+    assert guard.blocks(bare) is False
+    assert [guard.blocks(one) for one in past if one is not None] == [True] * 4 + [False]
+
+    warned: list[str] = []
+    off = _core(Origin(verdict="spoofed")).evaluate(Req(user_agent=CHROME, ip=PEER))
+    assert off is not None
+    assert Guard(FORGED, on_warn=warned.append).blocks(off) is False
+    assert len(warned) == 1, "allow_bots off, a guard on the verdict is still reported"
+    with pytest.raises(ValueError, match="user_agent"):
+        Guard(FORGED, on_missing_field="raise").blocks(off)
+
+
 def test_an_address_is_remembered_an_hour_from_its_first_agent() -> None:
     now = [1000.0]
     agents = _CrawlerAgents(timer=lambda: now[0])
