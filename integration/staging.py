@@ -353,6 +353,15 @@ def assert_shape(tier: str, result: Result) -> None:
     )
     assert result.is_vpn is raw["is_vpn"], f"{tier}: is_vpn did not survive the mapping"
 
+    # The AS's `type` is a paid plan's member: an answer without it is read, with the type
+    # empty, and one with it is read as served. Neither is required, so a run passes before
+    # and after the API stops serving it to Unlimited.
+    asn = raw.get("asn")
+    if isinstance(asn, dict):
+        assert isinstance(asn.get("type", ""), str), f"{tier}: asn.type is {asn.get('type')!r}"
+        assert result.asn is not None, f"{tier}: asn was served and the client dropped it"
+        assert result.asn.type == asn.get("type", ""), f"{tier}: asn.type did not survive"
+
     for name, spec in MEMBERS.items():
         flag = f"is_{name}"
         if flag in raw:
