@@ -326,17 +326,24 @@ class Location:
     last_changed: str | None = None
 
 
+#: Marks a member an answer may leave out that keeps its non-optional type until the next
+#: major: it reads as that type's empty value, and `raw` (the answer as served) says whether
+#: the answer carried it. The middleware reads the mark, so it never matches the empty value.
+_HELD: dict[str, bool] = {"held": True}
+
+
 @dataclass(frozen=True, slots=True)
 class Asn:
     """The AS announcing the address, on every answer, with or without a key: `asn` is 0
     where none does. Every answer carries `country` and `rpki_status`, and one without
     them is refused as the server's failure; they are `None` only on an `Asn` built by
-    hand."""
+    hand. `type` is on a paid plan's answers: Unlimited's leaves it out, and it reads as
+    the empty string then, which `raw["asn"]` tells from a served one."""
 
     asn: int = 0
     name: str = ""
     domain: str = ""
-    type: str = ""
+    type: str = field(default="", metadata=_HELD)
     prefix: str = ""
     country: str | None = None
     rpki_status: str | None = None
@@ -445,8 +452,9 @@ class Result:
     hostname: str | None = None
     abuse: AbuseContact | None = None
 
-    #: On every plan's answers: whether an automated client, a crawler, a monitor, a scanner
-    #: or a webhook sender, uses the address. `bot`, whose it is, is on a paid plan's.
+    #: Whether an automated client, a crawler, a monitor, a scanner or a webhook sender, uses
+    #: the address. On a paid plan's answers, with `bot`, whose it is: `None` where your plan
+    #: does not include it.
     is_bot: bool | None = None
     bot: BotDetail | None = None
 
@@ -782,11 +790,15 @@ def _location(value: Any) -> Location | None:
 def _asn(value: Any) -> Asn | None:
     if isinstance(value, Unset):
         return None
+    if value.type_ is None:
+        # Optional in the spec, so the generated check lets a null through as absent; the
+        # public `type` stays a `str`, so one that is present is a string or the failure.
+        raise TypeError("the answer's asn.type is null")
     return Asn(
         asn=value.asn,
         name=value.name,
         domain=value.domain,
-        type=value.type_,
+        type="" if isinstance(value.type_, Unset) else value.type_,
         prefix=value.prefix,
         country=_opt(value.country),
         rpki_status=_opt(value.rpki_status),

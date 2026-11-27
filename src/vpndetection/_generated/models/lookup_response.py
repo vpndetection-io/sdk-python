@@ -55,7 +55,7 @@ class LookupResponse:
             is_cdn (bool | Unset): Whether the address belongs to a CDN. On a paid plan.
             is_bot (bool | Unset): Whether an automated client uses the address, such as a search engine's or an AI
                 company's crawler, an uptime monitor, an internet scanner or a webhook sender. `bot` says whose, what it does
-                and whether its operator vouches for the address. Every answer, with or without a key.
+                and whether its operator vouches for the address. On a paid plan.
             is_resproxy (bool | Unset): Whether the address was seen in a residential proxy pool. On a paid plan.
             is_dcproxy (bool | Unset): Whether the address is one a datacenter proxy service sells or runs on, a proxy
                 company's own ranges included. On a paid plan.

@@ -9,6 +9,7 @@ knowing when a sibling SDK's test file is full of renaming.
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import http.server
 import json
 import pathlib
@@ -194,6 +195,140 @@ def test_a_missing_member_warns_once_or_raises_on_request() -> None:
         on_warn=fail,
     )
     assert quiet.evaluate(Req()) is not None
+
+
+# A keyless answer carries the AS without its `type`, a paid plan's member, which the type reads
+# as the empty string. The core knows the answer left it out, so a condition on it never matches
+# and is reported by its path, and the empty string is never taken for a value.
+ASN_ANSWER = {
+    "asn": 9009,
+    "name": "M247 Europe SRL",
+    "domain": "m247global.com",
+    "prefix": "146.70.116.0/24",
+    "country": "US",
+    "rpki_status": "valid",
+}
+UNLIMITED_BODY = {"ip": PUBLIC_IP, "is_vpn": True, "asn": ASN_ANSWER}
+PAID_BODY = {"ip": PUBLIC_IP, "is_vpn": True, "asn": {**ASN_ANSWER, "type": "hosting"}}
+
+
+@pytest.mark.parametrize(
+    "condition",
+    [
+        {"asn": {"type": "hosting"}},
+        {"asn": {"type": ["hosting", ""]}},
+        {"asn": {"type": ""}},
+        [{"is_hosting": True}, {"asn": {"type": "hosting"}}],
+    ],
+    ids=["a value", "any-of with the empty one", "the empty one", "one of two"],
+)
+def test_a_condition_on_the_asn_type_never_matches_an_answer_that_lacks_it(
+    condition: Any,
+) -> None:
+    warnings: list[str] = []
+    core = _core(
+        client=_serving(UNLIMITED_BODY), block_condition=condition, on_warn=warnings.append
+    )
+
+    lookup = core.evaluate(Req())
+
+    assert lookup is not None and lookup.error is None
+    assert lookup.result is not None and lookup.result.asn is not None
+    assert lookup.result.asn.name == "M247 Europe SRL", "the answer is attached, read"
+    assert lookup.blocked is False
+    assert len(warnings) == 1
+    named = warnings[0].removeprefix("block_condition names ").split(" which ")[0]
+    assert named.rstrip(", ").split(", ")[-1] == "asn.type", "reported by its path, not as `asn`"
+    assert "asn" not in named.replace("asn.type", "").split(", ")
+
+
+def test_the_same_condition_blocks_an_answer_that_carries_the_type() -> None:
+    warnings: list[str] = []
+    for condition, blocked in (
+        ({"asn": {"type": "hosting"}}, True),
+        ({"asn": {"type": ["isp", "hosting"]}}, True),
+        ({"asn": {"type": "isp"}}, False),
+    ):
+        core = _core(client=_serving(PAID_BODY), block_condition=condition, on_warn=warnings.append)
+        lookup = core.evaluate(Req())
+        assert lookup is not None and lookup.result is not None
+        assert lookup.result.asn is not None and lookup.result.asn.type == "hosting"
+        assert lookup.blocked is blocked, condition
+    assert warnings == [], "a served type is no plan gap"
+
+
+def test_a_condition_on_the_asn_type_raises_on_request_and_can_be_silenced() -> None:
+    strict = _core(
+        client=_serving(UNLIMITED_BODY),
+        block_condition={"asn": {"type": "hosting"}},
+        on_missing_field="raise",
+    )
+    with pytest.raises(ValueError, match="asn.type"):
+        strict.evaluate(Req())
+
+    def fail(_: str) -> None:
+        raise AssertionError("ignore must not warn")
+
+    quiet = _core(
+        client=_serving(UNLIMITED_BODY),
+        block_condition={"asn": {"type": "hosting"}},
+        on_missing_field="ignore",
+        on_warn=fail,
+    )
+    lookup = quiet.evaluate(Req())
+    assert lookup is not None and lookup.blocked is False
+
+
+def test_a_cached_answer_still_knows_the_asn_type_was_left_out() -> None:
+    stub = Stub({PUBLIC_IP: {"body": UNLIMITED_BODY}})
+    client = VPNDetection(retries=0, transport=stub.transport)
+    warnings: list[str] = []
+    core = _core(client=client, block_condition={"asn": {"type": ""}}, on_warn=warnings.append)
+
+    first = core.evaluate(Req())
+    second = core.evaluate(Req())
+
+    assert len(stub.calls) == 1, "the second lookup was the cache's"
+    for lookup in (first, second):
+        assert lookup is not None and lookup.blocked is False
+    assert len(warnings) == 1, "warned once, as for any member the plan lacks"
+    assert "asn.type" in warnings[0]
+
+
+def test_the_async_core_reads_the_asn_type_as_left_out_too() -> None:
+    async def evaluate() -> tuple[Lookup | None, list[str]]:
+        warnings: list[str] = []
+        stub = Stub({PUBLIC_IP: {"body": UNLIMITED_BODY}})
+        async with AsyncVPNDetection(cache=False, retries=0, transport=stub.transport) as client:
+            core: AsyncCore[Req] = AsyncCore(
+                Options(
+                    client=client,
+                    block_condition={"asn": {"type": ""}},
+                    on_warn=warnings.append,
+                ),
+                SELECTORS.default,
+            )
+            return await core.evaluate(Req()), warnings
+
+    lookup, warnings = asyncio.run(evaluate())
+
+    assert lookup is not None and lookup.blocked is False
+    assert lookup.result is not None and lookup.result.asn is not None
+    assert len(warnings) == 1 and warnings[0].startswith("block_condition names asn.type,")
+
+
+def test_a_type_built_by_hand_is_a_value_whatever_the_answer_it_replaces_carried() -> None:
+    result = to_result(UNLIMITED_BODY)
+    assert result.asn is not None
+    assert missing_members({"asn": {"type": "hosting"}}, result) == ["asn.type"]
+    assert matches({"asn": {"type": "hosting"}}, result) is False
+
+    built = dataclasses.replace(result, asn=dataclasses.replace(result.asn, type="hosting"))
+    assert missing_members({"asn": {"type": "hosting"}}, built) == []
+    assert matches({"asn": {"type": "hosting"}}, built) is True
+
+    bare = Result(ip=PUBLIC_IP, is_vpn=True, asn=result.asn)
+    assert missing_members({"asn": {"type": "hosting"}}, bare) == []
 
 
 def test_selectors_read_what_they_say_they_read() -> None:

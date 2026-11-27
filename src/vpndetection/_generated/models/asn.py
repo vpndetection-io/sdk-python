@@ -6,6 +6,8 @@ from typing import Any, Self, TypeVar
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
+from ..types import UNSET, Unset
+
 T = TypeVar("T", bound="Asn")
 
 
@@ -20,20 +22,21 @@ class Asn:
             asn (int): The AS number, 0 when no announcement covers the address. Example: 9009.
             name (str): Name of the organization that operates the AS. Example: M247 Europe SRL.
             domain (str): The AS operator's own registrable domain. Example: m247global.com.
-            type_ (str): The kind of network the AS runs: isp, hosting, education, government or business. Example: hosting.
             prefix (str): The announced BGP prefix that covers the address, the most specific when several do. Example:
                 146.70.116.0/24.
             country (str): The country the AS's registry assigned it to. Example: RO.
             rpki_status (str): The announcement's RPKI status: valid, invalid or not_found. Example: not_found.
+            type_ (str | Unset): The kind of network the AS runs: isp, hosting, education, government or business. On a paid
+                plan. Example: hosting.
     """
 
     asn: int
     name: str
     domain: str
-    type_: str
     prefix: str
     country: str
     rpki_status: str
+    type_: str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -43,13 +46,13 @@ class Asn:
 
         domain = self.domain
 
-        type_ = self.type_
-
         prefix = self.prefix
 
         country = self.country
 
         rpki_status = self.rpki_status
+
+        type_ = self.type_
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -58,12 +61,13 @@ class Asn:
                 "asn": asn,
                 "name": name,
                 "domain": domain,
-                "type": type_,
                 "prefix": prefix,
                 "country": country,
                 "rpki_status": rpki_status,
             }
         )
+        if type_ is not UNSET:
+            field_dict["type"] = type_
 
         return field_dict
 
@@ -76,22 +80,22 @@ class Asn:
 
         domain = d.pop("domain")
 
-        type_ = d.pop("type")
-
         prefix = d.pop("prefix")
 
         country = d.pop("country")
 
         rpki_status = d.pop("rpki_status")
 
+        type_ = d.pop("type", UNSET)
+
         asn = cls(
             asn=asn,
             name=name,
             domain=domain,
-            type_=type_,
             prefix=prefix,
             country=country,
             rpki_status=rpki_status,
+            type_=type_,
         )
 
         asn.additional_properties = d

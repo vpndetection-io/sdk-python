@@ -125,17 +125,19 @@ def test_lookup_preserves_absent_versus_false_across_every_plan_shape(
             )
         for key in DETAIL_OBJECTS:
             if key in expect:
-                assert served(getattr(result, key)) == expect[key], f"{name}: {key}"
+                got = served(getattr(result, key), result.raw.get(key))
+                assert got == expect[key], f"{name}: {key}"
 
 
-def served(member: Any) -> Any:
+def served(member: Any, wire: Any = None) -> Any:
     """A member of a `Result` in the shape the corpus writes it in: a detail object as its
-    wire dict, `web`'s tuple as a list of them, and `hostname` as it is."""
+    wire dict, `web`'s tuple as a list of them, and `hostname` as it is. `wire` is the member
+    as the answer carried it, which says what a held member's empty value stands in for."""
     if isinstance(member, tuple):
         return [as_wire(row) for row in member]
     if member is None or isinstance(member, str):
         return member
-    return as_wire(member)
+    return as_wire(member, wire if isinstance(wire, dict) else None)
 
 
 def test_a_429_is_classified_by_retry_after_not_by_its_status(make_client: ClientFactory) -> None:

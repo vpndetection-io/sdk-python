@@ -9,9 +9,11 @@ an HTML 429 into a retried `server_error`, sent three times (measured 2026-10-15
 
 from __future__ import annotations
 
+import dataclasses
 import datetime
 import functools
 import json
+import typing
 from collections.abc import Callable
 from typing import Any
 
@@ -19,7 +21,7 @@ import httpx
 import pytest
 from helpers import ClientFactory
 
-from vpndetection import Result, VPNDetectionError, _core
+from vpndetection import Asn, Result, VPNDetectionError, _core
 
 LOOKUP = {"ip": "8.8.8.8", "is_vpn": False}
 
@@ -290,6 +292,10 @@ MALFORMED = {
         "lookup",
         {**LOOKUP, "asn": {**ASN, "rpki_status": None}},
     ),
+    "a lookup's asn type null": ("lookup", {**LOOKUP, "asn": {**ASN, "type": None}}),
+    "a lookup's asn type a number": ("lookup", {**LOOKUP, "asn": {**ASN, "type": 1}}),
+    "a lookup's asn type a list": ("lookup", {**LOOKUP, "asn": {**ASN, "type": ["isp"]}}),
+    "my_ip's asn type null": ("my_ip", {**LOOKUP, "asn": {**ASN, "type": None}}),
     "my_ip's asn country missing": ("my_ip", _asn_without("country")),
     "my_ip's asn rpki_status null": ("my_ip", {**LOOKUP, "asn": {**ASN, "rpki_status": None}}),
     "a lookup's is_bot a string": ("lookup", {**LOOKUP, "is_bot": "yes"}),
@@ -383,6 +389,79 @@ def test_the_fixtures_above_read_as_answers(make_client: ClientFactory) -> None:
 
         assert not isinstance(outcome_of(functools.partial(call, client)), VPNDetectionError), name
         assert origin.paths == [path]
+
+
+# Unlimited's answer carries the AS without its `type`, a paid plan's member (spec 2026.11.26).
+# Each answer is read, so a keyless lookup does not fail the moment the API stops sending it.
+UNLIMITED_ASN: dict[str, Any] = {name: value for name, value in ASN.items() if name != "type"}
+
+
+@pytest.mark.parametrize("call", ["lookup", "my_ip"])
+def test_an_answer_whose_asn_lacks_the_type_is_read_with_the_type_empty(
+    make_client: ClientFactory, call: str
+) -> None:
+    path, run = CALLS[call]
+    origin = Raw(200, json.dumps({**LOOKUP, "asn": UNLIMITED_ASN}))
+    client = make_client(transport=origin.transport, cache=False, retries=2)
+
+    result = run(client)
+
+    assert isinstance(result, Result), f"{call} answered {result!r}"
+    assert result.asn == Asn(
+        asn=15169,
+        name="Google LLC",
+        domain="google.com",
+        type="",
+        prefix="66.249.64.0/20",
+        country="US",
+        rpki_status="valid",
+    )
+    assert "type" not in result.raw["asn"], "raw is the answer as served"
+    assert origin.paths == [path], "a readable answer is never retried"
+
+
+def test_a_batch_entry_whose_asn_lacks_the_type_is_read_too(make_client: ClientFactory) -> None:
+    body = {"results": {"8.8.8.8": {**LOOKUP, "asn": UNLIMITED_ASN}}}
+    origin = Raw(200, json.dumps(body))
+    client = make_client(transport=origin.transport, cache=False, retries=2)
+
+    answer = client.lookup_batch(["8.8.8.8"])["8.8.8.8"]
+
+    assert isinstance(answer, Result), repr(answer)
+    assert answer.asn is not None and answer.asn.type == ""
+    assert "type" not in answer.raw["asn"]
+    assert origin.paths == ["/batch"]
+
+
+@pytest.mark.parametrize("served", ["hosting", "isp", ""])
+def test_an_asn_type_the_answer_carries_is_read_as_served(
+    make_client: ClientFactory, served: str
+) -> None:
+    origin = Raw(200, json.dumps({**LOOKUP, "asn": {**ASN, "type": served}}))
+    client = make_client(transport=origin.transport, cache=False)
+
+    result = client.lookup("8.8.8.8")
+
+    assert result.asn is not None and result.asn.type == served
+    assert result.raw["asn"]["type"] == served
+
+
+def test_the_asn_keeps_the_type_and_the_constructor_it_had() -> None:
+    """A minor never moves a member of a public type: `type` stays a `str` at its place in
+    the constructor, so an `Asn` built by hand, by position or by name, still builds."""
+    members = dataclasses.fields(Asn)
+    assert [member.name for member in members] == [
+        "asn",
+        "name",
+        "domain",
+        "type",
+        "prefix",
+        "country",
+        "rpki_status",
+    ]
+    assert typing.get_type_hints(Asn)["type"] is str
+    assert Asn().type == ""
+    assert Asn(15169, "Google LLC", "google.com", "hosting").type == "hosting"
 
 
 # A date-time and a date are RFC 3339's and nothing else. 5.12.0 read them with
@@ -656,6 +735,8 @@ ENTRIES: dict[str, Any] = {
     "an empty object": {},
     "ip null": {**LOOKUP, "ip": None},
     "is_vpn a string": {**LOOKUP, "is_vpn": "yes"},
+    "asn type null": {**LOOKUP, "asn": {**ASN, "type": None}},
+    "asn type a number": {**LOOKUP, "asn": {**ASN, "type": 1}},
 }
 
 

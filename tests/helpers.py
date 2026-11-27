@@ -462,13 +462,16 @@ class SlowBody:
                 return
 
 
-def as_wire(detail: Any) -> dict[str, Any]:
+def as_wire(detail: Any, served: dict[str, Any] | None = None) -> dict[str, Any]:
     """A detail object back in the shape the corpus writes it in.
 
     The corpus is language-neutral JSON, so its dates are ISO strings; this library hands
-    a Python caller `datetime.date`, which is the whole reason this exists.
+    a Python caller `datetime.date`, which is the whole reason this exists. `served` is the
+    object as the answer carried it: a member the type holds at its empty value (`asn.type`)
+    that it lacks was never on the wire, so it is left out here too.
     """
     fields = dataclasses.asdict(detail)
+    held = {f.name for f in dataclasses.fields(detail) if f.metadata.get("held")}
     return {
         key: value.isoformat()
         if isinstance(value, datetime.date)
@@ -476,7 +479,7 @@ def as_wire(detail: Any) -> dict[str, Any]:
         if isinstance(value, tuple)
         else value
         for key, value in fields.items()
-        if value is not None
+        if value is not None and not (served is not None and key in held and key not in served)
     }
 
 

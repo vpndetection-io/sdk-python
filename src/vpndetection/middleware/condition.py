@@ -6,6 +6,7 @@ API uses, so what you write here reads like what you get back.
 
 from __future__ import annotations
 
+import dataclasses
 from typing import Any
 
 __all__ = [
@@ -40,30 +41,31 @@ _BOUND_KEYS = frozenset({"gte", "gt", "lte", "lt"})
 
 def matches(condition: Conditions, result: Any) -> bool:
     """Whether an answer satisfies the condition, and should therefore be blocked."""
+    raw = getattr(result, "raw", None)
     for one in _as_list(condition):
-        if _matches_object(one, result):
+        if _matches_object(one, result, raw):
             return True
     return False
 
 
 def missing_members(condition: Conditions, result: Any) -> list[str]:
-    """The top-level members a condition names that this answer did not carry.
+    """The members a condition names that this answer did not carry: a top-level member,
+    or a paid one inside an object every plan gets, by its path (``asn.type``).
 
     A field your plan does not include is absent rather than false, so a condition
     naming one can never match and the block would silently never fire. Gating is per
-    top-level member, which is why only the first path segment is checked: a detail
-    object present but empty is a real answer meaning the flag is false, not a plan gap.
+    top-level member, so a detail object present but empty is a real answer meaning the
+    flag is false, not a plan gap. Inside an object that is present, only a member the
+    type holds at its empty value (``asn.type``) is reported, and only when the answer as
+    served lacked it: the empty value is never read as one the answer carried.
 
     A locally answered bogon needs no special case: it is synthesized in the widest
     shape, so every member is present and nothing reads as missing.
     """
     missing: list[str] = []
+    raw = getattr(result, "raw", None)
     for one in _as_list(condition):
-        for member, want in one.items():
-            if constraint_count(want) == 0 or member in missing:
-                continue
-            if getattr(result, member, None) is None:
-                missing.append(member)
+        _collect_missing(one, result, raw, "", missing)
     return missing
 
 
@@ -105,16 +107,54 @@ def _as_list(condition: Conditions) -> list[BlockCondition]:
     return [condition]
 
 
-def _matches_object(condition: BlockCondition, value: Any) -> bool:
+def _collect_missing(
+    condition: BlockCondition, value: Any, raw: Any, prefix: str, missing: list[str]
+) -> None:
     for member, want in condition.items():
         if constraint_count(want) == 0:
             continue
-        if not _matches_value(want, getattr(value, member, None)):
+        path = f"{prefix}{member}"
+        got = getattr(value, member, None)
+        if _left_out(value, member, raw) or (not prefix and got is None):
+            if path not in missing:
+                missing.append(path)
+            continue
+        if isinstance(want, dict) and not _is_bound(want) and _is_record(got):
+            _collect_missing(want, got, _wire_of(raw, member), f"{path}.", missing)
+
+
+def _is_record(value: Any) -> bool:
+    return dataclasses.is_dataclass(value) and not isinstance(value, type)
+
+
+def _wire_of(raw: Any, member: str) -> Any:
+    """The part of the served answer a member was read from."""
+    return raw.get(member) if isinstance(raw, dict) else None
+
+
+def _left_out(value: Any, member: str, raw: Any) -> bool:
+    """Whether the served answer lacked a member the type holds at its empty value
+    (``asn.type``). The type reads the empty string either way, so only the answer as
+    served says; one with none (a bogon's, or a type built by hand) reads as it was built,
+    and a value that is not the empty one is a value whatever the answer carried."""
+    fields = getattr(value, "__dataclass_fields__", {})
+    held = fields.get(member)
+    if held is None or not held.metadata.get("held") or not isinstance(raw, dict) or not raw:
+        return False
+    return member not in raw and getattr(value, member, None) == held.default
+
+
+def _matches_object(condition: BlockCondition, value: Any, raw: Any = None) -> bool:
+    for member, want in condition.items():
+        if constraint_count(want) == 0:
+            continue
+        got = None if _left_out(value, member, raw) else getattr(value, member, None)
+        if not _matches_value(want, got, _wire_of(raw, member)):
             return False
     return True
 
 
-def _matches_value(want: Any, got: Any) -> bool:
+def _matches_value(want: Any, got: Any, raw: Any = None) -> bool:
     """Whether one value satisfies one want.
 
     An ABSENT member arrives here as ``None``, which is exactly what "not in your plan"
@@ -133,7 +173,7 @@ def _matches_value(want: Any, got: Any) -> bool:
     if isinstance(want, dict):
         if _is_bound(want):
             return _matches_bound(want, got)
-        return _matches_object(want, got)
+        return _matches_object(want, got, raw)
     if isinstance(want, str) and isinstance(got, str):
         # Providers are lowercase slugs on the wire and a caller should not have to
         # know that, so a string compares without case.
