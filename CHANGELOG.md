@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff. Releases before 5.4.2 are described by their release commits.
 
+## 5.24.0 - 2026-11-27
+
+### Features
+
+- Read a keyless answer without the AS's type ([`9bbcd81`](https://github.com/vpndetection-io/sdk-python/commit/9bbcd81e14dc3259531c50eb13b6ed2859df81ce))
+
 ## 5.23.1 - 2026-11-26
 
 ### Fixes

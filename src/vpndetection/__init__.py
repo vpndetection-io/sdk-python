@@ -62,7 +62,7 @@ from .models import (
     WebDetail,
 )
 
-__version__ = "5.23.1"
+__version__ = "5.24.0"
 
 __all__ = [
     "DATABASE_FORMATS",
