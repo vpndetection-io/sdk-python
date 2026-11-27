@@ -17,7 +17,7 @@ Requires Python 3.11 or newer. Type hints are included, and the package ships `p
 
 ## Usage
 
-**No API key needed to start.** Unlimited, the free plan, answers `ip`, `is_vpn`, Tor and relay detection, `is_bot` (whether a bot such as a crawler uses the address), `is_anycast`, `hostname` (the reverse DNS name), country-level `location` and `asn` with the AS's country and RPKI status, with no daily or monthly cap, with a key or without one.
+**No API key needed to start.** Unlimited, the free plan, answers `ip`, `is_vpn`, Tor and relay detection, `is_anycast`, `hostname` (the reverse DNS name), country-level `location` and `asn` with the AS's country and RPKI status, with no daily or monthly cap, with a key or without one.
 
 ```python
 from vpndetection import VPNDetection
@@ -39,7 +39,7 @@ with VPNDetection() as client:
 
 ### With an API key
 
-A paid plan answers every field: `is_hosting`, `is_cdn` and the four proxy flags as well, the carrier and satellite flags, the five service flags (SSH, SMTP, web, DNS resolver and BitTorrent), `bot` (whose bot it is and whether its operator vouches for the address), city-level `location`, the `company` and the `abuse` contact, and the provider (its ID and its name), confidence and last-seen detail behind each flag. Its quotas differ only in how many lookups they include, and a free account tries every field. Create a key in the [console](https://app.vpndetection.io), then pass it in:
+A paid plan answers every field: `is_hosting`, `is_cdn` and the four proxy flags as well, the carrier and satellite flags, the five service flags (SSH, SMTP, web, DNS resolver and BitTorrent), `is_bot` (whether a bot such as a crawler uses the address) and `bot` (whose bot it is and whether its operator vouches for the address), the AS's `type` (isp, hosting, education, government or business), city-level `location`, the `company` and the `abuse` contact, and the provider (its ID and its name), confidence and last-seen detail behind each flag. Its quotas differ only in how many lookups they include, and a free account tries every field. Create a key in the [console](https://app.vpndetection.io), then pass it in:
 
 ```python
 import os
@@ -290,11 +290,14 @@ Each redirect URI must be https on a public host name, or http on a loopback add
 
 ### Fields your plan does not include
 
-Unlimited leaves out `is_hosting`, `is_cdn`, the four proxy flags, the carrier, satellite and service flags, `bot`, `company` and `abuse`, and of the detail behind each flag it answers only Tor's and relay's; a free-plan key's answer carries `trial_expired`, true once its trial is spent, and a paid key's carries `cap_reached`, true once its organization's overage cap is reached and the answer has Unlimited's. Those are `None` when your key does not include them, which means "not in your plan" rather than "checked, and no".
+Unlimited leaves out `is_hosting`, `is_cdn`, the four proxy flags, `is_bot`, the carrier, satellite and service flags, `bot`, `company` and `abuse`, the AS's `type`, and of the detail behind each flag it answers only Tor's and relay's; a free-plan key's answer carries `trial_expired`, true once its trial is spent, and a paid key's carries `cap_reached`, true once its organization's overage cap is reached and the answer has Unlimited's. Those are `None` when your key does not include them, which means "not in your plan" rather than "checked, and no". The exception is `asn.type`, which stays a plain `str` and reads `""` when the answer leaves it out: `result.raw["asn"]` tells a served type from a missing one.
 
 ```python
 result.flagged("is_hosting")   # False rather than None on a plan without it
 result.is_hosting is None      # True on Unlimited: not in your plan
+result.is_bot is None          # True on Unlimited: not in your plan
+result.asn.type == ""          # True on Unlimited, which leaves it out
+"type" in result.raw["asn"]    # False on Unlimited: it was not in the answer
 result.trial_expired is True    # a free-plan key's trial is spent
 result.cap_reached is True      # a paid key past its overage cap
 ```
