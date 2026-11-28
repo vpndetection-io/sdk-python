@@ -19,7 +19,7 @@ class EntitlementPlan:
             renamed or reused: `free` for the free plan, or a paid plan's key.
             Compare against it and show `name`. On `free`, usage counts its
             trial, the lookups answered with every field. The Data plan is a key
-            per quota, `data_1` to `data_7`, each named Data.
+            per quota (`data_1`, `data_2` and on), each named Data.
              Example: data_4.
         name (str): The plan's name, as the site and console show it: `Unlimited` for
             the free plan. Show this rather than a name built from `key`: a
