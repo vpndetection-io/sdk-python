@@ -28,6 +28,7 @@ from vpndetection.middleware import (
     Guard,
     Lookup,
     Options,
+    missing_members,
     names_crawler,
 )
 from vpndetection.middleware.core import _CrawlerAgents
@@ -672,6 +673,36 @@ def test_past_the_bound_a_condition_on_the_verdict_is_no_plan_gap_either(flavor:
 
     assert [one.blocked for one in found] == [True, True, True, True, False]
     assert origin.agents == [crawler(1), crawler(2), crawler(3), crawler(4), None]
+
+
+@pytest.mark.parametrize("flavor", ["sync", "async"])
+@pytest.mark.parametrize("action", ["raise", "warn"])
+@pytest.mark.parametrize("peer", ["127.0.0.1", "10.0.0.1", "::1"])
+def test_a_bogon_peer_with_a_crawler_agent_is_no_plan_gap(
+    flavor: str, action: str, peer: str
+) -> None:
+    # Local development behind no proxy: the peer is answered locally in the widest shape,
+    # with no verdict, and that is no plan gap. A core reporting one answers a crawler's
+    # request from there with an error under "raise".
+    warnings: list[str] = []
+    origin = Origin(verdict="spoofed")
+    found = _judge(
+        flavor,
+        origin,
+        [Req(user_agent=GOOGLEBOT, ip=peer)],
+        allow_bots=True,
+        block_condition=FORGED,
+        on_missing_field=action,
+        on_warn=warnings.append,
+    )[0]
+
+    assert found.result is not None
+    assert found.result.is_bogon is True
+    assert found.blocked is False
+    assert origin.requests == [], "a bogon reached the origin"
+    assert [w for w in warnings if "does not include" in w] == []
+    assert missing_members(FORGED, found.result) == []
+    assert Guard(FORGED, on_missing_field="raise").blocks(found) is False
 
 
 def test_a_member_the_plan_lacks_is_still_reported_beside_one_on_the_verdict() -> None:
